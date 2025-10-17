@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hotel Upgrade Assistant</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+      <div class="sidebar">
+        <h1>Hotel Upgrade Assistant</h1>
+        <p>Strategically upgrade guests to maximize revenue.</p>
+        
+        <div class="card">
+          <h2>1. Define Upgrade Rules</h2>
+          <label for="hierarchy">Room Value Hierarchy</label>
+          <textarea id="hierarchy">TK-K,TQ-QQ,TQHC,DK-K,CTK-K,KJS-K/POC,QJS-QQ/POC,KBS-K/POC,PMVB-QQ,DMVT-QQ,GMVT-QQ/POC,GMVC-QQ,LKBS-K/POC,GMVB-QQ/POC</textarea>
+          
+          <label for="target-rooms">Target Rooms to Free Up</label>
+          <input type="text" id="target-rooms" value="">
+          <p class="note">This list acts as a priority queue.</p>
+          
+          <label for="prioritized-rates">Prioritized Rate Keywords</label>
+          <input type="text" id="prioritized-rates" value="Best Available, BAR, Rack">
+          
+          <label for="ota-rates">Ineligible Rate Keywords</label>
+          <input type="text" id="ota-rates" value="Expedia, Booking.com, Priceline, GDS">
+
+          <label for="ineligible-upgrades">Never Upgrade To</label>
+          <input type="text" id="ineligible-upgrades" value="TQHC">
+        </div>
+
+        <div class="card">
+          <h2>2. Upload Status & Select Date</h2>
+          <label for="csv-file">Daily Hotel Status CSV File</label>
+          <input type="file" id="csv-file" accept=".csv">
+          
+          <label for="selected-date">Select Start Date for 7-Day Period</label>
+          <input type="date" id="selected-date">
+          
+          <button id="generate-btn">Generate Suggestions</button>
+        </div>
+      </div>
+
+      <div class="main-content">
+        <div id="loader"><div class="spinner"></div>Generating...</div>
+        <div id="output" style="display: none;">
+          <div id="message"></div>
+          <div id="inventory"></div>
+          
+          <div class="tabs">
+            <div class="tab active" data-tab-target="#recommendations">Recommendations</div>
+            <div class="tab" data-tab-target="#matrix">Availability Matrix</div>
+            <div class="tab" data-tab-target="#accepted">Accepted Upgrades</div>
+            <div class="tab" data-tab-target="#analytics">Analytics</div>
+          </div>
+
+          <div id="recommendations" class="tab-content active"><div id="recommendations-container"></div></div>
+          <div id="matrix" class="tab-content"><div id="matrix-container"></div></div>
+          <div id="accepted" class="tab-content"><div id="accepted-container"><p>No upgrades have been accepted yet.</p></div></div>
+          <div id="analytics" class="tab-content">
+            <div class="analytics-header">
+              <label for="sort-date-dropdown">Filter by Date Completed</label>
+              <select id="sort-date-dropdown">
+                <option value="all">All Dates</option>
+              </select>
+            </div>
+            <div id="completed-container"><p>No upgrades have been marked as completed yet.</p></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
