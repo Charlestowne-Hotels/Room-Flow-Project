@@ -322,52 +322,39 @@ function showLoader(show, text = 'Loading...') {
 // --- LOGIC PORTED FROM Code.gs ---
 
 /**
- * A robust CSV parser that handles quoted fields, newlines in fields, and escaped quotes.
- * This replaces simple splitting logic to correctly mimic Apps Script's Utilities.parseCsv().
+ * A robust CSV parser designed for the specific format of the provided file.
+ * It correctly handles fields that contain commas by respecting double quotes.
  * @param {string} csvContent The raw string content from the CSV file.
- * @returns {{data: Array<Array<string>>, header: Array<string>}} An object containing the header row and the data rows.
+ * @returns {{data: Array<Array<string>>, header: Array<string>}} An object containing the header and data rows.
  */
 function parseCsv(csvContent) {
-    // Normalize line endings to \n
-    const normalizedContent = csvContent.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
-    const lines = normalizedContent.trim().split('\n');
+    const lines = csvContent.trim().split('\n');
+    const headerLine = lines.shift();
+    // Simple split for the header, assuming headers don't have commas
+    const header = headerLine.split(',').map(h => h.trim().replace(/"/g, ''));
     
-    // Assumes the first line is the header and parses it simply.
-    const header = lines.shift().split(',').map(h => h.trim().replace(/"/g, ''));
-    
-    const data = [];
-    let currentLine = '';
+    const data = lines.map(line => {
+        const row = [];
+        let currentField = '';
+        let inQuotes = false;
+        
+        for (let i = 0; i < line.length; i++) {
+            const char = line[i];
 
-    for (const line of lines) {
-        currentLine += line;
-        const quoteCount = (currentLine.match(/"/g) || []).length;
-        // If the number of quotes is even, the line is complete.
-        if (quoteCount % 2 === 0) {
-            const values = [];
-            let currentVal = '';
-            let inQuotes = false;
-            for (let i = 0; i < currentLine.length; i++) {
-                const char = currentLine[i];
-                if (char === '"' && (i === 0 || currentLine[i - 1] !== '"')) {
-                    inQuotes = !inQuotes;
-                } else if (char === ',' && !inQuotes) {
-                    // Remove leading/trailing quotes and trim whitespace
-                    values.push(currentVal.replace(/^"|"$/g, '').trim());
-                    currentVal = '';
-                } else {
-                    currentVal += char;
-                }
+            if (char === '"') {
+                inQuotes = !inQuotes;
+            } else if (char === ',' && !inQuotes) {
+                row.push(currentField);
+                currentField = '';
+            } else {
+                currentField += char;
             }
-            // Add the last value
-            values.push(currentVal.replace(/^"|"$/g, '').trim());
-            data.push(values);
-            currentLine = '';
-        } else {
-            // If quote count is odd, the newline is part of a field, so append a newline character.
-            currentLine += '\n';
         }
-    }
-    
+        
+        row.push(currentField); // Add the last field
+        return row;
+    });
+
     return { data, header };
 }
 
@@ -400,7 +387,10 @@ function processUpgradeData(csvContent, rules) {
     const requiredHeaders = ['Guest Name', 'Res ID', 'Room Type', 'Rate Name', 'Rate', 'Arrival Date', 'Departure Date', 'Status'];
     const missingHeaders = requiredHeaders.filter(h => !header.includes(h));
     if (missingHeaders.length > 0) {
-        throw new Error(`The uploaded PMS export is missing required columns: ${missingHeaders.join(', ')}`);
+        // Find which header is missing and provide a more helpful error
+        const firstMissing = header.find(h => !requiredHeaders.includes(h));
+        console.log("Parsed Headers:", header);
+        throw new Error(`The uploaded PMS export is missing required columns. Could not find: '${missingHeaders.join(', ')}'`);
     }
 
     const allReservations = parseAllReservations(data, header);
@@ -409,7 +399,14 @@ function processUpgradeData(csvContent, rules) {
 
 function generateRecommendationsFromData(allReservations, rules) {
     const masterInventory = getMasterInventory();
-    if (allReservations.length === 0) throw new Error("Could not find any valid reservation data.");
+    if (allReservations.length === 0) {
+        return {
+            recommendations: [],
+            inventory: getInventoryForDate(masterInventory, buildReservationsByDate([]), parseDate(rules.selectedDate)),
+            matrixData: generateMatrixData(masterInventory, buildReservationsByDate([]), parseDate(rules.selectedDate), rules.hierarchy.toUpperCase().split(',').map(r => r.trim()).filter(Boolean)),
+            message: 'No valid reservations found in the uploaded file matching the criteria.'
+        };
+    }
 
     const startDate = parseDate(rules.selectedDate);
     const reservationsByDate = buildReservationsByDate(allReservations);
@@ -497,6 +494,7 @@ function generateRecommendationsFromData(allReservations, rules) {
 }
 
 function getBedType(roomCode) {
+    if (!roomCode) return 'OTHER';
     if (roomCode.includes('-K')) return 'K';
     if (roomCode.includes('-QQ')) return 'QQ';
     return 'OTHER';
@@ -512,12 +510,19 @@ function parseAllReservations(data, header) {
     const statusIndex = header.indexOf('Status');
     const rateIndex = header.indexOf('Rate');
 
+    if (nameIndex === -1 || resIdIndex === -1 || roomTypeIndex === -1) {
+        throw new Error("One or more critical columns were not found in the CSV header.");
+    }
+
     return data.map(values => {
+        if(values.length < header.length) return null; // Skip malformed rows
+
         const arrival = values[arrivalIndex] ? parseDate(values[arrivalIndex]) : null;
         const departure = values[departureIndex] ? parseDate(values[departureIndex]) : null;
         let nights = 0;
         if (arrival && departure) {
-            nights = Math.ceil(Math.abs(departure - arrival) / (1000 * 60 * 60 * 24));
+            const diffTime = departure - arrival;
+            nights = Math.max(1, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
         }
         const dailyRate = parseFloat(values[rateIndex]) || 0;
         const totalRevenue = dailyRate * nights;
@@ -532,7 +537,7 @@ function parseAllReservations(data, header) {
             status: values[statusIndex] ? values[statusIndex].trim().toUpperCase() : '',
             revenue: totalRevenue.toLocaleString('en-US', { style: 'currency', currency: 'USD' })
         };
-    }).filter(r => r.roomType && r.arrival && r.departure && r.nights > 0);
+    }).filter(r => r && r.roomType && r.arrival && r.departure && r.nights > 0);
 }
 
 function buildReservationsByDate(allReservations) {
