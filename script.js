@@ -34,10 +34,18 @@ function handleGenerateClick() {
         return;
     }
 
+    // Reset state for new generation
     acceptedUpgrades = [];
     completedUpgrades = [];
     displayAcceptedUpgrades();
     displayCompletedUpgrades();
+    
+    // Clear old dates from the completed dropdown
+    const dropdown = document.getElementById('sort-date-dropdown');
+    while (dropdown.options.length > 1) {
+        dropdown.remove(1);
+    }
+
 
     const rules = {
         hierarchy: document.getElementById('hierarchy').value,
@@ -52,12 +60,15 @@ function handleGenerateClick() {
         currentCsvContent = e.target.result;
         currentRules = rules;
         showLoader(true, 'Generating...');
-        try {
-            const results = processUpgradeData(currentCsvContent, currentRules);
-            displayResults(results);
-        } catch (err) {
-            showError(err);
-        }
+        // Use a timeout to allow the UI to update before the heavy processing starts
+        setTimeout(() => {
+            try {
+                const results = processUpgradeData(currentCsvContent, currentRules);
+                displayResults(results);
+            } catch (err) {
+                showError(err);
+            }
+        }, 50);
     };
     reader.readAsText(fileInput.files[0]);
 }
@@ -76,28 +87,35 @@ function handleAcceptClick(event) {
     card.style.opacity = '0.5';
     button.disabled = true;
     button.textContent = 'Accepted';
-
-    try {
-        const results = acceptUpgradeAndRecalculate(acceptedRec, acceptedUpgrades, currentCsvContent, currentRules);
-        displayResults(results);
-    } catch (err) {
-        showError(err);
-        card.style.opacity = '1';
-        button.disabled = false;
-        button.textContent = 'Accept';
-    }
+    
+    // Use a timeout to allow the UI to update before recalculating
+    setTimeout(() => {
+        try {
+            const results = acceptUpgradeAndRecalculate(acceptedRec, acceptedUpgrades, currentCsvContent, currentRules);
+            displayResults(results);
+        } catch (err) {
+            showError(err);
+            // Re-enable the button if an error occurs
+            card.style.opacity = '1';
+            button.disabled = false;
+            button.textContent = 'Accept';
+        }
+    }, 50);
 }
 
 function handlePmsUpdateClick(event) {
+    // Find the index of the upgrade to move, based on the button clicked
     const recIndex = event.target.dataset.index;
     const resIdToComplete = acceptedUpgrades[recIndex].resId;
     const itemIndex = acceptedUpgrades.findIndex(item => item.resId === resIdToComplete);
 
     if (itemIndex > -1) {
+        // Remove the item from acceptedUpgrades and add it to completedUpgrades
         const upgradeToComplete = acceptedUpgrades.splice(itemIndex, 1)[0];
         upgradeToComplete.completedTimestamp = new Date();
         completedUpgrades.push(upgradeToComplete);
         
+        // Refresh both the 'Accepted' and 'Analytics' tabs
         displayAcceptedUpgrades();
         displayCompletedUpgrades();
     }
@@ -120,7 +138,7 @@ function displayResults(data) {
     document.getElementById('output').style.display = 'block';
     const messageEl = document.getElementById('message');
     messageEl.style.display = data.message ? 'block' : 'none';
-    messageEl.textContent = data.message || '';
+    messageEl.innerHTML = data.message || '';
     displayInventory(data.inventory);
     displayMatrix(data.matrixData);
 }
@@ -270,11 +288,15 @@ function displayCompletedUpgrades() {
 
 function displayMatrix(matrix) {
     const container = document.getElementById('matrix-container');
+    if (!matrix || !matrix.headers || !matrix.rows) {
+        container.innerHTML = '<p>Could not generate the availability matrix.</p>';
+        return;
+    }
     let html = '<table><thead><tr>' + matrix.headers.map(h => `<th>${h}</th>`).join('') + '</tr></thead><tbody>';
     matrix.rows.forEach(row => {
         html += `<tr><td><strong>${row.roomCode}</strong></td>`;
         row.availability.forEach(avail => {
-            let color = avail > 2 ? '#28a745' : (avail > 0 ? 'orange' : '#e94560');
+            let color = avail > 2 ? 'var(--success-color)' : (avail > 0 ? 'orange' : 'var(--secondary-accent)');
             html += `<td style="color:${color}; font-weight: bold;">${avail}</td>`;
         });
         html += '</tr>';
@@ -286,6 +308,7 @@ function displayMatrix(matrix) {
 function showError(error) {
     showLoader(false);
     alert(error.message || 'An unknown error occurred.');
+    console.error(error); // Also log the full error to the console for debugging
 }
 
 function showLoader(show, text = 'Loading...') {
@@ -295,30 +318,91 @@ function showLoader(show, text = 'Loading...') {
     document.getElementById('generate-btn').disabled = show;
 }
 
+
 // --- LOGIC PORTED FROM Code.gs ---
+
+/**
+ * A robust CSV parser that handles quoted fields, newlines in fields, and escaped quotes.
+ * This replaces simple splitting logic to correctly mimic Apps Script's Utilities.parseCsv().
+ * @param {string} csvContent The raw string content from the CSV file.
+ * @returns {{data: Array<Array<string>>, header: Array<string>}} An object containing the header row and the data rows.
+ */
+function parseCsv(csvContent) {
+    // Normalize line endings to \n
+    const normalizedContent = csvContent.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+    const lines = normalizedContent.trim().split('\n');
+    
+    // Assumes the first line is the header and parses it simply.
+    const header = lines.shift().split(',').map(h => h.trim().replace(/"/g, ''));
+    
+    const data = [];
+    let currentLine = '';
+
+    for (const line of lines) {
+        currentLine += line;
+        const quoteCount = (currentLine.match(/"/g) || []).length;
+        // If the number of quotes is even, the line is complete.
+        if (quoteCount % 2 === 0) {
+            const values = [];
+            let currentVal = '';
+            let inQuotes = false;
+            for (let i = 0; i < currentLine.length; i++) {
+                const char = currentLine[i];
+                if (char === '"' && (i === 0 || currentLine[i - 1] !== '"')) {
+                    inQuotes = !inQuotes;
+                } else if (char === ',' && !inQuotes) {
+                    // Remove leading/trailing quotes and trim whitespace
+                    values.push(currentVal.replace(/^"|"$/g, '').trim());
+                    currentVal = '';
+                } else {
+                    currentVal += char;
+                }
+            }
+            // Add the last value
+            values.push(currentVal.replace(/^"|"$/g, '').trim());
+            data.push(values);
+            currentLine = '';
+        } else {
+            // If quote count is odd, the newline is part of a field, so append a newline character.
+            currentLine += '\n';
+        }
+    }
+    
+    return { data, header };
+}
+
 
 function acceptUpgradeAndRecalculate(acceptedRec, previouslyAccepted, csvContent, rules) {
     const allAccepted = [...previouslyAccepted, acceptedRec];
+    // We need to re-parse the original CSV each time to ensure a clean state
     const { data, header } = parseCsv(csvContent);
     const allReservations = parseAllReservations(data, header);
+    
+    // Apply all accepted upgrades to the fresh reservation list
     allAccepted.forEach(rec => {
         const reservationToUpdate = allReservations.find(res => res.resId === rec.resId);
         if (reservationToUpdate) {
             reservationToUpdate.roomType = rec.upgradeTo;
         }
     });
+
     const results = generateRecommendationsFromData(allReservations, rules);
-    results.acceptedUpgrades = allAccepted;
+    results.acceptedUpgrades = allAccepted; // Pass the updated list of accepted upgrades back
     return results;
 }
 
 function processUpgradeData(csvContent, rules) {
     const { data, header } = parseCsv(csvContent);
+    if (!data || data.length === 0) {
+        throw new Error('CSV file is empty or could not be parsed.');
+    }
+    
     const requiredHeaders = ['Guest Name', 'Res ID', 'Room Type', 'Rate Name', 'Rate', 'Arrival Date', 'Departure Date', 'Status'];
     const missingHeaders = requiredHeaders.filter(h => !header.includes(h));
     if (missingHeaders.length > 0) {
         throw new Error(`The uploaded PMS export is missing required columns: ${missingHeaders.join(', ')}`);
     }
+
     const allReservations = parseAllReservations(data, header);
     return generateRecommendationsFromData(allReservations, rules);
 }
@@ -418,13 +502,6 @@ function getBedType(roomCode) {
     return 'OTHER';
 }
 
-function parseCsv(csvContent) {
-    const lines = csvContent.trim().split('\n');
-    const header = lines.shift().split(',').map(h => h.trim().replace(/"/g, ''));
-    const data = lines.map(line => parseCsvLine(line));
-    return { data, header };
-}
-
 function parseAllReservations(data, header) {
     const nameIndex = header.indexOf('Guest Name');
     const resIdIndex = header.indexOf('Res ID');
@@ -508,24 +585,18 @@ function getMasterInventory() {
     return totalInventory;
 }
 
-function parseCsvLine(line) {
-    const values = []; let current = ''; let inQuotes = false; const lineWithTerminator = line + ',';
-    for (let i = 0; i < lineWithTerminator.length; i++) {
-        const char = lineWithTerminator[i];
-        if (char === '"' && (i === 0 || lineWithTerminator[i - 1] !== '"')) { inQuotes = !inQuotes; }
-        else if (char === ',' && !inQuotes) { values.push(current.replace(/^"|"$/g, '').trim()); current = ''; }
-        else { current += char; }
-    } return values;
-}
-
 function parseDate(dateStr) {
     if (!dateStr) return null;
+    // Handle dates like "10/25/2023 15:00:00"
     if (dateStr.includes(' ')) dateStr = dateStr.split(' ')[0];
     const parts = dateStr.split(/[-\/]/);
     if (parts.length === 3) {
+        // YYYY-MM-DD format
         if (parts[0].length === 4) return new Date(Date.UTC(parts[0], parts[1] - 1, parts[2]));
+        // MM/DD/YYYY format
         else return new Date(Date.UTC(parts[2], parts[0] - 1, parts[1]));
     }
+    // Fallback for other potential formats
     const fallbackDate = new Date(dateStr);
     return new Date(Date.UTC(fallbackDate.getFullYear(), fallbackDate.getMonth(), fallbackDate.getDate()));
 }
