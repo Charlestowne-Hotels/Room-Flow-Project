@@ -6,9 +6,12 @@ let acceptedUpgrades = [];
 let completedUpgrades = [];
 
 // --- DOM READY ---
+// --- DOM READY ---
 document.addEventListener('DOMContentLoaded', function() {
-    const today = new Date();
-    document.getElementById('selected-date').value = today.toISOString().slice(0, 10);
+    const futureDate = new Date();
+    futureDate.setDate(futureDate.getDate() + 3); // Add 3 days to the current date
+    document.getElementById('selected-date').value = futureDate.toISOString().slice(0, 10);
+    // ... rest of the code
     document.getElementById('generate-btn').addEventListener('click', handleGenerateClick);
     document.getElementById('sort-date-dropdown').addEventListener('change', displayCompletedUpgrades);
 
@@ -624,3 +627,4 @@ function generateMatrixData(totalInventory, reservationsByDate, startDate, roomH
     });
     return matrix;
 }
+
