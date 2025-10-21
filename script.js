@@ -34,7 +34,40 @@ let completedUpgrades = []; // This will be loaded from Firestore
 
 // --- FUNCTIONS ---
 
-// NEW FUNCTION to update the form based on the selected profile
+// NEW FUNCTION to completely reset the application state
+function resetAppState() {
+    // Reset state variables
+    currentCsvContent = null;
+    currentRules = null;
+    currentRecommendations = [];
+    acceptedUpgrades = [];
+    
+    // Reset the file input so a new file is required
+    document.getElementById('csv-file').value = '';
+
+    // Hide the main output section and clear its children
+    const outputEl = document.getElementById('output');
+    if (outputEl) {
+        outputEl.style.display = 'none';
+    }
+    
+    if (document.getElementById('recommendations-container')) {
+        document.getElementById('recommendations-container').innerHTML = '';
+    }
+    if (document.getElementById('matrix-container')) {
+        document.getElementById('matrix-container').innerHTML = '';
+    }
+    if (document.getElementById('inventory')) {
+        document.getElementById('inventory').innerHTML = '';
+    }
+    if (document.getElementById('message')) {
+        document.getElementById('message').innerHTML = '';
+    }
+    
+    // Reset the accepted upgrades tab to its initial state
+    displayAcceptedUpgrades();
+}
+
 function updateRulesForm(profileName) {
     const profile = profiles[profileName];
     if (!profile) return;
@@ -111,10 +144,11 @@ document.addEventListener('DOMContentLoaded', function() {
     passwordInput = document.getElementById('password-input');
     errorMessage = document.getElementById('error-message');
 
-    // NEW Profile Dropdown Logic
     const profileDropdown = document.getElementById('profile-dropdown');
     profileDropdown.addEventListener('change', (event) => {
         updateRulesForm(event.target.value);
+        // Reset the app state when the profile changes
+        resetAppState();
     });
     // Set the initial form state to FQI
     updateRulesForm('fqi');
