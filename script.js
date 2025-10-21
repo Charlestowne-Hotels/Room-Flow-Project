@@ -1,7 +1,7 @@
 // The firebaseConfig object is now expected to be in Config.js
 firebase.initializeApp(firebaseConfig);
 
-// Initialize Firebase services
+// Initialize Firebase services ONCE at the top
 const auth = firebase.auth();
 const db = firebase.firestore();
 
@@ -176,7 +176,7 @@ function displayResults(data) {
     displayRecommendations(currentRecommendations);
     document.getElementById('output').style.display = 'block';
     const messageEl = document.getElementById('message');
-    messageEl.style.display = data.message ? 'block' : 'none';
+    messageEl.style.display = data.message ? 'block' in data : 'none';
     messageEl.innerHTML = data.message || '';
     displayInventory(data.inventory);
     displayMatrix(data.matrixData);
