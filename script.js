@@ -177,6 +177,7 @@ function displayResults(data) {
     displayRecommendations(currentRecommendations);
     document.getElementById('output').style.display = 'block';
     const messageEl = document.getElementById('message');
+    // THIS IS THE CORRECTED LINE:
     messageEl.style.display = data.message ? 'block' : 'none';
     messageEl.innerHTML = data.message || '';
     displayInventory(data.inventory);
