@@ -8,53 +8,77 @@ const db = firebase.firestore();
 // --- DOM ELEMENT REFERENCES ---
 let loginContainer, appContainer, signinBtn, signoutBtn, emailInput, passwordInput, errorMessage;
 
-// --- STATE MANAGEMENT ---
+// --- STATE MANAGEMENT & PROFILES ---
+const profiles = {
+    fqi: {
+        hierarchy: 'TK-K,TQ-QQ,TQHC,DK-K,CTK-K,KJS-K/POC,QJS-QQ/POC,KBS-K/POC,PMVB-QQ,DMVT-QQ,GMVT-QQ/POC,GMVC-QQ,LKBS-K/POC,GMVB-QQ/POC',
+        targetRooms: '',
+        prioritizedRates: 'Best Available, BAR, Rack',
+        otaRates: 'Expedia, Booking.com, Priceline, GDS',
+        ineligibleUpgrades: 'TQHC'
+    },
+    hvi: {
+        hierarchy: '',
+        targetRooms: '',
+        prioritizedRates: '',
+        otaRates: '',
+        ineligibleUpgrades: ''
+    }
+};
+
 let currentCsvContent = null;
 let currentRules = null;
 let currentRecommendations = [];
 let acceptedUpgrades = [];
-let completedUpgrades = []; // This will now be loaded from Firestore
+let completedUpgrades = []; // This will be loaded from Firestore
 
-// --- AUTHENTICATION & DATA LOADING LOGIC ---
+// --- FUNCTIONS ---
+
+// NEW FUNCTION to update the form based on the selected profile
+function updateRulesForm(profileName) {
+    const profile = profiles[profileName];
+    if (!profile) return;
+
+    document.getElementById('hierarchy').value = profile.hierarchy;
+    document.getElementById('target-rooms').value = profile.targetRooms;
+    document.getElementById('prioritized-rates').value = profile.prioritizedRates;
+    document.getElementById('ota-rates').value = profile.otaRates;
+    document.getElementById('ineligible-upgrades').value = profile.ineligibleUpgrades;
+}
+
 auth.onAuthStateChanged(user => {
     if (user) {
-        // User is signed in.
         console.log("User is signed in:", user.uid);
         if(loginContainer) loginContainer.classList.add('hidden');
         if(appContainer) appContainer.classList.remove('hidden');
-        // Load the user's saved upgrades from Firestore
         loadCompletedUpgrades(user.uid);
     } else {
-        // User is signed out.
         console.log("User is signed out.");
         if(loginContainer) loginContainer.classList.remove('hidden');
         if(appContainer) appContainer.classList.add('hidden');
     }
 });
 
-// NEW FUNCTION: Loads completed upgrades from Firestore
 async function loadCompletedUpgrades(userId) {
     if (!userId) return;
-    completedUpgrades = []; // Clear local array before loading
+    completedUpgrades = []; 
     
     const upgradesRef = db.collection('users').doc(userId).collection('completedUpgrades');
     try {
         const snapshot = await upgradesRef.get();
         snapshot.forEach(doc => {
             const upgrade = doc.data();
-            // Firestore timestamps need to be converted back to JS Date objects
             if (upgrade.completedTimestamp && upgrade.completedTimestamp.toDate) {
                 upgrade.completedTimestamp = upgrade.completedTimestamp.toDate();
             }
             completedUpgrades.push(upgrade);
         });
         console.log(`Loaded ${completedUpgrades.length} completed upgrades from Firestore.`);
-        displayCompletedUpgrades(); // Refresh the UI with the loaded data
+        displayCompletedUpgrades(); 
     } catch (error) {
         console.error("Error loading completed upgrades: ", error);
     }
 }
-
 
 const handleSignIn = () => {
     const email = emailInput.value;
@@ -86,6 +110,15 @@ document.addEventListener('DOMContentLoaded', function() {
     emailInput = document.getElementById('email-input');
     passwordInput = document.getElementById('password-input');
     errorMessage = document.getElementById('error-message');
+
+    // NEW Profile Dropdown Logic
+    const profileDropdown = document.getElementById('profile-dropdown');
+    profileDropdown.addEventListener('change', (event) => {
+        updateRulesForm(event.target.value);
+    });
+    // Set the initial form state to FQI
+    updateRulesForm('fqi');
+
 
     signinBtn.addEventListener('click', handleSignIn);
     signoutBtn.addEventListener('click', handleSignOut);
@@ -123,7 +156,6 @@ function handleGenerateClick() {
         alert('Please upload a CSV file.');
         return;
     }
-    // Don't reset completedUpgrades here anymore, as it's loaded from the cloud
     acceptedUpgrades = [];
     displayAcceptedUpgrades();
     
@@ -177,7 +209,6 @@ function handleAcceptClick(event) {
     }, 50);
 }
 
-// MODIFIED FUNCTION: Now saves to Firestore
 function handlePmsUpdateClick(event) {
     const user = auth.currentUser;
     if (!user) {
@@ -194,7 +225,6 @@ function handlePmsUpdateClick(event) {
         upgradeToComplete.completedTimestamp = new Date();
         completedUpgrades.push(upgradeToComplete);
         
-        // Save to Firestore
         const upgradesRef = db.collection('users').doc(user.uid).collection('completedUpgrades');
         upgradesRef.add(upgradeToComplete)
             .then((docRef) => {
@@ -202,7 +232,6 @@ function handlePmsUpdateClick(event) {
             })
             .catch((error) => {
                 console.error("Error saving upgrade: ", error);
-                // Optional: add the item back to the list if saving fails
                 completedUpgrades.pop(); 
                 acceptedUpgrades.splice(itemIndex, 0, upgradeToComplete);
                 showError({ message: "Could not save upgrade to cloud." });
@@ -324,7 +353,6 @@ function displayCompletedUpgrades() {
     const selectedValue = dropdown.value;
     let totalValue = 0;
     
-    // Clear old dates from the completed dropdown before adding new ones
     while (dropdown.options.length > 1) {
         dropdown.remove(1);
     }
