@@ -616,4 +616,3 @@ function generateMatrixData(totalInventory, reservationsByDate, startDate, roomH
     });
     return matrix;
 }
-I copied everything from the last post and it is showing that there is a problem with all three files now. I really think the javascript is corrupted.
