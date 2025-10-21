@@ -22,6 +22,14 @@
 
     <div id="app-container" class="container hidden">
       <div class="sidebar">
+        <div class="profile-selector">
+            <label for="profile-dropdown">Select Profile:</label>
+            <select id="profile-dropdown">
+                <option value="fqi">FQI</option>
+                <option value="hvi">HVI</option>
+            </select>
+        </div>
+        
         <h1>Hotel Upgrade Assistant</h1>
         <p>Strategically upgrade guests to maximize revenue.</p>
         <button id="signout-btn">Sign Out</button>
@@ -29,20 +37,20 @@
         <div class="card">
           <h2>1. Define Upgrade Rules</h2>
           <label for="hierarchy">Room Value Hierarchy</label>
-          <textarea id="hierarchy">TK-K,TQ-QQ,TQHC,DK-K,CTK-K,KJS-K/POC,QJS-QQ/POC,KBS-K/POC,PMVB-QQ,DMVT-QQ,GMVT-QQ/POC,GMVC-QQ,LKBS-K/POC,GMVB-QQ/POC</textarea>
+          <textarea id="hierarchy"></textarea>
 
           <label for="target-rooms">Target Rooms to Free Up</label>
-          <input type="text" id="target-rooms" value="">
+          <input type="text" id="target-rooms">
           <p class="note">This list acts as a priority queue.</p>
 
           <label for="prioritized-rates">Prioritized Rate Keywords</label>
-          <input type="text" id="prioritized-rates" value="Best Available, BAR, Rack">
+          <input type="text" id="prioritized-rates">
 
           <label for="ota-rates">Ineligible Rate Keywords</label>
-          <input type="text" id="ota-rates" value="Expedia, Booking.com, Priceline, GDS">
+          <input type="text" id="ota-rates">
 
           <label for="ineligible-upgrades">Never Upgrade To</label>
-          <input type="text" id="ineligible-upgrades" value="TQHC">
+          <input type="text" id="ineligible-upgrades">
         </div>
 
         <div class="card">
