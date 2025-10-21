@@ -81,12 +81,10 @@ button:disabled { background-color: #555; cursor: not-allowed; }
 
 /* --- NEW STYLES FOR LOGIN --- */
 
-/* Utility class to hide elements */
 .hidden {
     display: none !important;
 }
 
-/* Login Screen Styling */
 #login-container {
     position: fixed;
     top: 0;
@@ -128,7 +126,7 @@ button:disabled { background-color: #555; cursor: not-allowed; }
     margin-bottom: 15px;
     border: 1px solid var(--border-color);
     border-radius: 4px;
-    box-sizing: border-box; /* Important */
+    box-sizing: border-box; 
     background-color: var(--primary-accent);
     color: var(--text-color);
 }
@@ -143,14 +141,6 @@ button:disabled { background-color: #555; cursor: not-allowed; }
     font-weight: bold;
     cursor: pointer;
     margin-top: 10px;
-}
-
-#signup-btn {
-    background-color: #555;
-    margin-top: 5px;
-}
-#signup-btn:hover {
-    background-color: #777;
 }
 
 #error-message {
