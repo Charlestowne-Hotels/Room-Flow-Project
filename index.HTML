@@ -4,26 +4,41 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Hotel Upgrade Assistant</title>
-    <link rel="icon" href="Hotel_Upgrade_Favicon.ico" type="image/x-icon"> <link rel="stylesheet" href="style.css">
+    <link rel="icon" href="Hotel_Upgrade_Favicon.ico" type="image/x-icon">
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div class="container">
+
+    <div id="login-container">
+        <div class="login-card">
+            <h1>Upgrade Assistant</h1>
+            <p>Please sign in to continue</p>
+            <input type="email" id="email-input" placeholder="Email">
+            <input type="password" id="password-input" placeholder="Password">
+            <p id="error-message"></p>
+            <button id="signin-btn">Sign In</button>
+            <button id="signup-btn">Sign Up</button>
+        </div>
+    </div>
+
+    <div id="app-container" class="container hidden">
       <div class="sidebar">
         <h1>Hotel Upgrade Assistant</h1>
         <p>Strategically upgrade guests to maximize revenue.</p>
-        
+        <button id="signout-btn">Sign Out</button>
+
         <div class="card">
           <h2>1. Define Upgrade Rules</h2>
           <label for="hierarchy">Room Value Hierarchy</label>
           <textarea id="hierarchy">TK-K,TQ-QQ,TQHC,DK-K,CTK-K,KJS-K/POC,QJS-QQ/POC,KBS-K/POC,PMVB-QQ,DMVT-QQ,GMVT-QQ/POC,GMVC-QQ,LKBS-K/POC,GMVB-QQ/POC</textarea>
-          
+
           <label for="target-rooms">Target Rooms to Free Up</label>
           <input type="text" id="target-rooms" value="">
           <p class="note">This list acts as a priority queue.</p>
-          
+
           <label for="prioritized-rates">Prioritized Rate Keywords</label>
           <input type="text" id="prioritized-rates" value="Best Available, BAR, Rack">
-          
+
           <label for="ota-rates">Ineligible Rate Keywords</label>
           <input type="text" id="ota-rates" value="Expedia, Booking.com, Priceline, GDS">
 
@@ -35,10 +50,10 @@
           <h2>2. Upload Status & Select Date</h2>
           <label for="csv-file">Daily Hotel Status CSV File</label>
           <input type="file" id="csv-file" accept=".csv">
-          
+
           <label for="selected-date">Select Start Date for 7-Day Period</label>
           <input type="date" id="selected-date">
-          
+
           <button id="generate-btn">Generate Suggestions</button>
         </div>
       </div>
@@ -48,7 +63,7 @@
         <div id="output" style="display: none;">
           <div id="message"></div>
           <div id="inventory"></div>
-          
+
           <div class="tabs">
             <div class="tab active" data-tab-target="#recommendations">Recommendations</div>
             <div class="tab" data-tab-target="#matrix">Availability Matrix</div>
@@ -73,12 +88,11 @@
     </div>
 
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
-
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
 
+<script src="Config.js"></script> 
 <script src="script.js"></script>
+
 </body>
 </html>
-
-
