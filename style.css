@@ -79,8 +79,7 @@ button:disabled { background-color: #555; cursor: not-allowed; }
 .analytics-header label { margin-bottom: 0; margin-right: 10px; }
 @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
-/* --- NEW STYLES FOR LOGIN --- */
-
+/* --- LOGIN STYLES --- */
 .hidden {
     display: none !important;
 }
@@ -163,4 +162,12 @@ button:disabled { background-color: #555; cursor: not-allowed; }
 }
 #signout-btn:hover {
     background-color: var(--card-bg);
+}
+
+/* --- NEW STYLES FOR PROFILE DROPDOWN --- */
+.profile-selector {
+    margin-bottom: 20px;
+}
+.profile-selector select {
+    width: 100%;
 }
