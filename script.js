@@ -40,7 +40,6 @@ const handleSignIn = () => {
 
     auth.signInWithEmailAndPassword(email, password)
         .catch(error => {
-            // This will show us the exact error from Firebase
             console.error("Firebase sign-in error:", error); 
             errorMessage.textContent = error.message;
         });
@@ -178,7 +177,7 @@ function displayResults(data) {
     displayRecommendations(currentRecommendations);
     document.getElementById('output').style.display = 'block';
     const messageEl = document.getElementById('message');
-    messageEl.style.display = data.message ? 'block' in data : 'none';
+    messageEl.style.display = data.message ? 'block' : 'none';
     messageEl.innerHTML = data.message || '';
     displayInventory(data.inventory);
     displayMatrix(data.matrixData);
@@ -573,11 +572,11 @@ function getMasterInventory() {
       { roomNumber: '219', code: 'KJS-K/POC' }, { roomNumber: '318', code: 'KJS-K/POC' }, { roomNumber: '101', code: 'LKBS-K/POC' },
       { roomNumber: '201', code: 'LKBS-K/POC' }, { roomNumber: '312', code: 'PMVB-QQ' }, { roomNumber: '313', code: 'PMVB-QQ' },
       { roomNumber: '105', code: 'QJS-QQ/POC' }, { roomNumber: '206', code: 'QJS-QQ/POC' }, { roomNumber: '307', code: 'QJS-QQ/POC' },
-      { roomNumber: '108', code: 'TK-K' }, { roomNumber: '208', code: 'TK-K' }, { roomNumber: '210', 'code': 'TK-K' },
+      { roomNumber: '108', code: 'TK-K' }, { roomNumber: '208', code: 'TK-K' }, { roomNumber: '210', code: 'TK-K' },
       { roomNumber: '211', code: 'TK-K' }, { roomNumber: '221', code: 'TK-K' }, { roomNumber: '308', code: 'TK-K' }, { roomNumber: '309', code: 'TK-K' },
       { roomNumber: '103', code: 'TQ-QQ' }, { roomNumber: '106', code: 'TQ-QQ' }, { roomNumber: '203', code: 'TQ-QQ' },
       { roomNumber: '207', code: 'TQ-QQ' }, { roomNumber: '215', code: 'TQ-QQ' }, { roomNumber: '216', code: 'TQ-QQ' },
-      { roomNumber: '217', 'TQ-QQ' }, { roomNumber: '218', code: 'TQ-QQ' }, { roomNumber: '315', code: 'TQ-QQ' },
+      { roomNumber: '217', code: 'TQ-QQ' }, { roomNumber: '218', code: 'TQ-QQ' }, { roomNumber: '315', code: 'TQ-QQ' },
       { roomNumber: '107', code: 'TQHC' }
   ];
     const totalInventory = {};
@@ -617,4 +616,3 @@ function generateMatrixData(totalInventory, reservationsByDate, startDate, roomH
     });
     return matrix;
 }
-
