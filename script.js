@@ -13,20 +13,48 @@ let currentCsvContent = null;
 let currentRules = null;
 let currentRecommendations = [];
 let acceptedUpgrades = [];
-let completedUpgrades = [];
+let completedUpgrades = []; // This will now be loaded from Firestore
 
-// --- AUTHENTICATION LOGIC ---
+// --- AUTHENTICATION & DATA LOADING LOGIC ---
 auth.onAuthStateChanged(user => {
     if (user) {
+        // User is signed in.
         console.log("User is signed in:", user.uid);
         if(loginContainer) loginContainer.classList.add('hidden');
         if(appContainer) appContainer.classList.remove('hidden');
+        // Load the user's saved upgrades from Firestore
+        loadCompletedUpgrades(user.uid);
     } else {
+        // User is signed out.
         console.log("User is signed out.");
         if(loginContainer) loginContainer.classList.remove('hidden');
         if(appContainer) appContainer.classList.add('hidden');
     }
 });
+
+// NEW FUNCTION: Loads completed upgrades from Firestore
+async function loadCompletedUpgrades(userId) {
+    if (!userId) return;
+    completedUpgrades = []; // Clear local array before loading
+    
+    const upgradesRef = db.collection('users').doc(userId).collection('completedUpgrades');
+    try {
+        const snapshot = await upgradesRef.get();
+        snapshot.forEach(doc => {
+            const upgrade = doc.data();
+            // Firestore timestamps need to be converted back to JS Date objects
+            if (upgrade.completedTimestamp && upgrade.completedTimestamp.toDate) {
+                upgrade.completedTimestamp = upgrade.completedTimestamp.toDate();
+            }
+            completedUpgrades.push(upgrade);
+        });
+        console.log(`Loaded ${completedUpgrades.length} completed upgrades from Firestore.`);
+        displayCompletedUpgrades(); // Refresh the UI with the loaded data
+    } catch (error) {
+        console.error("Error loading completed upgrades: ", error);
+    }
+}
+
 
 const handleSignIn = () => {
     const email = emailInput.value;
@@ -95,14 +123,10 @@ function handleGenerateClick() {
         alert('Please upload a CSV file.');
         return;
     }
+    // Don't reset completedUpgrades here anymore, as it's loaded from the cloud
     acceptedUpgrades = [];
-    completedUpgrades = [];
     displayAcceptedUpgrades();
-    displayCompletedUpgrades();
-    const dropdown = document.getElementById('sort-date-dropdown');
-    while (dropdown.options.length > 1) {
-        dropdown.remove(1);
-    }
+    
     const rules = {
         hierarchy: document.getElementById('hierarchy').value,
         targetRooms: document.getElementById('target-rooms').value,
@@ -153,18 +177,42 @@ function handleAcceptClick(event) {
     }, 50);
 }
 
+// MODIFIED FUNCTION: Now saves to Firestore
 function handlePmsUpdateClick(event) {
+    const user = auth.currentUser;
+    if (!user) {
+        showError({ message: "You must be logged in to save."});
+        return;
+    }
+
     const recIndex = event.target.dataset.index;
     const resIdToComplete = acceptedUpgrades[recIndex].resId;
     const itemIndex = acceptedUpgrades.findIndex(item => item.resId === resIdToComplete);
+
     if (itemIndex > -1) {
         const upgradeToComplete = acceptedUpgrades.splice(itemIndex, 1)[0];
         upgradeToComplete.completedTimestamp = new Date();
         completedUpgrades.push(upgradeToComplete);
+        
+        // Save to Firestore
+        const upgradesRef = db.collection('users').doc(user.uid).collection('completedUpgrades');
+        upgradesRef.add(upgradeToComplete)
+            .then((docRef) => {
+                console.log("Upgrade saved to Firestore with ID: ", docRef.id);
+            })
+            .catch((error) => {
+                console.error("Error saving upgrade: ", error);
+                // Optional: add the item back to the list if saving fails
+                completedUpgrades.pop(); 
+                acceptedUpgrades.splice(itemIndex, 0, upgradeToComplete);
+                showError({ message: "Could not save upgrade to cloud." });
+            });
+        
         displayAcceptedUpgrades();
         displayCompletedUpgrades();
     }
 }
+
 
 function displayResults(data) {
     showLoader(false);
@@ -275,6 +323,12 @@ function displayCompletedUpgrades() {
     const dropdown = document.getElementById('sort-date-dropdown');
     const selectedValue = dropdown.value;
     let totalValue = 0;
+    
+    // Clear old dates from the completed dropdown before adding new ones
+    while (dropdown.options.length > 1) {
+        dropdown.remove(1);
+    }
+
     const existingOptions = new Set(Array.from(dropdown.options).map(opt => opt.value));
     const uniqueDates = new Set(completedUpgrades.map(rec => rec.completedTimestamp.toLocaleDateString()));
     uniqueDates.forEach(date => {
@@ -285,10 +339,12 @@ function displayCompletedUpgrades() {
             dropdown.appendChild(option);
         }
     });
+
     container.innerHTML = '';
     const upgradesToDisplay = selectedValue === 'all'
         ? completedUpgrades
         : completedUpgrades.filter(rec => rec.completedTimestamp.toLocaleDateString() === selectedValue);
+
     if (upgradesToDisplay && upgradesToDisplay.length > 0) {
         upgradesToDisplay.sort((a, b) => b.completedTimestamp - a.completedTimestamp);
         upgradesToDisplay.forEach(rec => {
