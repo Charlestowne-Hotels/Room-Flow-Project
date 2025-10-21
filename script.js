@@ -5,8 +5,13 @@ firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.firestore();
 
+// --- SET YOUR ADMIN UID HERE ---
+// This UID belongs to jryan@charlestownehotels.com
+const ADMIN_UID = "7BdsGq6vJ7UTmAQgVoiEesgEiao1";
+
+
 // --- DOM ELEMENT REFERENCES ---
-let loginContainer, appContainer, signinBtn, signoutBtn, emailInput, passwordInput, errorMessage;
+let loginContainer, appContainer, signinBtn, signoutBtn, emailInput, passwordInput, errorMessage, clearAnalyticsBtn;
 
 // --- STATE MANAGEMENT & PROFILES ---
 const profiles = {
@@ -30,7 +35,7 @@ let currentCsvContent = null;
 let currentRules = null;
 let currentRecommendations = [];
 let acceptedUpgrades = [];
-let completedUpgrades = []; // This will hold ALL upgrades loaded from Firestore
+let completedUpgrades = [];
 
 // --- FUNCTIONS ---
 
@@ -39,34 +44,21 @@ function resetAppState() {
     currentRules = null;
     currentRecommendations = [];
     acceptedUpgrades = [];
-    
     document.getElementById('csv-file').value = '';
-
     const outputEl = document.getElementById('output');
     if (outputEl) {
         outputEl.style.display = 'none';
     }
-    
-    if (document.getElementById('recommendations-container')) {
-        document.getElementById('recommendations-container').innerHTML = '';
-    }
-    if (document.getElementById('matrix-container')) {
-        document.getElementById('matrix-container').innerHTML = '';
-    }
-    if (document.getElementById('inventory')) {
-        document.getElementById('inventory').innerHTML = '';
-    }
-    if (document.getElementById('message')) {
-        document.getElementById('message').innerHTML = '';
-    }
-    
+    if (document.getElementById('recommendations-container')) document.getElementById('recommendations-container').innerHTML = '';
+    if (document.getElementById('matrix-container')) document.getElementById('matrix-container').innerHTML = '';
+    if (document.getElementById('inventory')) document.getElementById('inventory').innerHTML = '';
+    if (document.getElementById('message')) document.getElementById('message').innerHTML = '';
     displayAcceptedUpgrades();
 }
 
 function updateRulesForm(profileName) {
     const profile = profiles[profileName];
     if (!profile) return;
-
     document.getElementById('hierarchy').value = profile.hierarchy;
     document.getElementById('target-rooms').value = profile.targetRooms;
     document.getElementById('prioritized-rates').value = profile.prioritizedRates;
@@ -75,22 +67,30 @@ function updateRulesForm(profileName) {
 }
 
 auth.onAuthStateChanged(user => {
+    const adminButton = document.getElementById('clear-analytics-btn');
     if (user) {
         console.log("User is signed in:", user.uid);
         if(loginContainer) loginContainer.classList.add('hidden');
         if(appContainer) appContainer.classList.remove('hidden');
+        
+        // Check if the signed-in user's UID matches the admin's UID
+        if (user.uid === ADMIN_UID && adminButton) {
+            console.log("User is an admin!");
+            adminButton.classList.remove('hidden');
+        }
+
         loadCompletedUpgrades(user.uid);
     } else {
         console.log("User is signed out.");
         if(loginContainer) loginContainer.classList.remove('hidden');
         if(appContainer) appContainer.classList.add('hidden');
+        if(adminButton) adminButton.classList.add('hidden');
     }
 });
 
 async function loadCompletedUpgrades(userId) {
     if (!userId) return;
     completedUpgrades = []; 
-    
     const upgradesRef = db.collection('users').doc(userId).collection('completedUpgrades');
     try {
         const snapshot = await upgradesRef.get();
@@ -112,12 +112,10 @@ const handleSignIn = () => {
     const email = emailInput.value;
     const password = passwordInput.value;
     errorMessage.textContent = ''; 
-
     if (!email || !password) {
         errorMessage.textContent = "Please enter both email and password.";
         return;
     }
-
     auth.signInWithEmailAndPassword(email, password)
         .catch(error => {
             console.error("Firebase sign-in error:", error); 
@@ -129,6 +127,45 @@ const handleSignOut = () => {
     auth.signOut();
 };
 
+async function handleClearAnalytics() {
+    if (!confirm("Are you sure you want to permanently delete ALL completed upgrades for this profile? This cannot be undone.")) {
+        return;
+    }
+
+    const user = auth.currentUser;
+    const currentProfile = document.getElementById('profile-dropdown').value;
+    if (!user) return;
+
+    showLoader(true, 'Clearing Data...');
+    const upgradesRef = db.collection('users').doc(user.uid).collection('completedUpgrades');
+    const query = upgradesRef.where('profile', '==', currentProfile);
+
+    try {
+        const snapshot = await query.get();
+        if (snapshot.empty) {
+            alert("No data to clear for this profile.");
+            showLoader(false);
+            return;
+        }
+        
+        const batch = db.batch();
+        snapshot.docs.forEach(doc => {
+            batch.delete(doc.ref);
+        });
+        await batch.commit();
+
+        alert(`Successfully deleted ${snapshot.size} records for the ${currentProfile.toUpperCase()} profile.`);
+        await loadCompletedUpgrades(user.uid);
+        showLoader(false);
+
+    } catch (error) {
+        console.error("Error clearing analytics data: ", error);
+        showError({ message: "Failed to clear analytics data." });
+        showLoader(false);
+    }
+}
+
+
 // --- DOM READY ---
 document.addEventListener('DOMContentLoaded', function() {
     loginContainer = document.getElementById('login-container');
@@ -138,19 +175,19 @@ document.addEventListener('DOMContentLoaded', function() {
     emailInput = document.getElementById('email-input');
     passwordInput = document.getElementById('password-input');
     errorMessage = document.getElementById('error-message');
+    clearAnalyticsBtn = document.getElementById('clear-analytics-btn');
 
     const profileDropdown = document.getElementById('profile-dropdown');
     profileDropdown.addEventListener('change', (event) => {
         updateRulesForm(event.target.value);
         resetAppState();
-        // MODIFIED: Re-filter and display the completed list when the profile changes
         displayCompletedUpgrades();
     });
     updateRulesForm('fqi');
 
-
     signinBtn.addEventListener('click', handleSignIn);
     signoutBtn.addEventListener('click', handleSignOut);
+    clearAnalyticsBtn.addEventListener('click', handleClearAnalytics);
 
     if (auth.currentUser) {
         loginContainer.classList.add('hidden');
@@ -160,10 +197,8 @@ document.addEventListener('DOMContentLoaded', function() {
     const futureDate = new Date();
     futureDate.setDate(futureDate.getDate() + 3);
     document.getElementById('selected-date').value = futureDate.toISOString().slice(0, 10);
-
     document.getElementById('generate-btn').addEventListener('click', handleGenerateClick);
     document.getElementById('sort-date-dropdown').addEventListener('change', displayCompletedUpgrades);
-
     const tabs = document.querySelectorAll('[data-tab-target]');
     const tabContents = document.querySelectorAll('.tab-content');
     tabs.forEach(tab => {
@@ -238,27 +273,20 @@ function handleAcceptClick(event) {
     }, 50);
 }
 
-// MODIFIED: Now "tags" the saved data with the current profile
 function handlePmsUpdateClick(event) {
     const user = auth.currentUser;
     if (!user) {
         showError({ message: "You must be logged in to save."});
         return;
     }
-
     const recIndex = event.target.dataset.index;
     const resIdToComplete = acceptedUpgrades[recIndex].resId;
     const itemIndex = acceptedUpgrades.findIndex(item => item.resId === resIdToComplete);
-
     if (itemIndex > -1) {
         const upgradeToComplete = acceptedUpgrades.splice(itemIndex, 1)[0];
         upgradeToComplete.completedTimestamp = new Date();
-        
-        // NEW: Tag the upgrade with the current profile
         upgradeToComplete.profile = document.getElementById('profile-dropdown').value;
-        
         completedUpgrades.push(upgradeToComplete);
-        
         const upgradesRef = db.collection('users').doc(user.uid).collection('completedUpgrades');
         upgradesRef.add(upgradeToComplete)
             .then((docRef) => {
@@ -270,12 +298,10 @@ function handlePmsUpdateClick(event) {
                 acceptedUpgrades.splice(itemIndex, 0, upgradeToComplete);
                 showError({ message: "Could not save upgrade to cloud." });
             });
-        
         displayAcceptedUpgrades();
         displayCompletedUpgrades();
     }
 }
-
 
 function displayResults(data) {
     showLoader(false);
@@ -381,24 +407,17 @@ function displayAcceptedUpgrades() {
     }
 }
 
-// MODIFIED: Now filters the list based on the selected profile
 function displayCompletedUpgrades() {
     const container = document.getElementById('completed-container');
     const dateDropdown = document.getElementById('sort-date-dropdown');
     const profileDropdown = document.getElementById('profile-dropdown');
-    
     const selectedDate = dateDropdown.value;
     const currentProfile = profileDropdown.value;
-    
     let totalValue = 0;
-    
-    // Filter upgrades by the current profile first
     const profileUpgrades = completedUpgrades.filter(rec => rec.profile === currentProfile);
-
     while (dateDropdown.options.length > 1) {
         dateDropdown.remove(1);
     }
-
     const existingOptions = new Set(Array.from(dateDropdown.options).map(opt => opt.value));
     const uniqueDates = new Set(profileUpgrades.map(rec => rec.completedTimestamp.toLocaleDateString()));
     uniqueDates.forEach(date => {
@@ -409,13 +428,10 @@ function displayCompletedUpgrades() {
             dateDropdown.appendChild(option);
         }
     });
-
     container.innerHTML = '';
-    
     const dateFilteredUpgrades = selectedDate === 'all'
         ? profileUpgrades
         : profileUpgrades.filter(rec => rec.completedTimestamp.toLocaleDateString() === selectedDate);
-
     if (dateFilteredUpgrades && dateFilteredUpgrades.length > 0) {
         dateFilteredUpgrades.sort((a, b) => b.completedTimestamp - a.completedTimestamp);
         dateFilteredUpgrades.forEach(rec => {
@@ -446,7 +462,6 @@ function displayCompletedUpgrades() {
         container.innerHTML = '<p>No upgrades have been marked as completed for this profile and date.</p>';
     }
 }
-
 
 function displayMatrix(matrix) {
     const container = document.getElementById('matrix-container');
