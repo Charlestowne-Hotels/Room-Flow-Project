@@ -721,7 +721,7 @@ function getMasterInventory() {
       { roomNumber: '103', code: 'TQ-QQ' }, { roomNumber: '314', code: 'TQ-QQ' }, { roomNumber: '203', code: 'TQ-QQ' },
       { roomNumber: '207', code: 'TQ-QQ' }, { roomNumber: '215', code: 'TQ-QQ' }, { roomNumber: '216', code: 'TQ-QQ' },
       { roomNumber: '217', code: 'TQ-QQ' }, { roomNumber: '316', code: 'TQ-QQ' }, { roomNumber: '315', code: 'TQ-QQ' }, { roomNumber: '210', code: 'TQ-QQ' }, { roomNumber: '210', code: 'TQ-QQ' },
-      { roomNumber: '107', code: 'TQHC' }
+      { roomNumber: '206', code: 'TQHC' }, { roomNumber: '218', code: 'TQHC' }
   ];
     const totalInventory = {};
     masterRoomList.forEach(room => {
@@ -760,5 +760,6 @@ function generateMatrixData(totalInventory, reservationsByDate, startDate, roomH
     });
     return matrix;
 }
+
 
 
