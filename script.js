@@ -30,22 +30,18 @@ let currentCsvContent = null;
 let currentRules = null;
 let currentRecommendations = [];
 let acceptedUpgrades = [];
-let completedUpgrades = []; // This will be loaded from Firestore
+let completedUpgrades = []; // This will hold ALL upgrades loaded from Firestore
 
 // --- FUNCTIONS ---
 
-// NEW FUNCTION to completely reset the application state
 function resetAppState() {
-    // Reset state variables
     currentCsvContent = null;
     currentRules = null;
     currentRecommendations = [];
     acceptedUpgrades = [];
     
-    // Reset the file input so a new file is required
     document.getElementById('csv-file').value = '';
 
-    // Hide the main output section and clear its children
     const outputEl = document.getElementById('output');
     if (outputEl) {
         outputEl.style.display = 'none';
@@ -64,7 +60,6 @@ function resetAppState() {
         document.getElementById('message').innerHTML = '';
     }
     
-    // Reset the accepted upgrades tab to its initial state
     displayAcceptedUpgrades();
 }
 
@@ -147,10 +142,10 @@ document.addEventListener('DOMContentLoaded', function() {
     const profileDropdown = document.getElementById('profile-dropdown');
     profileDropdown.addEventListener('change', (event) => {
         updateRulesForm(event.target.value);
-        // Reset the app state when the profile changes
         resetAppState();
+        // MODIFIED: Re-filter and display the completed list when the profile changes
+        displayCompletedUpgrades();
     });
-    // Set the initial form state to FQI
     updateRulesForm('fqi');
 
 
@@ -243,6 +238,7 @@ function handleAcceptClick(event) {
     }, 50);
 }
 
+// MODIFIED: Now "tags" the saved data with the current profile
 function handlePmsUpdateClick(event) {
     const user = auth.currentUser;
     if (!user) {
@@ -257,12 +253,16 @@ function handlePmsUpdateClick(event) {
     if (itemIndex > -1) {
         const upgradeToComplete = acceptedUpgrades.splice(itemIndex, 1)[0];
         upgradeToComplete.completedTimestamp = new Date();
+        
+        // NEW: Tag the upgrade with the current profile
+        upgradeToComplete.profile = document.getElementById('profile-dropdown').value;
+        
         completedUpgrades.push(upgradeToComplete);
         
         const upgradesRef = db.collection('users').doc(user.uid).collection('completedUpgrades');
         upgradesRef.add(upgradeToComplete)
             .then((docRef) => {
-                console.log("Upgrade saved to Firestore with ID: ", docRef.id);
+                console.log(`Upgrade saved to Firestore with ID: ${docRef.id} under profile: ${upgradeToComplete.profile}`);
             })
             .catch((error) => {
                 console.error("Error saving upgrade: ", error);
@@ -381,35 +381,44 @@ function displayAcceptedUpgrades() {
     }
 }
 
+// MODIFIED: Now filters the list based on the selected profile
 function displayCompletedUpgrades() {
     const container = document.getElementById('completed-container');
-    const dropdown = document.getElementById('sort-date-dropdown');
-    const selectedValue = dropdown.value;
+    const dateDropdown = document.getElementById('sort-date-dropdown');
+    const profileDropdown = document.getElementById('profile-dropdown');
+    
+    const selectedDate = dateDropdown.value;
+    const currentProfile = profileDropdown.value;
+    
     let totalValue = 0;
     
-    while (dropdown.options.length > 1) {
-        dropdown.remove(1);
+    // Filter upgrades by the current profile first
+    const profileUpgrades = completedUpgrades.filter(rec => rec.profile === currentProfile);
+
+    while (dateDropdown.options.length > 1) {
+        dateDropdown.remove(1);
     }
 
-    const existingOptions = new Set(Array.from(dropdown.options).map(opt => opt.value));
-    const uniqueDates = new Set(completedUpgrades.map(rec => rec.completedTimestamp.toLocaleDateString()));
+    const existingOptions = new Set(Array.from(dateDropdown.options).map(opt => opt.value));
+    const uniqueDates = new Set(profileUpgrades.map(rec => rec.completedTimestamp.toLocaleDateString()));
     uniqueDates.forEach(date => {
         if (!existingOptions.has(date)) {
             const option = document.createElement('option');
             option.value = date;
             option.textContent = date;
-            dropdown.appendChild(option);
+            dateDropdown.appendChild(option);
         }
     });
 
     container.innerHTML = '';
-    const upgradesToDisplay = selectedValue === 'all'
-        ? completedUpgrades
-        : completedUpgrades.filter(rec => rec.completedTimestamp.toLocaleDateString() === selectedValue);
+    
+    const dateFilteredUpgrades = selectedDate === 'all'
+        ? profileUpgrades
+        : profileUpgrades.filter(rec => rec.completedTimestamp.toLocaleDateString() === selectedDate);
 
-    if (upgradesToDisplay && upgradesToDisplay.length > 0) {
-        upgradesToDisplay.sort((a, b) => b.completedTimestamp - a.completedTimestamp);
-        upgradesToDisplay.forEach(rec => {
+    if (dateFilteredUpgrades && dateFilteredUpgrades.length > 0) {
+        dateFilteredUpgrades.sort((a, b) => b.completedTimestamp - a.completedTimestamp);
+        dateFilteredUpgrades.forEach(rec => {
             totalValue += parseFloat(rec.revenue.replace(/[$,]/g, '')) || 0;
             const card = document.createElement('div');
             card.className = 'rec-card completed';
@@ -434,9 +443,10 @@ function displayCompletedUpgrades() {
         totalHeader.textContent = `Total Value: ${totalValue.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}`;
         container.appendChild(totalHeader);
     } else {
-        container.innerHTML = '<p>No upgrades have been marked as completed for the selected date.</p>';
+        container.innerHTML = '<p>No upgrades have been marked as completed for this profile and date.</p>';
     }
 }
+
 
 function displayMatrix(matrix) {
     const container = document.getElementById('matrix-container');
