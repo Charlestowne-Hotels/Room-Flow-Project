@@ -5,9 +5,12 @@ firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.firestore();
 
-// --- SET YOUR ADMIN UID HERE ---
-// This UID belongs to jryan@charlestownehotels.com
-const ADMIN_UID = "7BdsGq6vJ7UTmAQgVoiEesgEiao1";
+// --- NEW: An array to hold all Admin UIDs ---
+const ADMIN_UIDS = [
+    "7BdsGq6vJ7UTmAQgVoiEesgEiao1",    // jryan@charlestownehotels.com
+    "WDOdrOdpcrPjVGyN5VmBEs4KdvW2",    // mspangler@charlestownehotels.com
+    "HjYycTyitXe10iN05MK1grYoklw2"     // jcapps@charlestownehotels.com
+];
 
 
 // --- DOM ELEMENT REFERENCES ---
@@ -66,6 +69,7 @@ function updateRulesForm(profileName) {
     document.getElementById('ineligible-upgrades').value = profile.ineligibleUpgrades;
 }
 
+// MODIFIED: This now checks if the user's UID is in the ADMIN_UIDS array
 auth.onAuthStateChanged(user => {
     const adminButton = document.getElementById('clear-analytics-btn');
     if (user) {
@@ -73,8 +77,8 @@ auth.onAuthStateChanged(user => {
         if(loginContainer) loginContainer.classList.add('hidden');
         if(appContainer) appContainer.classList.remove('hidden');
         
-        // Check if the signed-in user's UID matches the admin's UID
-        if (user.uid === ADMIN_UID && adminButton) {
+        // Check if the signed-in user's UID is in the admin list
+        if (ADMIN_UIDS.includes(user.uid) && adminButton) {
             console.log("User is an admin!");
             adminButton.classList.remove('hidden');
         }
@@ -166,7 +170,6 @@ async function handleClearAnalytics() {
 }
 
 
-// --- DOM READY ---
 document.addEventListener('DOMContentLoaded', function() {
     loginContainer = document.getElementById('login-container');
     appContainer = document.getElementById('app-container');
@@ -211,8 +214,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 });
-
-// --- (The rest of your application logic remains the same below) ---
 
 function handleGenerateClick() {
     const fileInput = document.getElementById('csv-file');
