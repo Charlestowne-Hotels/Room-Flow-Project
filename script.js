@@ -177,7 +177,6 @@ function displayResults(data) {
     displayRecommendations(currentRecommendations);
     document.getElementById('output').style.display = 'block';
     const messageEl = document.getElementById('message');
-    // THIS IS THE CORRECTED LINE:
     messageEl.style.display = data.message ? 'block' : 'none';
     messageEl.innerHTML = data.message || '';
     displayInventory(data.inventory);
@@ -617,3 +616,4 @@ function generateMatrixData(totalInventory, reservationsByDate, startDate, roomH
     });
     return matrix;
 }
+I copied everything from the last post and it is showing that there is a problem with all three files now. I really think the javascript is corrupted.
