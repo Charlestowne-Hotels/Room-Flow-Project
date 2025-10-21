@@ -715,9 +715,9 @@ function getMasterInventory() {
       { roomNumber: '212', code: 'GMVT-QQ/POC' }, { roomNumber: '220', code: 'KBS-K/POC' }, { roomNumber: '319', code: 'KBS-K/POC' },
       { roomNumber: '219', code: 'KJS-K/POC' }, { roomNumber: '318', code: 'KJS-K/POC' }, { roomNumber: '101', code: 'LKBS-K/POC' },
       { roomNumber: '201', code: 'LKBS-K/POC' }, { roomNumber: '312', code: 'PMVB-QQ' }, { roomNumber: '313', code: 'PMVB-QQ' },
-      { roomNumber: '105', code: 'QJS-QQ/POC' }, { roomNumber: '206', code: 'QJS-QQ/POC' }, { roomNumber: '307', code: 'QJS-QQ/POC' },
-      { roomNumber: '108', code: 'TK-K' }, { roomNumber: '208', code: 'TK-K' }, { roomNumber: '210', code: 'TK-K' },
-      { roomNumber: '211', code: 'TK-K' }, { roomNumber: '221', code: 'TK-K' }, { roomNumber: '308', code: 'TK-K' }, { roomNumber: '309', code: 'TK-K' },
+      { roomNumber: '105', code: 'QJS-QQ/POC' }, { roomNumber: '106', code: 'QJS-QQ/POC' }, { roomNumber: '107', code: 'QJS-QQ/POC' },
+      { roomNumber: '108', code: 'TK-K' }, { roomNumber: '208', code: 'TK-K' }, { roomNumber: '209', code: 'TK-K' },
+      { roomNumber: '211', code: 'TK-K' }, { roomNumber: '221', code: 'TK-K' }, { roomNumber: '307', code: 'TK-K' }, { roomNumber: '308', code: 'TK-K' }, { roomNumber: '309', code: 'TK-K' },
       { roomNumber: '103', code: 'TQ-QQ' }, { roomNumber: '314', code: 'TQ-QQ' }, { roomNumber: '203', code: 'TQ-QQ' },
       { roomNumber: '207', code: 'TQ-QQ' }, { roomNumber: '215', code: 'TQ-QQ' }, { roomNumber: '216', code: 'TQ-QQ' },
       { roomNumber: '217', code: 'TQ-QQ' }, { roomNumber: '316', code: 'TQ-QQ' }, { roomNumber: '315', code: 'TQ-QQ' }, { roomNumber: '210', code: 'TQ-QQ' }, { roomNumber: '210', code: 'TQ-QQ' },
@@ -760,4 +760,5 @@ function generateMatrixData(totalInventory, reservationsByDate, startDate, roomH
     });
     return matrix;
 }
+
 
