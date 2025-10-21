@@ -40,6 +40,8 @@ const handleSignIn = () => {
 
     auth.signInWithEmailAndPassword(email, password)
         .catch(error => {
+            // This will show us the exact error from Firebase
+            console.error("Firebase sign-in error:", error); 
             errorMessage.textContent = error.message;
         });
 };
@@ -615,3 +617,4 @@ function generateMatrixData(totalInventory, reservationsByDate, startDate, roomH
     });
     return matrix;
 }
+
