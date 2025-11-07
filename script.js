@@ -69,32 +69,44 @@ function updateRulesForm(profileName) {
     document.getElementById('ineligible-upgrades').value = profile.ineligibleUpgrades;
 }
 
-// MODIFIED: This now checks if the user's UID is in the ADMIN_UIDS array
-auth.onAuthStateChanged(user => {
-    const adminButton = document.getElementById('clear-analytics-btn');
-    if (user) {
-        console.log("User is signed in:", user.uid);
-        if(loginContainer) loginContainer.classList.add('hidden');
-        if(appContainer) appContainer.classList.remove('hidden');
-        
-        // Check if the signed-in user's UID is in the admin list
-        if (ADMIN_UIDS.includes(user.uid) && adminButton) {
-            console.log("User is an admin!");
-            adminButton.classList.remove('hidden');
-        }
+/**
+ * NEW FUNCTION: Enables or disables all admin-only controls.
+ * @param {boolean} isAdmin - True if the user is an admin, false otherwise.
+ */
+function setAdminControls(isAdmin) {
+    // We want to DISABLE the controls if the user is NOT an admin.
+    const shouldBeDisabled = !isAdmin;
 
-        loadCompletedUpgrades(user.uid);
-    } else {
-        console.log("User is signed out.");
-        if(loginContainer) loginContainer.classList.remove('hidden');
-        if(appContainer) appContainer.classList.add('hidden');
-        if(adminButton) adminButton.classList.add('hidden');
-    }
-});
+    // Get all the elements to lock
+    const elementsToToggle = [
+        // "Define Upgrade Rules" section
+        document.getElementById('profile-dropdown'),
+        document.getElementById('hierarchy'),
+        document.getElementById('target-rooms'),
+        document.getElementById('prioritized-rates'),
+        document.getElementById('ota-rates'),
+        document.getElementById('ineligible-upgrades'),
+
+        // "Upload Status" / "Generate" section
+        document.getElementById('selected-date'),
+        document.getElementById('csv-file'),
+        document.getElementById('generate-btn')
+    ];
+
+    // Loop through each element and set its 'disabled' state
+    elementsToToggle.forEach(el => {
+        // This 'if (el)' check is crucial.
+        // It prevents errors if this function runs before the DOM is loaded.
+        if (el) {
+            el.disabled = shouldBeDisabled;
+        }
+    });
+}
+
 
 async function loadCompletedUpgrades(userId) {
     if (!userId) return;
-    completedUpgrades = []; 
+    completedUpgrades = [];
     const upgradesRef = db.collection('users').doc(userId).collection('completedUpgrades');
     try {
         const snapshot = await upgradesRef.get();
@@ -106,7 +118,7 @@ async function loadCompletedUpgrades(userId) {
             completedUpgrades.push(upgrade);
         });
         console.log(`Loaded ${completedUpgrades.length} completed upgrades from Firestore.`);
-        displayCompletedUpgrades(); 
+        displayCompletedUpgrades();
     } catch (error) {
         console.error("Error loading completed upgrades: ", error);
     }
@@ -115,14 +127,14 @@ async function loadCompletedUpgrades(userId) {
 const handleSignIn = () => {
     const email = emailInput.value;
     const password = passwordInput.value;
-    errorMessage.textContent = ''; 
+    errorMessage.textContent = '';
     if (!email || !password) {
         errorMessage.textContent = "Please enter both email and password.";
         return;
     }
     auth.signInWithEmailAndPassword(email, password)
         .catch(error => {
-            console.error("Firebase sign-in error:", error); 
+            console.error("Firebase sign-in error:", error);
             errorMessage.textContent = error.message;
         });
 };
@@ -151,7 +163,7 @@ async function handleClearAnalytics() {
             showLoader(false);
             return;
         }
-        
+
         const batch = db.batch();
         snapshot.docs.forEach(doc => {
             batch.delete(doc.ref);
@@ -171,6 +183,7 @@ async function handleClearAnalytics() {
 
 
 document.addEventListener('DOMContentLoaded', function() {
+    // --- 1. ALL DOM ELEMENT REFERENCES ARE ASSIGNED FIRST ---
     loginContainer = document.getElementById('login-container');
     appContainer = document.getElementById('app-container');
     signinBtn = document.getElementById('signin-btn');
@@ -180,6 +193,45 @@ document.addEventListener('DOMContentLoaded', function() {
     errorMessage = document.getElementById('error-message');
     clearAnalyticsBtn = document.getElementById('clear-analytics-btn');
 
+    // --- 2. THE AUTH LISTENER IS NOW *INSIDE* DOMCONTENTLOADED ---
+    // This guarantees all elements above are found BEFORE this code runs.
+    auth.onAuthStateChanged(user => {
+        const adminButton = document.getElementById('clear-analytics-btn');
+
+        if (user) {
+            console.log("User is signed in:", user.uid);
+            if (loginContainer) loginContainer.classList.add('hidden');
+            if (appContainer) appContainer.classList.remove('hidden');
+
+            // --- NEW LOGIC ---
+            // 1. Check if the user is an admin and store it in a variable
+            const isUserAdmin = ADMIN_UIDS.includes(user.uid);
+
+            // Check if the signed-in user's UID is in the admin list
+            if (isUserAdmin && adminButton) {
+                console.log("User is an admin!");
+                adminButton.classList.remove('hidden');
+            }
+
+            // 2. Call our new function to lock or unlock controls
+            setAdminControls(isUserAdmin);
+            // --- END NEW LOGIC ---
+
+            loadCompletedUpgrades(user.uid);
+        } else {
+            console.log("User is signed out.");
+            if (loginContainer) loginContainer.classList.remove('hidden');
+            if (appContainer) appContainer.classList.add('hidden');
+            if (adminButton) adminButton.classList.add('hidden');
+
+            // 3. Call our new function to lock controls for signed-out users
+            setAdminControls(false);
+        }
+    });
+    // --- END OF MOVED AUTH LISTENER ---
+
+
+    // --- 3. ALL OTHER EVENT LISTENERS ARE ADDED ---
     const profileDropdown = document.getElementById('profile-dropdown');
     profileDropdown.addEventListener('change', (event) => {
         updateRulesForm(event.target.value);
@@ -191,11 +243,6 @@ document.addEventListener('DOMContentLoaded', function() {
     signinBtn.addEventListener('click', handleSignIn);
     signoutBtn.addEventListener('click', handleSignOut);
     clearAnalyticsBtn.addEventListener('click', handleClearAnalytics);
-
-    if (auth.currentUser) {
-        loginContainer.classList.add('hidden');
-        appContainer.classList.remove('hidden');
-    }
 
     const futureDate = new Date();
     futureDate.setDate(futureDate.getDate() + 3);
@@ -223,7 +270,7 @@ function handleGenerateClick() {
     }
     acceptedUpgrades = [];
     displayAcceptedUpgrades();
-    
+
     const rules = {
         hierarchy: document.getElementById('hierarchy').value,
         targetRooms: document.getElementById('target-rooms').value,
@@ -277,7 +324,7 @@ function handleAcceptClick(event) {
 function handlePmsUpdateClick(event) {
     const user = auth.currentUser;
     if (!user) {
-        showError({ message: "You must be logged in to save."});
+        showError({ message: "You must be logged in to save." });
         return;
     }
     const recIndex = event.target.dataset.index;
@@ -295,7 +342,7 @@ function handlePmsUpdateClick(event) {
             })
             .catch((error) => {
                 console.error("Error saving upgrade: ", error);
-                completedUpgrades.pop(); 
+                completedUpgrades.pop();
                 acceptedUpgrades.splice(itemIndex, 0, upgradeToComplete);
                 showError({ message: "Could not save upgrade to cloud." });
             });
@@ -351,19 +398,19 @@ function displayRecommendations(recs) {
                 const card = document.createElement('div');
                 card.className = 'rec-card';
                 card.innerHTML = `
-                    <div class="rec-info">
-                        <h3>${rec.name} (${rec.resId})</h3>
-                        <div class="rec-details">
-                            Booked: <b>${rec.room}</b> for ${rec.nights} night(s) | Rate: <i>${rec.rate}</i><br>
-                            Value of Reservation: <strong>${rec.revenue}</strong>
+                        <div class="rec-info">
+                            <h3>${rec.name} (${rec.resId})</h3>
+                            <div class="rec-details">
+                                Booked: <b>${rec.room}</b> for ${rec.nights} night(s) | Rate: <i>${rec.rate}</i><br>
+                                Value of Reservation: <strong>${rec.revenue}</strong>
+                            </div>
+                            <div class="rec-reason">Reason: Frees up a high-demand '${rec.room}' room.</div>
                         </div>
-                        <div class="rec-reason">Reason: Frees up a high-demand '${rec.room}' room.</div>
-                    </div>
-                    <div class="rec-actions">
-                        <div class="rec-upgrade-to">Upgrade To<br><strong>${rec.upgradeTo}</strong></div>
-                        <div class="rec-score">${rec.score}</div>
-                        <button class="accept-btn" data-index="${originalIndex}">Accept</button>
-                    </div>
+                        <div class="rec-actions">
+                            <div class="rec-upgrade-to">Upgrade To<br><strong>${rec.upgradeTo}</strong></div>
+                            <div class="rec-score">${rec.score}</div>
+                            <button class="accept-btn" data-index="${originalIndex}">Accept</button>
+                        </div>
                 `;
                 container.appendChild(card);
             });
@@ -384,18 +431,18 @@ function displayAcceptedUpgrades() {
         acceptedUpgrades.forEach((rec, index) => {
             totalValue += parseFloat(rec.revenue.replace(/[$,]/g, '')) || 0;
             const card = document.createElement('div');
-            card.className = 'rec-card';
+            card.className = 'rec-card'; // <-- FIX: was 'className'
             card.innerHTML = `
-                <div class="rec-info">
-                    <h3>${rec.name} (${rec.resId})</h3>
-                    <div class="rec-details">
-                        Original: <b>${rec.room}</b> | Upgraded To: <strong>${rec.upgradeTo}</strong><br>
-                        Value of Reservation: <strong>${rec.revenue}</strong>
+                    <div class="rec-info">
+                        <h3>${rec.name} (${rec.resId})</h3>
+                        <div class="rec-details">
+                            Original: <b>${rec.room}</b> | Upgraded To: <strong>${rec.upgradeTo}</strong><br>
+                            Value of Reservation: <strong>${rec.revenue}</strong>
+                        </div>
                     </div>
-                </div>
-                <div class="rec-actions">
-                    <button class="pms-btn" data-index="${index}">Mark as PMS Updated</button>
-                </div>
+                    <div class="rec-actions">
+                        <button class="pms-btn" data-index="${index}">Mark as PMS Updated</button>
+                    </div>
             `;
             container.appendChild(card);
         });
@@ -412,6 +459,15 @@ function displayCompletedUpgrades() {
     const container = document.getElementById('completed-container');
     const dateDropdown = document.getElementById('sort-date-dropdown');
     const profileDropdown = document.getElementById('profile-dropdown');
+
+    // --- SAFETY CHECK ---
+    // This check prevents a crash if elements aren't ready
+    if (!container || !dateDropdown || !profileDropdown) {
+        console.warn('displayCompletedUpgrades called before DOM was ready.');
+        return;
+    }
+    // --- END SAFETY CHECK ---
+
     const selectedDate = dateDropdown.value;
     const currentProfile = profileDropdown.value;
     let totalValue = 0;
@@ -433,6 +489,7 @@ function displayCompletedUpgrades() {
     const dateFilteredUpgrades = selectedDate === 'all'
         ? profileUpgrades
         : profileUpgrades.filter(rec => rec.completedTimestamp.toLocaleDateString() === selectedDate);
+
     if (dateFilteredUpgrades && dateFilteredUpgrades.length > 0) {
         dateFilteredUpgrades.sort((a, b) => b.completedTimestamp - a.completedTimestamp);
         dateFilteredUpgrades.forEach(rec => {
@@ -440,17 +497,17 @@ function displayCompletedUpgrades() {
             const card = document.createElement('div');
             card.className = 'rec-card completed';
             card.innerHTML = `
-                <div class="rec-info">
-                    <h3>${rec.name} (${rec.resId})</h3>
-                    <div class="rec-details">
-                        Original: <b>${rec.room}</b> | Upgraded To: <strong>${rec.upgradeTo}</strong><br>
-                        Value of Reservation: <strong>${rec.revenue}</strong><br>
-                        Completed On: <strong>${rec.completedTimestamp.toLocaleDateString()}</strong>
+                    <div class="rec-info">
+                        <h3>${rec.name} (${rec.resId})</h3>
+                        <div class="rec-details">
+                            Original: <b>${rec.room}</b> | Upgraded To: <strong>${rec.upgradeTo}</strong><br>
+                            Value of Reservation: <strong>${rec.revenue}</strong><br>
+                            Completed On: <strong>${rec.completedTimestamp.toLocaleDateString()}</strong>
+                        </div>
                     </div>
-                </div>
-                <div class="rec-actions" style="color: var(--success-color);">
-                    <strong>✓ Completed</strong>
-                </div>
+                    <div class="rec-actions" style="color: var(--success-color);">
+                        <strong>✓ Completed</strong>
+                    </div>
             `;
             container.appendChild(card);
         });
@@ -463,6 +520,7 @@ function displayCompletedUpgrades() {
         container.innerHTML = '<p>No upgrades have been marked as completed for this profile and date.</p>';
     }
 }
+
 
 function displayMatrix(matrix) {
     const container = document.getElementById('matrix-container');
@@ -490,10 +548,17 @@ function showError(error) {
 }
 
 function showLoader(show, text = 'Loading...') {
-    document.getElementById('loader').style.display = show ? 'block' : 'none';
-    document.getElementById('loader').innerHTML = `<div class="spinner"></div>${text}`;
-    document.getElementById('output').style.display = show ? 'none' : 'block';
-    document.getElementById('generate-btn').disabled = show;
+    const loader = document.getElementById('loader');
+    const output = document.getElementById('output');
+    const genBtn = document.getElementById('generate-btn');
+
+    if (loader) loader.style.display = show ? 'block' : 'none';
+    if (loader) loader.innerHTML = `<div class="spinner"></div>${text}`;
+    if (output) output.style.display = show ? 'none' : 'block';
+
+    if (genBtn) {
+        genBtn.disabled = show;
+    }
 }
 
 function parseCsv(csvContent) {
@@ -656,7 +721,7 @@ function parseAllReservations(data, header) {
         throw new Error("One or more critical columns were not found in the CSV header.");
     }
     return data.map(values => {
-        if(values.length < header.length) return null;
+        if (values.length < header.length) return null;
         const arrival = values[arrivalIndex] ? parseDate(values[arrivalIndex]) : null;
         const departure = values[departureIndex] ? parseDate(values[departureIndex]) : null;
         let nights = 0;
@@ -722,7 +787,7 @@ function getMasterInventory() {
       { roomNumber: '207', code: 'TQ-QQ' }, { roomNumber: '215', code: 'TQ-QQ' }, { roomNumber: '216', code: 'TQ-QQ' },
       { roomNumber: '217', code: 'TQ-QQ' }, { roomNumber: '316', code: 'TQ-QQ' }, { roomNumber: '315', code: 'TQ-QQ' }, { roomNumber: '317', code: 'TQ-QQ' }, { roomNumber: '210', code: 'TQ-QQ' },
       { roomNumber: '206', code: 'TQHC-QQ' }, { roomNumber: '218', code: 'TQHC-QQ' }
-  ];
+    ];
     const totalInventory = {};
     masterRoomList.forEach(room => {
         totalInventory[room.code.toUpperCase()] = (totalInventory[room.code.toUpperCase()] || 0) + 1;
