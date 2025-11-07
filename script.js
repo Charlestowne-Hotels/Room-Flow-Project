@@ -117,7 +117,6 @@ function setAdminControls(isAdmin) {
     // Get all the elements to lock
     const elementsToToggle = [
         // "Define Upgrade Rules" section
-        document.getElementById('profile-dropdown'),
         document.getElementById('hierarchy'),
         document.getElementById('target-rooms'),
         document.getElementById('prioritized-rates'),
@@ -880,3 +879,4 @@ function generateMatrixData(totalInventory, reservationsByDate, startDate, roomH
     });
     return matrix;
 }
+
