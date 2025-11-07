@@ -224,7 +224,7 @@ document.addEventListener('DOMContentLoaded', function() {
         } else {
             console.log("User is signed out.");
             if(loginContainer) loginContainer.classList.remove('hidden');
-      t     if(appContainer) appContainer.classList.add('hidden');
+            if(appContainer) appContainer.classList.add('hidden');
             if(adminButton) adminButton.classList.add('hidden');
 
             // 3. Call our new function to lock controls for signed-out users
@@ -246,12 +246,6 @@ document.addEventListener('DOMContentLoaded', function() {
     signinBtn.addEventListener('click', handleSignIn);
     signoutBtn.addEventListener('click', handleSignOut);
     clearAnalyticsBtn.addEventListener('click', handleClearAnalytics);
-
-    // This block is no longer needed, as onAuthStateChanged handles it
-    // if (auth.currentUser) {
-    //     loginContainer.classList.add('hidden');
-    //     appContainer.classList.remove('hidden');
-    // }
 
     const futureDate = new Date();
     futureDate.setDate(futureDate.getDate() + 3);
@@ -355,7 +349,7 @@ function handlePmsUpdateClick(event) {
                 acceptedUpgrades.splice(itemIndex, 0, upgradeToComplete);
                 showError({ message: "Could not save upgrade to cloud." });
             });
-        displayAcceptedUpgrades();
+      . displayAcceptedUpgrades();
         displayCompletedUpgrades();
     }
 }
@@ -414,10 +408,10 @@ function displayRecommendations(recs) {
                             Value of Reservation: <strong>${rec.revenue}</strong>
                         </div>
                         <div class="rec-reason">Reason: Frees up a high-demand '${rec.room}' room.</div>
-                    </div>
+                  . </div>
                     <div class="rec-actions">
                         <div class="rec-upgrade-to">Upgrade To<br><strong>${rec.upgradeTo}</strong></div>
-to                     <div class="rec-score">${rec.score}</div>
+                        <div class="rec-score">${rec.score}</div>
                         <button class="accept-btn" data-index="${originalIndex}">Accept</button>
                     </div>
                 `;
@@ -446,7 +440,7 @@ function displayAcceptedUpgrades() {
                     <h3>${rec.name} (${rec.resId})</h3>
                     <div class="rec-details">
                         Original: <b>${rec.room}</b> | Upgraded To: <strong>${rec.upgradeTo}</strong><br>
-L                       Value of Reservation: <strong>${rec.revenue}</strong>
+                        Value of Reservation: <strong>${rec.revenue}</strong>
                     </div>
                 </div>
                 <div class="rec-actions">
@@ -470,7 +464,7 @@ function displayCompletedUpgrades() {
     const profileDropdown = document.getElementById('profile-dropdown');
     
     // --- SAFETY CHECK ---
-    // This check prevents the crash if elements aren't ready
+    // This check prevents a crash if elements aren't ready
     if (!container || !dateDropdown || !profileDropdown) {
         console.warn('displayCompletedUpgrades called before DOM was ready.');
         return; 
@@ -498,7 +492,7 @@ function displayCompletedUpgrades() {
     const dateFilteredUpgrades = selectedDate === 'all'
         ? profileUpgrades
         : profileUpgrades.filter(rec => rec.completedTimestamp.toLocaleDateString() === selectedDate);
-s   if (dateFilteredUpgrades && dateFilteredUpgrades.length > 0) {
+    if (dateFilteredUpgrades && dateFilteredUpgrades.length > 0) {
         dateFilteredUpgrades.sort((a, b) => b.completedTimestamp - a.completedTimestamp);
         dateFilteredUpgrades.forEach(rec => {
             totalValue += parseFloat(rec.revenue.replace(/[$,]/g, '')) || 0;
@@ -507,18 +501,18 @@ s   if (dateFilteredUpgrades && dateFilteredUpgrades.length > 0) {
             card.innerHTML = `
                 <div class="rec-info">
                     <h3>${rec.name} (${rec.resId})</h3>
-section             <div class="rec-details">
+                    <div class="rec-details">
                         Original: <b>${rec.room}</b> | Upgraded To: <strong>${rec.upgradeTo}</strong><br>
                         Value of Reservation: <strong>${rec.revenue}</strong><br>
-                    s   Completed On: <strong>${rec.completedTimestamp.toLocaleDateString()}</strong>
-                    </div>
+                        Completed On: <strong>${rec.completedTimestamp.toLocaleDateString()}</strong>
+s                 </div>
                 </div>
                 <div class="rec-actions" style="color: var(--success-color);">
                     <strong>✓ Completed</strong>
                 </div>
             `;
             container.appendChild(card);
-s       });
+        });
         const totalHeader = document.createElement('h3');
         totalHeader.style.textAlign = 'right';
         totalHeader.style.marginTop = '20px';
@@ -555,12 +549,14 @@ function showError(error) {
 }
 
 function showLoader(show, text = 'Loading...') {
-    document.getElementById('loader').style.display = show ? 'block' : 'none';
-    document.getElementById('loader').innerHTML = `<div class="spinner"></div>${text}`;
-    document.getElementById('output').style.display = show ? 'none' : 'block';
+    const loader = document.getElementById('loader');
+    const output = document.getElementById('output');
+    const genBtn = document.getElementById('generate-btn');
+
+    if (loader) loader.style.display = show ? 'block' : 'none';
+    if (loader) loader.innerHTML = `<div class="spinner"></div>${text}`;
+    if (output) output.style.display = show ? 'none' : 'block';
     
-    // Small safety check for generate-btn
-    const genBtn = document.getElementById('generate-btn');
     if (genBtn) {
         genBtn.disabled = show;
     }
@@ -600,10 +596,10 @@ function acceptUpgradeAndRecalculate(acceptedRec, previouslyAccepted, csvContent
         if (reservationToUpdate) {
             reservationToUpdate.roomType = rec.upgradeTo;
         }
-  S });
+    });
     const results = generateRecommendationsFromData(allReservations, rules);
     results.acceptedUpgrades = allAccepted;
-  s return results;
+    return results;
 }
 
 function processUpgradeData(csvContent, rules) {
@@ -614,7 +610,7 @@ function processUpgradeData(csvContent, rules) {
     const requiredHeaders = ['Guest Name', 'Res ID', 'Room Type', 'Rate Name', 'Rate', 'Arrival Date', 'Departure Date', 'Status'];
     const missingHeaders = requiredHeaders.filter(h => !header.includes(h));
     if (missingHeaders.length > 0) {
-  t     throw new Error(`The uploaded PMS export is missing required columns. Could not find: '${missingHeaders.join(', ')}'`);
+        throw new Error(`The uploaded PMS export is missing required columns. Could not find: '${missingHeaders.join(', ')}'`);
     }
     const allReservations = parseAllReservations(data, header);
     return generateRecommendationsFromData(allReservations, rules);
@@ -628,11 +624,11 @@ function generateRecommendationsFromData(allReservations, rules) {
             inventory: getInventoryForDate(masterInventory, buildReservationsByDate([]), parseDate(rules.selectedDate)),
             matrixData: generateMatrixData(masterInventory, buildReservationsByDate([]), parseDate(rules.selectedDate), rules.hierarchy.toUpperCase().split(',').map(r => r.trim()).filter(Boolean)),
             message: 'No valid reservations found in the uploaded file matching the criteria.'
-      S };
+        };
     }
     const startDate = parseDate(rules.selectedDate);
     const reservationsByDate = buildReservationsByDate(allReservations);
-s   const todayInventory = getInventoryForDate(masterInventory, reservationsByDate, startDate);
+    const todayInventory = getInventoryForDate(masterInventory, reservationsByDate, startDate);
     const roomHierarchy = rules.hierarchy.toUpperCase().split(',').map(r => r.trim()).filter(Boolean);
     const matrixData = generateMatrixData(masterInventory, reservationsByDate, startDate, roomHierarchy);
     const originalTargetRooms = rules.targetRooms.toUpperCase().split(',').map(r => r.trim()).filter(Boolean);
@@ -668,10 +664,10 @@ s   const todayInventory = getInventoryForDate(masterInventory, reservationsByD
                                 break;
                             }
                         }
-section               }
+                    }
                 }
             });
-        }
+      . }
         processingQueue.forEach((roomToEvaluate) => {
             const eligibleReservations = arrivalsForThisDay.filter(res => res.roomType === roomToEvaluate && !otaRates.some(ota => res.rate.toLowerCase().includes(ota)));
             eligibleReservations.forEach(res => {
@@ -682,23 +678,23 @@ section               }
                 for (let i = currentRoomIndex + 1; i < roomHierarchy.length; i++) {
                     const potentialUpgradeRoom = roomHierarchy[i];
                     const potentialBedType = getBedType(potentialUpgradeRoom);
-What                 if (originalBedType !== potentialBedType || ineligibleUpgrades.includes(potentialUpgradeRoom)) continue;
+                    if (originalBedType !== potentialBedType || ineligibleUpgrades.includes(potentialUpgradeRoom)) continue;
                     if (isRoomAvailableForStay(potentialUpgradeRoom, res, reservationsByDate, masterInventory)) {
                         const score = parseFloat(res.revenue.replace(/[$,]/g, '')) || 0;
-                        recommendations.push({
+    .                   recommendations.push({
                             name: res.name, resId: res.resId, revenue: res.revenue,
                             room: res.roomType, rate: res.rate, nights: res.nights,
                             upgradeTo: potentialUpgradeRoom, score: score,
                             arrivalDate: currentDate.toLocaleDateString('en-US', { timeZone: 'UTC' })
-E.g.                   });
+                        });
                         break;
-                    }
+                _   }
                 }
             });
         });
     }
     recommendations.sort((a, b) => b.score - a.score);
-return {
+    return {
         recommendations,
         inventory: todayInventory,
         matrixData,
@@ -714,7 +710,7 @@ function getBedType(roomCode) {
 }
 
 function parseAllReservations(data, header) {
-source   const nameIndex = header.indexOf('Guest Name');
+    const nameIndex = header.indexOf('Guest Name');
     const resIdIndex = header.indexOf('Res ID');
     const roomTypeIndex = header.indexOf('Room Type');
     const rateNameIndex = header.indexOf('Rate Name');
@@ -722,7 +718,7 @@ source   const nameIndex = header.indexOf('Guest Name');
     const departureIndex = header.indexOf('Departure Date');
     const statusIndex = header.indexOf('Status');
     const rateIndex = header.indexOf('Rate');
-An   if (nameIndex === -1 || resIdIndex === -1 || roomTypeIndex === -1) {
+S   if (nameIndex === -1 || resIdIndex === -1 || roomTypeIndex === -1) {
         throw new Error("One or more critical columns were not found in the CSV header.");
     }
     return data.map(values => {
@@ -738,12 +734,12 @@ An   if (nameIndex === -1 || resIdIndex === -1 || roomTypeIndex === -1) {
         const totalRevenue = dailyRate * nights;
         return {
             name: values[nameIndex],
-tr           resId: values[resIdIndex] ? values[resIdIndex].trim() : '',
+            resId: values[resIdIndex] ? values[resIdIndex].trim() : '',
             roomType: values[roomTypeIndex] ? values[roomTypeIndex].trim().toUpperCase() : '',
             rate: values[rateNameIndex] ? values[rateNameIndex].trim() : '',
             nights: nights,
             arrival: arrival,
-  Data         departure: departure,
+            departure: departure,
             status: values[statusIndex] ? values[statusIndex].trim().toUpperCase() : '',
             revenue: totalRevenue.toLocaleString('en-US', { style: 'currency', currency: 'USD' })
         };
@@ -757,7 +753,7 @@ function buildReservationsByDate(allReservations) {
         let currentDate = new Date(res.arrival);
         while (currentDate < res.departure) {
             const dateString = currentDate.toISOString().split('T')[0];
-Remember, the         if (!reservationsByDate[dateString]) reservationsByDate[dateString] = {};
+            if (!reservationsByDate[dateString]) reservationsByDate[dateString] = {};
             reservationsByDate[dateString][res.roomType] = (reservationsByDate[dateString][res.roomType] || 0) + 1;
             currentDate.setUTCDate(currentDate.getUTCDate() + 1);
         }
@@ -766,7 +762,7 @@ Remember, the         if (!reservationsByDate[dateString]) reservationsByDat
 }
 
 function getInventoryForDate(masterInventory, reservationsByDate, date) {
-s   const inventory = {};
+    const inventory = {};
     const dateString = date.toISOString().split('T')[0];
     for (const roomCode in masterInventory) {
         inventory[roomCode] = masterInventory[roomCode] - (reservationsByDate[dateString]?.[roomCode] || 0);
@@ -782,9 +778,9 @@ function getMasterInventory() {
       { roomNumber: '304', code: 'DK-K' }, { roomNumber: '305', code: 'DK-K' }, { roomNumber: '306', code: 'DK-K' },
       { roomNumber: '310', code: 'DK-K' }, { roomNumber: '213', code: 'DMVT-QQ' },
       { roomNumber: '214', code: 'DMVT-QQ' }, { roomNumber: '311', code: 'GMVB-QQ/POC' }, { roomNumber: '104', code: 'GMVC-QQ' },
-April       { roomNumber: '212', code: 'GMVT-QQ/POC' }, { roomNumber: '220', code: 'KBS-K/POC' }, { roomNumber: '319', code: 'KBS-K/POC' },
+      { roomNumber: '212', code: 'GMVT-QQ/POC' }, { roomNumber: '220', code: 'KBS-K/POC' }, { roomNumber: '319', code: 'KBS-K/POC' },
       { roomNumber: '219', code: 'KJS-K/POC' }, { roomNumber: '318', code: 'KJS-K/POC' }, { roomNumber: '101', code: 'LKBS-K/POC' },
-      { roomNumber: '201', code: 'LKBS-K/POC' }, { roomNumber: '312', code: 'PMVB-QQ' }, { roomNumber: '313', code: 'PMVB-QQ' },
+s     { roomNumber: '201', code: 'LKBS-K/POC' }, { roomNumber: '312', code: 'PMVB-QQ' }, { roomNumber: '313', code: 'PMVB-QQ' },
       { roomNumber: '105', code: 'QJS-QQ/POC' }, { roomNumber: '106', code: 'QJS-QQ/POC' }, { roomNumber: '107', code: 'QJS-QQ/POC' },
       { roomNumber: '108', code: 'TK-K' }, { roomNumber: '208', code: 'TK-K' }, { roomNumber: '209', code: 'TK-K' },
       { roomNumber: '211', code: 'TK-K' }, { roomNumber: '221', code: 'TK-K' }, { roomNumber: '307', code: 'TK-K' }, { roomNumber: '308', code: 'TK-K' }, { roomNumber: '309', code: 'TK-K' },
@@ -813,7 +809,7 @@ function parseDate(dateStr) {
 }
 
 function generateMatrixData(totalInventory, reservationsByDate, startDate, roomHierarchy) {
-s   const matrix = { headers: ['Room Type'], rows: [] };
+    const matrix = { headers: ['Room Type'], rows: [] };
     const dates = Array.from({ length: 14 }, (_, i) => {
         const date = new Date(startDate);
         date.setUTCDate(date.getUTCDate() + i);
@@ -824,7 +820,7 @@ s   const matrix = { headers: ['Room Type'], rows: [] };
         const row = { roomCode, availability: [] };
         dates.forEach(date => {
             const dateString = date.toISOString().split('T')[0];
-E.g.           row.availability.push((totalInventory[roomCode] || 0) - (reservationsByDate[dateString]?.[roomCode] || 0));
+            row.availability.push((totalInventory[roomCode] || 0) - (reservationsByDate[dateString]?.[roomCode] || 0));
         });
         matrix.rows.push(row);
     });
