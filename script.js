@@ -34,6 +34,43 @@ const profiles = {
     }
 };
 
+// --- NEW: A central object for all master inventory lists ---
+const MASTER_INVENTORIES = {
+    fqi: [
+        { roomNumber: '301', code: 'CTK-K' }, { roomNumber: '320', code: 'CTK-K' }, { roomNumber: '102', code: 'DK-K' },
+        { roomNumber: '202', code: 'DK-K' }, { roomNumber: '204', code: 'DK-K' }, { roomNumber: '205', code: 'DK-K' },
+        { roomNumber: '222', code: 'DK-K' }, { roomNumber: '302', code: 'DK-K' }, { roomNumber: '303', code: 'DK-K' },
+        { roomNumber: '304', code: 'DK-K' }, { roomNumber: '305', code: 'DK-K' }, { roomNumber: '306', code: 'DK-K' },
+        { roomNumber: '310', code: 'DK-K' }, { roomNumber: '213', code: 'DMVT-QQ' },
+        { roomNumber: '214', code: 'DMVT-QQ' }, { roomNumber: '311', code: 'GMVB-QQ/POC' }, { roomNumber: '104', code: 'GMVC-QQ' },
+        { roomNumber: '212', code: 'GMVT-QQ/POC' }, { roomNumber: '220', code: 'KBS-K/POC' }, { roomNumber: '319', code: 'KBS-K/POC' },
+        { roomNumber: '219', code: 'KJS-K/POC' }, { roomNumber: '318', code: 'KJS-K/POC' }, { roomNumber: '101', code: 'LKBS-K/POC' },
+        { roomNumber: '201', code: 'LKBS-K/POC' }, { roomNumber: '312', code: 'PMVB-QQ' }, { roomNumber: '313', code: 'PMVB-QQ' },
+        { roomNumber: '105', code: 'QJS-QQ/POC' }, { roomNumber: '106', code: 'QJS-QQ/POC' }, { roomNumber: '107', code: 'QJS-QQ/POC' },
+        { roomNumber: '108', code: 'TK-K' }, { roomNumber: '208', code: 'TK-K' }, { roomNumber: '209', code: 'TK-K' },
+        { roomNumber: '211', code: 'TK-K' }, { roomNumber: '221', code: 'TK-K' }, { roomNumber: '307', code: 'TK-K' }, { roomNumber: '308', code: 'TK-K' }, { roomNumber: '309', code: 'TK-K' },
+        { roomNumber: '103', code: 'TQ-QQ' }, { roomNumber: '314', code: 'TQ-QQ' }, { roomNumber: '203', code: 'TQ-QQ' },
+        { roomNumber: '207', code: 'TQ-QQ' }, { roomNumber: '215', code: 'TQ-QQ' }, { roomNumber: '216', code: 'TQ-QQ' },
+        { roomNumber: '217', code: 'TQ-QQ' }, { roomNumber: '316', code: 'TQ-QQ' }, { roomNumber: '315', code: 'TQ-QQ' }, { roomNumber: '317', code: 'TQ-QQ' }, { roomNumber: '210', code: 'TQ-QQ' },
+        { roomNumber: '206', code: 'TQHC-QQ' }, { roomNumber: '218', code: 'TQHC-QQ' }
+    ],
+    hvi: [
+        { roomNumber: '301', code: '1QST-Q' },
+        { roomNumber: '302', code: 'KGD-K' }, { roomNumber: '303', code: 'KGD-K' }, { roomNumber: '304', code: 'KGD-K' }, { roomNumber: '305', code: 'KGD-K' }, { roomNumber: '309', code: 'KGD-K' },
+        { roomNumber: '107', code: 'KGDB-K' }, { roomNumber: '108', code: 'KGDB-K' }, { roomNumber: '112', code: 'KGDB-K' }, { roomNumber: '201', code: 'KGDB-K' }, { roomNumber: '202', code: 'KGDB-K' }, { roomNumber: '203', code: 'KGDB-K' }, { roomNumber: '208', code: 'KGDB-K' },
+        { roomNumber: '105', code: 'KGHI-K' }, { roomNumber: '106', code: 'KGHI-K' },
+        { roomNumber: '113', code: 'KGST-K' }, { roomNumber: '209', code: 'KGST-K' }, { roomNumber: '314', code: 'KGST-K' }, { roomNumber: '406', code: 'KGST-K' }, { roomNumber: '407', code: 'KGST-K' }, { roomNumber: '408', code: 'KGST-K' }, { roomNumber: '409', code: 'KGST-K' },
+        { roomNumber: '116', code: 'KHAN-K' }, { roomNumber: '213', code: 'KHAN-K' },
+        { roomNumber: '401', code: 'PKB-K' }, { roomNumber: '402', code: 'PKB-K' }, { roomNumber: '403', code: 'PKB-K' }, { roomNumber: '404', code: 'PKB-K' },
+        { roomNumber: '306', code: 'QQD-QQ' }, { roomNumber: '307', code: 'QQD-QQ' }, { roomNumber: '308', code: 'QQD-QQ' },
+        { roomNumber: '109', code: 'QQDB-QQ' }, { roomNumber: '110', code: 'QQDB-QQ' }, { roomNumber: '111', code: 'QQDB-QQ' }, { roomNumber: '204', code: 'QQDB-QQ' }, { roomNumber: '205', code: 'QQDB-QQ' }, { roomNumber: '206', code: 'QQDB-QQ' }, { roomNumber: '207', code: 'QQDB-QQ' },
+        { roomNumber: '101', code: 'QQHI-QQ' }, { roomNumber: '102', code: 'QQHI-QQ' }, { roomNumber: '103', code: 'QQHI-QQ' }, { roomNumber: '104', code: 'QQHI-QQ' },
+        { roomNumber: '114', code: 'QQST-QQ' }, { roomNumber: '115', code: 'QQST-QQ' }, { roomNumber: '210', code: 'QQST-QQ' }, { roomNumber: '211', code: 'QQST-QQ' }, { roomNumber: '212', code: 'QQST-QQ' }, { roomNumber: '310', code: 'QQST-QQ' }, { roomNumber: '311', code: 'QQST-QQ' }, { roomNumber: '312', code: 'QQST-QQ' }, { roomNumber: '313', code: 'QQST-QQ' },
+        { roomNumber: '405', code: 'SUITE-K' }
+    ]
+};
+
+
 let currentCsvContent = null;
 let currentRules = null;
 let currentRecommendations = [];
@@ -274,7 +311,8 @@ function handleGenerateClick() {
         prioritizedRates: document.getElementById('prioritized-rates').value,
         otaRates: document.getElementById('ota-rates').value,
         ineligibleUpgrades: document.getElementById('ineligible-upgrades').value,
-        selectedDate: document.getElementById('selected-date').value
+        selectedDate: document.getElementById('selected-date').value,
+        profile: document.getElementById('profile-dropdown').value // <-- ***MODIFICATION 1: Profile is added to rules***
     };
     const reader = new FileReader();
     reader.onload = function(e) {
@@ -395,19 +433,19 @@ function displayRecommendations(recs) {
                 const card = document.createElement('div');
                 card.className = 'rec-card';
                 card.innerHTML = `
-                        <div class="rec-info">
-                            <h3>${rec.name} (${rec.resId})</h3>
-                            <div class="rec-details">
-                                Booked: <b>${rec.room}</b> for ${rec.nights} night(s) | Rate: <i>${rec.rate}</i><br>
-                                Value of Reservation: <strong>${rec.revenue}</strong>
-                            </div>
-                            <div class="rec-reason">Reason: Frees up a high-demand '${rec.room}' room.</div>
-                        </div>
-                        <div class="rec-actions">
-                            <div class="rec-upgrade-to">Upgrade To<br><strong>${rec.upgradeTo}</strong></div>
-                            <div class="rec-score">${rec.score}</div>
-                            <button class="accept-btn" data-index="${originalIndex}">Accept</button>
-                        </div>
+                                <div class="rec-info">
+                                    <h3>${rec.name} (${rec.resId})</h3>
+                                    <div class="rec-details">
+                                        Booked: <b>${rec.room}</b> for ${rec.nights} night(s) | Rate: <i>${rec.rate}</i><br>
+                                        Value of Reservation: <strong>${rec.revenue}</strong>
+                                    </div>
+                                    <div class="rec-reason">Reason: Frees up a high-demand '${rec.room}' room.</div>
+                                </div>
+                                <div class="rec-actions">
+                                    <div class="rec-upgrade-to">Upgrade To<br><strong>${rec.upgradeTo}</strong></div>
+                                    <div class="rec-score">${rec.score}</div>
+                                    <button class="accept-btn" data-index="${originalIndex}">Accept</button>
+                                </div>
                 `;
                 container.appendChild(card);
             });
@@ -430,16 +468,16 @@ function displayAcceptedUpgrades() {
             const card = document.createElement('div');
             card.className = 'rec-card'; // <-- FIX: was 'className'
             card.innerHTML = `
-                    <div class="rec-info">
-                        <h3>${rec.name} (${rec.resId})</h3>
-                        <div class="rec-details">
-                            Original: <b>${rec.room}</b> | Upgraded To: <strong>${rec.upgradeTo}</strong><br>
-                            Value of Reservation: <strong>${rec.revenue}</strong>
+                        <div class="rec-info">
+                            <h3>${rec.name} (${rec.resId})</h3>
+                            <div class="rec-details">
+                                Original: <b>${rec.room}</b> | Upgraded To: <strong>${rec.upgradeTo}</strong><br>
+                                Value of Reservation: <strong>${rec.revenue}</strong>
+                            </div>
                         </div>
-                    </div>
-                    <div class="rec-actions">
-                        <button class="pms-btn" data-index="${index}">Mark as PMS Updated</button>
-                    </div>
+                        <div class="rec-actions">
+                            <button class="pms-btn" data-index="${index}">Mark as PMS Updated</button>
+                        </div>
             `;
             container.appendChild(card);
         });
@@ -494,17 +532,17 @@ function displayCompletedUpgrades() {
             const card = document.createElement('div');
             card.className = 'rec-card completed';
             card.innerHTML = `
-                    <div class="rec-info">
-                        <h3>${rec.name} (${rec.resId})</h3>
-                        <div class="rec-details">
-                            Original: <b>${rec.room}</b> | Upgraded To: <strong>${rec.upgradeTo}</strong><br>
-                            Value of Reservation: <strong>${rec.revenue}</strong><br>
-                            Completed On: <strong>${rec.completedTimestamp.toLocaleDateString()}</strong>
+                        <div class="rec-info">
+                            <h3>${rec.name} (${rec.resId})</h3>
+                            <div class="rec-details">
+                                Original: <b>${rec.room}</b> | Upgraded To: <strong>${rec.upgradeTo}</strong><br>
+                                Value of Reservation: <strong>${rec.revenue}</strong><br>
+                                Completed On: <strong>${rec.completedTimestamp.toLocaleDateString()}</strong>
+                            </div>
                         </div>
-                    </div>
-                    <div class="rec-actions" style="color: var(--success-color);">
-                        <strong>✓ Completed</strong>
-                    </div>
+                        <div class="rec-actions" style="color: var(--success-color);">
+                            <strong>✓ Completed</strong>
+                        </div>
             `;
             container.appendChild(card);
         });
@@ -613,7 +651,16 @@ function processUpgradeData(csvContent, rules) {
 }
 
 function generateRecommendationsFromData(allReservations, rules) {
-    const masterInventory = getMasterInventory();
+    // --- ***MODIFICATION 2: Pass profile to get master inventory*** ---
+    const masterInventory = getMasterInventory(rules.profile);
+
+    // --- NEW: Safety check if inventory fails to load ---
+    if (Object.keys(masterInventory).length === 0) {
+        return {
+            error: `Could not load master inventory for profile '${rules.profile}'. Please check the MASTER_INVENTORIES configuration.`
+        };
+    }
+
     if (allReservations.length === 0) {
         return {
             recommendations: [],
@@ -669,11 +716,16 @@ function generateRecommendationsFromData(allReservations, rules) {
             eligibleReservations.forEach(res => {
                 const currentRoomIndex = roomHierarchy.indexOf(res.roomType);
                 if (currentRoomIndex === -1) return;
+                
+                // --- ***MODIFICATION 3: Uses new getBedType function*** ---
                 const originalBedType = getBedType(res.roomType);
                 if (originalBedType === 'OTHER') return;
+
                 for (let i = currentRoomIndex + 1; i < roomHierarchy.length; i++) {
                     const potentialUpgradeRoom = roomHierarchy[i];
+                    // --- ***MODIFICATION 3: Uses new getBedType function*** ---
                     const potentialBedType = getBedType(potentialUpgradeRoom);
+                    
                     if (originalBedType !== potentialBedType || ineligibleUpgrades.includes(potentialUpgradeRoom)) continue;
                     if (isRoomAvailableForStay(potentialUpgradeRoom, res, reservationsByDate, masterInventory)) {
                         const score = parseFloat(res.revenue.replace(/[$,]/g, '')) || 0;
@@ -698,10 +750,18 @@ function generateRecommendationsFromData(allReservations, rules) {
     };
 }
 
+// --- ***MODIFICATION 4: Upgraded getBedType function*** ---
+/**
+ * Gets the bed type from a room code.
+ * This is now flexible to support 'TK-K', 'TQ-QQ', and '1QST-Q' style codes.
+ * @param {string} roomCode - The room type code (e.g., "KGST-K").
+ * @returns {string} The bed type ('K', 'QQ', 'Q') or 'OTHER'.
+ */
 function getBedType(roomCode) {
     if (!roomCode) return 'OTHER';
-    if (roomCode.includes('-K')) return 'K';
-    if (roomCode.includes('-QQ')) return 'QQ';
+    if (roomCode.endsWith('-K')) return 'K';
+    if (roomCode.endsWith('-QQ')) return 'QQ';
+    if (roomCode.endsWith('-Q')) return 'Q';
     return 'OTHER';
 }
 
@@ -766,31 +826,29 @@ function getInventoryForDate(masterInventory, reservationsByDate, date) {
     return inventory;
 }
 
-function getMasterInventory() {
-    const masterRoomList = [
-      { roomNumber: '301', code: 'CTK-K' }, { roomNumber: '320', code: 'CTK-K' }, { roomNumber: '102', code: 'DK-K' },
-      { roomNumber: '202', code: 'DK-K' }, { roomNumber: '204', code: 'DK-K' }, { roomNumber: '205', code: 'DK-K' },
-      { roomNumber: '222', code: 'DK-K' }, { roomNumber: '302', code: 'DK-K' }, { roomNumber: '303', code: 'DK-K' },
-      { roomNumber: '304', code: 'DK-K' }, { roomNumber: '305', code: 'DK-K' }, { roomNumber: '306', code: 'DK-K' },
-      { roomNumber: '310', code: 'DK-K' }, { roomNumber: '213', code: 'DMVT-QQ' },
-      { roomNumber: '214', code: 'DMVT-QQ' }, { roomNumber: '311', code: 'GMVB-QQ/POC' }, { roomNumber: '104', code: 'GMVC-QQ' },
-      { roomNumber: '212', code: 'GMVT-QQ/POC' }, { roomNumber: '220', code: 'KBS-K/POC' }, { roomNumber: '319', code: 'KBS-K/POC' },
-      { roomNumber: '219', code: 'KJS-K/POC' }, { roomNumber: '318', code: 'KJS-K/POC' }, { roomNumber: '101', code: 'LKBS-K/POC' },
-      { roomNumber: '201', code: 'LKBS-K/POC' }, { roomNumber: '312', code: 'PMVB-QQ' }, { roomNumber: '313', code: 'PMVB-QQ' },
-      { roomNumber: '105', code: 'QJS-QQ/POC' }, { roomNumber: '106', code: 'QJS-QQ/POC' }, { roomNumber: '107', code: 'QJS-QQ/POC' },
-      { roomNumber: '108', code: 'TK-K' }, { roomNumber: '208', code: 'TK-K' }, { roomNumber: '209', code: 'TK-K' },
-      { roomNumber: '211', code: 'TK-K' }, { roomNumber: '221', code: 'TK-K' }, { roomNumber: '307', code: 'TK-K' }, { roomNumber: '308', code: 'TK-K' }, { roomNumber: '309', code: 'TK-K' },
-      { roomNumber: '103', code: 'TQ-QQ' }, { roomNumber: '314', code: 'TQ-QQ' }, { roomNumber: '203', code: 'TQ-QQ' },
-      { roomNumber: '207', code: 'TQ-QQ' }, { roomNumber: '215', code: 'TQ-QQ' }, { roomNumber: '216', code: 'TQ-QQ' },
-      { roomNumber: '217', code: 'TQ-QQ' }, { roomNumber: '316', code: 'TQ-QQ' }, { roomNumber: '315', code: 'TQ-QQ' }, { roomNumber: '317', code: 'TQ-QQ' }, { roomNumber: '210', code: 'TQ-QQ' },
-      { roomNumber: '206', code: 'TQHC-QQ' }, { roomNumber: '218', code: 'TQHC-QQ' }
-    ];
+// --- ***MODIFICATION 5: getMasterInventory is now profile-aware*** ---
+/**
+ * Gets the master inventory count for a specific hotel profile.
+ * @param {string} profileName - The name of the profile (e.g., 'fqi', 'hvi').
+ * @returns {Object} An object mapping room codes to their total count.
+ */
+function getMasterInventory(profileName) {
+    // Look up the correct room list based on the profileName
+    const masterRoomList = MASTER_INVENTORIES[profileName];
+
+    // Safety check: if no inventory is found, return an empty object.
+    if (!masterRoomList) {
+        console.error(`No master inventory found for profile: ${profileName}`);
+        return {};
+    }
+
     const totalInventory = {};
     masterRoomList.forEach(room => {
         totalInventory[room.code.toUpperCase()] = (totalInventory[room.code.toUpperCase()] || 0) + 1;
     });
     return totalInventory;
 }
+
 
 function parseDate(dateStr) {
     if (!dateStr) return null;
@@ -822,5 +880,3 @@ function generateMatrixData(totalInventory, reservationsByDate, startDate, roomH
     });
     return matrix;
 }
-
-
