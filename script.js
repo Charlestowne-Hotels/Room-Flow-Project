@@ -431,7 +431,7 @@ function displayAcceptedUpgrades() {
         acceptedUpgrades.forEach((rec, index) => {
             totalValue += parseFloat(rec.revenue.replace(/[$,]/g, '')) || 0;
             const card = document.createElement('div');
-      .className = 'rec-card';
+      className = 'rec-card';
             card.innerHTML = `
                 <div class="rec-info">
                     <h3>${rec.name} (${rec.resId})</h3>
@@ -823,3 +823,4 @@ i       	const dateString = date.toISOString().split('T')[0];
   	});
   	return matrix;
 }
+
