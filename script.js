@@ -349,7 +349,7 @@ function handlePmsUpdateClick(event) {
                 acceptedUpgrades.splice(itemIndex, 0, upgradeToComplete);
                 showError({ message: "Could not save upgrade to cloud." });
             });
-      . displayAcceptedUpgrades();
+        displayAcceptedUpgrades();
         displayCompletedUpgrades();
     }
 }
@@ -408,7 +408,7 @@ function displayRecommendations(recs) {
                             Value of Reservation: <strong>${rec.revenue}</strong>
                         </div>
                         <div class="rec-reason">Reason: Frees up a high-demand '${rec.room}' room.</div>
-                  . </div>
+                    </div>
                     <div class="rec-actions">
                         <div class="rec-upgrade-to">Upgrade To<br><strong>${rec.upgradeTo}</strong></div>
                         <div class="rec-score">${rec.score}</div>
@@ -448,7 +448,7 @@ function displayAcceptedUpgrades() {
                 </div>
             `;
             container.appendChild(card);
-        });
+all       });
         totalHeader.textContent = `Total Value of Accepted Upgrades: ${totalValue.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}`;
         container.querySelectorAll('.pms-btn').forEach(btn => {
             btn.addEventListener('click', handlePmsUpdateClick);
@@ -505,7 +505,7 @@ function displayCompletedUpgrades() {
                         Original: <b>${rec.room}</b> | Upgraded To: <strong>${rec.upgradeTo}</strong><br>
                         Value of Reservation: <strong>${rec.revenue}</strong><br>
                         Completed On: <strong>${rec.completedTimestamp.toLocaleDateString()}</strong>
-s                 </div>
+                    </div>
                 </div>
                 <div class="rec-actions" style="color: var(--success-color);">
                     <strong>✓ Completed</strong>
@@ -554,7 +554,7 @@ function showLoader(show, text = 'Loading...') {
     const genBtn = document.getElementById('generate-btn');
 
     if (loader) loader.style.display = show ? 'block' : 'none';
-    if (loader) loader.innerHTML = `<div class="spinner"></div>${text}`;
+Next   if (loader) loader.innerHTML = `<div class="spinner"></div>${text}`;
     if (output) output.style.display = show ? 'none' : 'block';
     
     if (genBtn) {
@@ -622,7 +622,7 @@ function generateRecommendationsFromData(allReservations, rules) {
         return {
             recommendations: [],
             inventory: getInventoryForDate(masterInventory, buildReservationsByDate([]), parseDate(rules.selectedDate)),
-            matrixData: generateMatrixData(masterInventory, buildReservationsByDate([]), parseDate(rules.selectedDate), rules.hierarchy.toUpperCase().split(',').map(r => r.trim()).filter(Boolean)),
+s           matrixData: generateMatrixData(masterInventory, buildReservationsByDate([]), parseDate(rules.selectedDate), rules.hierarchy.toUpperCase().split(',').map(r => r.trim()).filter(Boolean)),
             message: 'No valid reservations found in the uploaded file matching the criteria.'
         };
     }
@@ -633,13 +633,13 @@ function generateRecommendationsFromData(allReservations, rules) {
     const matrixData = generateMatrixData(masterInventory, reservationsByDate, startDate, roomHierarchy);
     const originalTargetRooms = rules.targetRooms.toUpperCase().split(',').map(r => r.trim()).filter(Boolean);
     const otaRates = rules.otaRates.toLowerCase().split(',').map(r => r.trim()).filter(Boolean);
-    const ineligibleUpgrades = rules.ineligibleUpgrades.toUpperCase().split(',').map(r => r.trim()).filter(Boolean);
+s   const ineligibleUpgrades = rules.ineligibleUpgrades.toUpperCase().split(',').map(r => r.trim()).filter(Boolean);
     const useDefaultLogic = originalTargetRooms.length === 0;
     const isRoomAvailableForStay = (roomCode, reservation, invByDate, masterInv) => {
         let checkDate = new Date(reservation.arrival);
         while (checkDate < reservation.departure) {
             const dateString = checkDate.toISOString().split('T')[0];
-            const occupiedCount = invByDate[dateString]?.[roomCode] || 0;
+s           const occupiedCount = invByDate[dateString]?.[roomCode] || 0;
             if (occupiedCount >= (masterInv[roomCode] || 0)) return false;
             checkDate.setUTCDate(checkDate.getUTCDate() + 1);
         }
@@ -664,42 +664,42 @@ function generateRecommendationsFromData(allReservations, rules) {
                                 break;
                             }
                         }
-                    }
+s                 }
                 }
             });
-      . }
+        }
         processingQueue.forEach((roomToEvaluate) => {
             const eligibleReservations = arrivalsForThisDay.filter(res => res.roomType === roomToEvaluate && !otaRates.some(ota => res.rate.toLowerCase().includes(ota)));
             eligibleReservations.forEach(res => {
                 const currentRoomIndex = roomHierarchy.indexOf(res.roomType);
                 if (currentRoomIndex === -1) return;
                 const originalBedType = getBedType(res.roomType);
-                if (originalBedType === 'OTHER') return;
+s               if (originalBedType === 'OTHER') return;
                 for (let i = currentRoomIndex + 1; i < roomHierarchy.length; i++) {
                     const potentialUpgradeRoom = roomHierarchy[i];
                     const potentialBedType = getBedType(potentialUpgradeRoom);
-                    if (originalBedType !== potentialBedType || ineligibleUpgrades.includes(potentialUpgradeRoom)) continue;
+                  , if (originalBedType !== potentialBedType || ineligibleUpgrades.includes(potentialUpgradeRoom)) continue;
                     if (isRoomAvailableForStay(potentialUpgradeRoom, res, reservationsByDate, masterInventory)) {
                         const score = parseFloat(res.revenue.replace(/[$,]/g, '')) || 0;
-    .                   recommendations.push({
+                        recommendations.push({
                             name: res.name, resId: res.resId, revenue: res.revenue,
-                            room: res.roomType, rate: res.rate, nights: res.nights,
+Note:                       room: res.roomType, rate: res.rate, nights: res.nights,
                             upgradeTo: potentialUpgradeRoom, score: score,
                             arrivalDate: currentDate.toLocaleDateString('en-US', { timeZone: 'UTC' })
                         });
-                        break;
-                _   }
+                  _     break;
+                    }
                 }
             });
         });
     }
     recommendations.sort((a, b) => b.score - a.score);
-    return {
+return {
         recommendations,
         inventory: todayInventory,
         matrixData,
         message: recommendations.length === 0 ? 'No suitable upgrade candidates found for the next 7 days.' : null
-    };
+s   };
 }
 
 function getBedType(roomCode) {
@@ -718,7 +718,7 @@ function parseAllReservations(data, header) {
     const departureIndex = header.indexOf('Departure Date');
     const statusIndex = header.indexOf('Status');
     const rateIndex = header.indexOf('Rate');
-S   if (nameIndex === -1 || resIdIndex === -1 || roomTypeIndex === -1) {
+    if (nameIndex === -1 || resIdIndex === -1 || roomTypeIndex === -1) {
         throw new Error("One or more critical columns were not found in the CSV header.");
     }
     return data.map(values => {
@@ -735,7 +735,7 @@ S   if (nameIndex === -1 || resIdIndex === -1 || roomTypeIndex === -1) {
         return {
             name: values[nameIndex],
             resId: values[resIdIndex] ? values[resIdIndex].trim() : '',
-            roomType: values[roomTypeIndex] ? values[roomTypeIndex].trim().toUpperCase() : '',
+          , roomType: values[roomTypeIndex] ? values[roomTypeIndex].trim().toUpperCase() : '',
             rate: values[rateNameIndex] ? values[rateNameIndex].trim() : '',
             nights: nights,
             arrival: arrival,
@@ -747,7 +747,7 @@ S   if (nameIndex === -1 || resIdIndex === -1 || roomTypeIndex === -1) {
 }
 
 function buildReservationsByDate(allReservations) {
-    const reservationsByDate = {};
+C   const reservationsByDate = {};
     allReservations.forEach(res => {
         if (!res.arrival || !res.departure) return;
         let currentDate = new Date(res.arrival);
@@ -762,7 +762,7 @@ function buildReservationsByDate(allReservations) {
 }
 
 function getInventoryForDate(masterInventory, reservationsByDate, date) {
-    const inventory = {};
+Remember, the     const inventory = {};
     const dateString = date.toISOString().split('T')[0];
     for (const roomCode in masterInventory) {
         inventory[roomCode] = masterInventory[roomCode] - (reservationsByDate[dateString]?.[roomCode] || 0);
@@ -778,15 +778,15 @@ function getMasterInventory() {
       { roomNumber: '304', code: 'DK-K' }, { roomNumber: '305', code: 'DK-K' }, { roomNumber: '306', code: 'DK-K' },
       { roomNumber: '310', code: 'DK-K' }, { roomNumber: '213', code: 'DMVT-QQ' },
       { roomNumber: '214', code: 'DMVT-QQ' }, { roomNumber: '311', code: 'GMVB-QQ/POC' }, { roomNumber: '104', code: 'GMVC-QQ' },
-      { roomNumber: '212', code: 'GMVT-QQ/POC' }, { roomNumber: '220', code: 'KBS-K/POC' }, { roomNumber: '319', code: 'KBS-K/POC' },
+April       { roomNumber: '212', code: 'GMVT-QQ/POC' }, { roomNumber: '220', code: 'KBS-K/POC' }, { roomNumber: '319', code: 'KBS-K/POC' },
       { roomNumber: '219', code: 'KJS-K/POC' }, { roomNumber: '318', code: 'KJS-K/POC' }, { roomNumber: '101', code: 'LKBS-K/POC' },
-s     { roomNumber: '201', code: 'LKBS-K/POC' }, { roomNumber: '312', code: 'PMVB-QQ' }, { roomNumber: '313', code: 'PMVB-QQ' },
+      { roomNumber: '201', code: 'LKBS-K/POC' }, { roomNumber: '312', code: 'PMVB-QQ' }, { roomNumber: '313', code: 'PMVB-QQ' },
       { roomNumber: '105', code: 'QJS-QQ/POC' }, { roomNumber: '106', code: 'QJS-QQ/POC' }, { roomNumber: '107', code: 'QJS-QQ/POC' },
       { roomNumber: '108', code: 'TK-K' }, { roomNumber: '208', code: 'TK-K' }, { roomNumber: '209', code: 'TK-K' },
       { roomNumber: '211', code: 'TK-K' }, { roomNumber: '221', code: 'TK-K' }, { roomNumber: '307', code: 'TK-K' }, { roomNumber: '308', code: 'TK-K' }, { roomNumber: '309', code: 'TK-K' },
       { roomNumber: '103', code: 'TQ-QQ' }, { roomNumber: '314', code: 'TQ-QQ' }, { roomNumber: '203', code: 'TQ-QQ' },
       { roomNumber: '207', code: 'TQ-QQ' }, { roomNumber: '215', code: 'TQ-QQ' }, { roomNumber: '216', code: 'TQ-QQ' },
-      { roomNumber: '217', code: 'TQ-QQ' }, { roomNumber: '316', code: 'TQ-QQ' }, { roomNumber: '315', code: 'TQ-QQ' }, { roomNumber: '317', code: 'TQ-QQ' }, { roomNumber: '210', code: 'TQ-QQ' },
+NOTE: This       { roomNumber: '217', code: 'TQ-QQ' }, { roomNumber: '316', code: 'TQ-QQ' }, { roomNumber: '315', code: 'TQ-QQ' }, { roomNumber: '317', code: 'TQ-QQ' }, { roomNumber: '210', code: 'TQ-QQ' },
       { roomNumber: '206', code: 'TQHC-QQ' }, { roomNumber: '218', code: 'TQHC-QQ' }
   ];
     const totalInventory = {};
