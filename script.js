@@ -128,7 +128,7 @@ const handleSignIn = () => {
     const email = emailInput.value;
     const password = passwordInput.value;
     errorMessage.textContent = ''; 
-    if (!email || !password) {
+    if(!email || !password) {
         errorMessage.textContent = "Please enter both email and password.";
         return;
     }
@@ -144,7 +144,7 @@ const handleSignOut = () => {
 };
 
 async function handleClearAnalytics() {
-    if (!confirm("Are you sure you want to permanently delete ALL completed upgrades for this profile? This cannot be undone.")) {
+    if(!confirm("Are you sure you want to permanently delete ALL completed upgrades for this profile? This cannot be undone.")) {
         return;
     }
 
@@ -198,7 +198,7 @@ document.addEventListener('DOMContentLoaded', function() {
     auth.onAuthStateChanged(user => {
         const adminButton = document.getElementById('clear-analytics-btn');
         
-        if (user) {
+        if(user) {
             console.log("User is signed in:", user.uid);
             if(loginContainer) loginContainer.classList.add('hidden');
             if(appContainer) appContainer.classList.remove('hidden');
@@ -208,7 +208,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const isUserAdmin = ADMIN_UIDS.includes(user.uid);
 
             // Check if the signed-in user's UID is in the admin list
-            if (isUserAdmin && adminButton) {
+            if(isUserAdmin && adminButton) {
                 console.log("User is an admin!");
                 adminButton.classList.remove('hidden');
             }
@@ -264,7 +264,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
 function handleGenerateClick() {
     const fileInput = document.getElementById('csv-file');
-    if (fileInput.files.length === 0) {
+    if(fileInput.files.length === 0) {
         alert('Please upload a CSV file.');
         return;
     }
@@ -285,7 +285,7 @@ function handleGenerateClick() {
         currentRules = rules;
         showLoader(true, 'Generating...');
         setTimeout(() => {
-            try {
+            try{
                 const results = processUpgradeData(currentCsvContent, currentRules);
                 displayResults(results);
             } catch (err) {
@@ -300,7 +300,7 @@ function handleAcceptClick(event) {
     const button = event.target;
     const recIndex = button.dataset.index;
     const acceptedRec = currentRecommendations[recIndex];
-    if (!acceptedRec) {
+    if(!acceptedRec) {
         showError({ message: 'Could not find the recommendation to accept.' });
         return;
     }
@@ -309,7 +309,7 @@ function handleAcceptClick(event) {
     button.disabled = true;
     button.textContent = 'Accepted';
     setTimeout(() => {
-        try {
+        try{
             const results = acceptUpgradeAndRecalculate(acceptedRec, acceptedUpgrades, currentCsvContent, currentRules);
             displayResults(results);
         } catch (err) {
@@ -323,21 +323,21 @@ function handleAcceptClick(event) {
 
 function handlePmsUpdateClick(event) {
     const user = auth.currentUser;
-    if (!user) {
+    if(!user) {
         showError({ message: "You must be logged in to save."});
         return;
     }
     const recIndex = event.target.dataset.index;
     const resIdToComplete = acceptedUpgrades[recIndex].resId;
     const itemIndex = acceptedUpgrades.findIndex(item => item.resId === resIdToComplete);
-    if (itemIndex > -1) {
+    if(itemIndex > -1) {
         const upgradeToComplete = acceptedUpgrades.splice(itemIndex, 1)[0];
         upgradeToComplete.completedTimestamp = new Date();
         upgradeToComplete.profile = document.getElementById('profile-dropdown').value;
         completedUpgrades.push(upgradeToComplete);
         const upgradesRef = db.collection('users').doc(user.uid).collection('completedUpgrades');
         upgradesRef.add(upgradeToComplete)
-            .then((docRef) => {
+                 .then((docRef) => {
                 console.log(`Upgrade saved to Firestore with ID: ${docRef.id} under profile: ${upgradeToComplete.profile}`);
             })
             .catch((error) => {
@@ -489,7 +489,7 @@ function displayCompletedUpgrades() {
     const dateFilteredUpgrades = selectedDate === 'all'
         ? profileUpgrades
         : profileUpgrades.filter(rec => rec.completedTimestamp.toLocaleDateString() === selectedDate);
-s   if (dateFilteredUpgrades && dateFilteredUpgrades.length > 0) {
+    if(dateFilteredUpgrades && dateFilteredUpgrades.length > 0) {
         dateFilteredUpgrades.sort((a, b) => b.completedTimestamp - a.completedTimestamp);
         dateFilteredUpgrades.forEach(rec => {
             totalValue += parseFloat(rec.revenue.replace(/[$,]/g, '')) || 0;
@@ -507,7 +507,7 @@ s   if (dateFilteredUpgrades && dateFilteredUpgrades.length > 0) {
                 <div class="rec-actions" style="color: var(--success-color);">
                     <strong>✓ Completed</strong>
                 </div>
-            `;
+            ;
             container.appendChild(card);
         });
         const totalHeader = document.createElement('h3');
@@ -749,7 +749,7 @@ function buildReservationsByDate(allReservations) {
       	if (!res.arrival || !res.departure) return;
       	let currentDate = new Date(res.arrival);
       	while (currentDate < res.departure) {
-  f       	const dateString = currentDate.toISOString().split('T')[0];
+         	const dateString = currentDate.toISOString().split('T')[0];
           	if (!reservationsByDate[dateString]) reservationsByDate[dateString] = {};
           	reservationsByDate[dateString][res.roomType] = (reservationsByDate[dateString][res.roomType] || 0) + 1;
           	currentDate.setUTCDate(currentDate.getUTCDate() + 1);
@@ -777,13 +777,13 @@ function getMasterInventory() {
       { roomNumber: '214', code: 'DMVT-QQ' }, { roomNumber: '311', code: 'GMVB-QQ/POC' }, { roomNumber: '104', code: 'GMVC-QQ' },
       { roomNumber: '212', code: 'GMVT-QQ/POC' }, { roomNumber: '220', code: 'KBS-K/POC' }, { roomNumber: '319', code: 'KBS-K/POC' },
       { roomNumber: '219', code: 'KJS-K/POC' }, { roomNumber: '318', code: 'KJS-K/POC' }, { roomNumber: '101', code: 'LKBS-K/POC' },
-s     { roomNumber: '201', code: 'LKBS-K/POC' }, { roomNumber: '312', code: 'PMVB-QQ' }, { roomNumber: '313', code: 'PMVB-QQ' },
+     { roomNumber: '201', code: 'LKBS-K/POC' }, { roomNumber: '312', code: 'PMVB-QQ' }, { roomNumber: '313', code: 'PMVB-QQ' },
       { roomNumber: '105', code: 'QJS-QQ/POC' }, { roomNumber: '106', code: 'QJS-QQ/POC' }, { roomNumber: '107', code: 'QJS-QQ/POC' },
       { roomNumber: '108', code: 'TK-K' }, { roomNumber: '208', code: 'TK-K' }, { roomNumber: '209', code: 'TK-K' },
       { roomNumber: '211', code: 'TK-K' }, { roomNumber: '221', code: 'TK-K' }, { roomNumber: '307', code: 'TK-K' }, { roomNumber: '308', code: 'TK-K' }, { roomNumber: '309', code: 'TK-K' },
       { roomNumber: '103', code: 'TQ-QQ' }, { roomNumber: '314', code: 'TQ-QQ' }, { roomNumber: '203', code: 'TQ-QQ' },
       { roomNumber: '207', code: 'TQ-QQ' }, { roomNumber: '215', code: 'TQ-QQ' }, { roomNumber: '216', code: 'TQ-QQ' },
-C     { roomNumber: '217', code: 'TQ-QQ' }, { roomNumber: '316', code: 'TQ-QQ' }, { roomNumber: '315', code: 'TQ-QQ' }, { roomNumber: '317', code: 'TQ-QQ' }, { roomNumber: '210', code: 'TQ-QQ' },
+     { roomNumber: '217', code: 'TQ-QQ' }, { roomNumber: '316', code: 'TQ-QQ' }, { roomNumber: '315', code: 'TQ-QQ' }, { roomNumber: '317', code: 'TQ-QQ' }, { roomNumber: '210', code: 'TQ-QQ' },
       { roomNumber: '206', code: 'TQHC-QQ' }, { roomNumber: '218', code: 'TQHC-QQ' }
   	];
   	const totalInventory = {};
@@ -816,11 +816,12 @@ function generateMatrixData(totalInventory, reservationsByDate, startDate, roomH
   	roomHierarchy.forEach(roomCode => {
       	const row = { roomCode, availability: [] };
       	dates.forEach(date => {
-i       	const dateString = date.toISOString().split('T')[0];
+       	const dateString = date.toISOString().split('T')[0];
           	row.availability.push((totalInventory[roomCode] || 0) - (reservationsByDate[dateString]?.[roomCode] || 0));
       	});
       	matrix.rows.push(row);
   	});
   	return matrix;
 }
+
 
