@@ -19,11 +19,11 @@ let loginContainer, appContainer, signinBtn, signoutBtn, emailInput, passwordInp
 // --- STATE MANAGEMENT & PROFILES ---
 const profiles = {
     fqi: {
-        hierarchy: 'TK-K,TQ-QQ,TQHC,DK-K,CTK-K,KJS-K/POC,QJS-QQ/POC,KBS-K/POC,PMVB-QQ,DMVT-QQ,GMVT-QQ/POC,GMVC-QQ,LKBS-K/POC,GMVB-QQ/POC',
+        hierarchy: 'TK-K,TQ-QQ,TQHC-QQ,DK-K,CTK-K,KJS-K/POC,QJS-QQ/POC,KBS-K/POC,PMVB-QQ,DMVT-QQ,GMVT-QQ/POC,GMVC-QQ,LKBS-K/POC,GMVB-QQ/POC',
         targetRooms: '',
         prioritizedRates: 'Best Available, BAR, Rack',
         otaRates: 'Expedia, Booking.com, Priceline, GDS',
-        ineligibleUpgrades: 'TQHC'
+        ineligibleUpgrades: 'TQHC-QQ'
     },
     hvi: {
         hierarchy: '',
@@ -760,6 +760,7 @@ function generateMatrixData(totalInventory, reservationsByDate, startDate, roomH
     });
     return matrix;
 }
+
 
 
 
