@@ -87,10 +87,7 @@ function setAdminControls(isAdmin) {
         document.getElementById('ota-rates'),
         document.getElementById('ineligible-upgrades'),
 
-        // "Upload Status" / "Generate" section
-        document.getElementById('selected-date'),
-        document.getElementById('csv-file'),
-        document.getElementById('generate-btn')
+
     ];
 
     // Loop through each element and set its 'disabled' state
@@ -825,3 +822,4 @@ function generateMatrixData(totalInventory, reservationsByDate, startDate, roomH
     });
     return matrix;
 }
+
