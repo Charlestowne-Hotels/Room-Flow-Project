@@ -26,11 +26,11 @@ const profiles = {
         ineligibleUpgrades: 'TQHC-QQ'
     },
     hvi: {
-        hierarchy: '',
+        hierarchy: '1QST-Q, QQST-QQ, KGST-K, KHAN-K, QQD-QQ, KGD-K, KGDB-K, QQDB-QQ, QQHI-QQ, KGHI-K, PKB-K, SUITE-K',
         targetRooms: '',
-        prioritizedRates: '',
-        otaRates: '',
-        ineligibleUpgrades: ''
+        prioritizedRates: 'Best Available, BAR, Rack',
+        otaRates: 'Expedia, Booking.com, Priceline, GDS',
+        ineligibleUpgrades: 'KHAN-K'
     }
 };
 
@@ -822,4 +822,5 @@ function generateMatrixData(totalInventory, reservationsByDate, startDate, roomH
     });
     return matrix;
 }
+
 
