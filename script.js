@@ -513,7 +513,7 @@ function displayCompletedUpgrades() {
         const totalHeader = document.createElement('h3');
         totalHeader.style.textAlign = 'right';
         totalHeader.style.marginTop = '20px';
-        totalHeader.textContent = Total Value: ${totalValue.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}`;
+        totalHeader.textContent = Total Value: ${totalValue.toLocaleString('en-US', { style: 'currency', currency: 'USD' })};
         container.appendChild(totalHeader);
     } else {
         container.innerHTML = '<p>No upgrades have been marked as completed for this profile and date.</p>';
@@ -823,6 +823,7 @@ function generateMatrixData(totalInventory, reservationsByDate, startDate, roomH
   	});
   	return matrix;
 }
+
 
 
 
