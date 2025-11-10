@@ -467,16 +467,16 @@ function displayAcceptedUpgrades() {
             const card = document.createElement('div');
             card.className = 'rec-card'; // <-- FIX: was 'className'
             card.innerHTML = `
-                        <div class="rec-info">
-                            <h3>${rec.name} (${rec.resId})</h3>
-                            <div class="rec-details">
-                                Original: <b>${rec.room}</b> | Upgraded To: <strong>${rec.upgradeTo}</strong><br>
-                                Value of Reservation: <strong>${rec.revenue}</strong>
+                            <div class="rec-info">
+                                <h3>${rec.name} (${rec.resId})</h3>
+                                <div class="rec-details">
+                                    Original: <b>${rec.room}</b> | Upgraded To: <strong>${rec.upgradeTo}</strong><br>
+                                    Value of Reservation: <strong>${rec.revenue}</strong>
+                                </div>
                             </div>
-                        </div>
-                        <div class="rec-actions">
-                            <button class="pms-btn" data-index="${index}">Mark as PMS Updated</button>
-                        </div>
+                            <div class="rec-actions">
+                                <button class="pms-btn" data-index="${index}">Mark as PMS Updated</button>
+                            </div>
             `;
             container.appendChild(card);
         });
@@ -531,17 +531,17 @@ function displayCompletedUpgrades() {
             const card = document.createElement('div');
             card.className = 'rec-card completed';
             card.innerHTML = `
-                        <div class="rec-info">
-                            <h3>${rec.name} (${rec.resId})</h3>
-                            <div class="rec-details">
-                                Original: <b>${rec.room}</b> | Upgraded To: <strong>${rec.upgradeTo}</strong><br>
-                                Value of Reservation: <strong>${rec.revenue}</strong><br>
-                                Completed On: <strong>${rec.completedTimestamp.toLocaleDateString()}</strong>
+                            <div class="rec-info">
+                                <h3>${rec.name} (${rec.resId})</h3>
+                                <div class="rec-details">
+                                    Original: <b>${rec.room}</b> | Upgraded To: <strong>${rec.upgradeTo}</strong><br>
+                                    Value of Reservation: <strong>${rec.revenue}</strong><br>
+                                    Completed On: <strong>${rec.completedTimestamp.toLocaleDateString()}</strong>
+                                </div>
                             </div>
-                        </div>
-                        <div class="rec-actions" style="color: var(--success-color);">
-                            <strong>✓ Completed</strong>
-                        </div>
+                            <div class="rec-actions" style="color: var(--success-color);">
+                                <strong>✓ Completed</strong>
+                            </div>
             `;
             container.appendChild(card);
         });
@@ -649,6 +649,7 @@ function processUpgradeData(csvContent, rules) {
     return generateRecommendationsFromData(allReservations, rules);
 }
 
+// --- THIS IS THE MODIFIED FUNCTION ---
 function generateRecommendationsFromData(allReservations, rules) {
     // --- ***MODIFICATION 2: Pass profile to get master inventory*** ---
     const masterInventory = getMasterInventory(rules.profile);
@@ -659,6 +660,17 @@ function generateRecommendationsFromData(allReservations, rules) {
             error: `Could not load master inventory for profile '${rules.profile}'. Please check the MASTER_INVENTORIES configuration.`
         };
     }
+
+    // --- ***NEW CODE (Addition 1)*** ---
+    // Create a Set of all completed Res IDs for the current profile for fast lookup.
+    const currentProfile = rules.profile;
+    const completedResIdsForProfile = new Set(
+        completedUpgrades
+            .filter(up => up.profile === currentProfile) // Filter for current profile
+            .map(up => up.resId)                     // Get just the Res ID
+    );
+    // --- ***END NEW CODE*** ---
+
 
     if (allReservations.length === 0) {
         return {
@@ -711,7 +723,16 @@ function generateRecommendationsFromData(allReservations, rules) {
             });
         }
         processingQueue.forEach((roomToEvaluate) => {
-            const eligibleReservations = arrivalsForThisDay.filter(res => res.roomType === roomToEvaluate && !otaRates.some(ota => res.rate.toLowerCase().includes(ota)));
+            
+            // --- ***MODIFIED CODE (Addition 2)*** ---
+            // This line is modified to filter out completed Res IDs.
+            const eligibleReservations = arrivalsForThisDay.filter(res => 
+                res.roomType === roomToEvaluate &&                                 // Matches room
+                !otaRates.some(ota => res.rate.toLowerCase().includes(ota)) &&  // Not an OTA rate
+                !completedResIdsForProfile.has(res.resId)                       // NOT already completed
+            );
+            // --- ***END MODIFIED CODE*** ---
+
             eligibleReservations.forEach(res => {
                 const currentRoomIndex = roomHierarchy.indexOf(res.roomType);
                 if (currentRoomIndex === -1) return;
@@ -748,6 +769,7 @@ function generateRecommendationsFromData(allReservations, rules) {
         message: recommendations.length === 0 ? 'No suitable upgrade candidates found for the next 7 days.' : null
     };
 }
+// --- END OF MODIFIED FUNCTION ---
 
 // --- ***MODIFICATION 4: Upgraded getBedType function*** ---
 /**
@@ -879,4 +901,3 @@ function generateMatrixData(totalInventory, reservationsByDate, startDate, roomH
     });
     return matrix;
 }
-
