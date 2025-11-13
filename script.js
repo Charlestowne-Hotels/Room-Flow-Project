@@ -467,16 +467,16 @@ function displayAcceptedUpgrades() {
             const card = document.createElement('div');
             card.className = 'rec-card'; // <-- FIX: was 'className'
             card.innerHTML = `
-                            <div class="rec-info">
-                                <h3>${rec.name} (${rec.resId})</h3>
-                                <div class="rec-details">
-                                    Original: <b>${rec.room}</b> | Upgraded To: <strong>${rec.upgradeTo}</strong><br>
-                                    Value of Reservation: <strong>${rec.revenue}</strong>
+                                <div class="rec-info">
+                                    <h3>${rec.name} (${rec.resId})</h3>
+                                    <div class="rec-details">
+                                        Original: <b>${rec.room}</b> | Upgraded To: <strong>${rec.upgradeTo}</strong><br>
+                                        Value of Reservation: <strong>${rec.revenue}</strong>
+                                    </div>
                                 </div>
-                            </div>
-                            <div class="rec-actions">
-                                <button class="pms-btn" data-index="${index}">Mark as PMS Updated</button>
-                            </div>
+                                <div class="rec-actions">
+                                    <button class="pms-btn" data-index="${index}">Mark as PMS Updated</button>
+                                </div>
             `;
             container.appendChild(card);
         });
@@ -531,17 +531,17 @@ function displayCompletedUpgrades() {
             const card = document.createElement('div');
             card.className = 'rec-card completed';
             card.innerHTML = `
-                            <div class="rec-info">
-                                <h3>${rec.name} (${rec.resId})</h3>
-                                <div class="rec-details">
-                                    Original: <b>${rec.room}</b> | Upgraded To: <strong>${rec.upgradeTo}</strong><br>
-                                    Value of Reservation: <strong>${rec.revenue}</strong><br>
-                                    Completed On: <strong>${rec.completedTimestamp.toLocaleDateString()}</strong>
+                                <div class="rec-info">
+                                    <h3>${rec.name} (${rec.resId})</h3>
+                                    <div class="rec-details">
+                                        Original: <b>${rec.room}</b> | Upgraded To: <strong>${rec.upgradeTo}</strong><br>
+                                        Value of Reservation: <strong>${rec.revenue}</strong><br>
+                                        Completed On: <strong>${rec.completedTimestamp.toLocaleDateString()}</strong>
+                                    </div>
                                 </div>
-                            </div>
-                            <div class="rec-actions" style="color: var(--success-color);">
-                                <strong>✓ Completed</strong>
-                            </div>
+                                <div class="rec-actions" style="color: var(--success-color);">
+                                    <strong>✓ Completed</strong>
+                                </div>
             `;
             container.appendChild(card);
         });
@@ -727,9 +727,10 @@ function generateRecommendationsFromData(allReservations, rules) {
             // --- ***MODIFIED CODE (Addition 2)*** ---
             // This line is modified to filter out completed Res IDs.
             const eligibleReservations = arrivalsForThisDay.filter(res => 
-                res.roomType === roomToEvaluate &&                                 // Matches room
-                !otaRates.some(ota => res.rate.toLowerCase().includes(ota)) &&  // Not an OTA rate
-                !completedResIdsForProfile.has(res.resId)                       // NOT already completed
+                res.roomType === roomToEvaluate &&                     // Matches room
+                !otaRates.some(ota => res.rate.toLowerCase().includes(ota)) && // Not an OTA rate
+                !completedResIdsForProfile.has(res.resId) &&           // NOT already completed
+                !ineligibleUpgrades.includes(res.roomType)             // <-- *** THIS IS THE NEW LINE ***
             );
             // --- ***END MODIFIED CODE*** ---
 
