@@ -31,7 +31,16 @@ const profiles = {
         prioritizedRates: 'Best Available, BAR, Rack',
         otaRates: 'Expedia, Booking.com, Priceline, GDS',
         ineligibleUpgrades: 'KHAN-K'
+    },
+    // --- NEW "SPEC" PROFILE ADDED ---
+    spec: {
+        hierarchy: 'DK,DKB,DKC,DKS,GKS,PKSB,TK,TKHC,TQ,TQHC',
+        targetRooms: '',
+        prioritizedRates: 'Best Available, BAR, Rack',
+        otaRates: 'Expedia, Booking.com, Priceline, GDS',
+        ineligibleUpgrades: 'TKHC,TQHC' // Defaulted HC rooms to ineligible
     }
+    // --- END OF NEW PROFILE ---
 };
 
 // --- NEW: A central object for all master inventory lists ---
@@ -67,7 +76,21 @@ const MASTER_INVENTORIES = {
         { roomNumber: '101', code: 'QQHI-QQ' }, { roomNumber: '102', code: 'QQHI-QQ' }, { roomNumber: '103', code: 'QQHI-QQ' }, { roomNumber: '104', code: 'QQHI-QQ' },
         { roomNumber: '114', code: 'QQST-QQ' }, { roomNumber: '115', code: 'QQST-QQ' }, { roomNumber: '210', code: 'QQST-QQ' }, { roomNumber: '211', code: 'QQST-QQ' }, { roomNumber: '212', code: 'QQST-QQ' }, { roomNumber: '310', code: 'QQST-QQ' }, { roomNumber: '311', code: 'QQST-QQ' }, { roomNumber: '312', code: 'QQST-QQ' }, { roomNumber: '313', code: 'QQST-QQ' },
         { roomNumber: '405', code: 'SUITE-K' }
+    ],
+    // --- NEW "SPEC" INVENTORY ADDED ---
+    spec: [
+        { roomNumber: '203', code: 'DK' }, { roomNumber: '303', code: 'DK' },
+        { roomNumber: '305', code: 'DKB' }, { roomNumber: '306', code: 'DKB' }, { roomNumber: '309', code: 'DKB' }, { roomNumber: '310', code: 'DKB' }, { roomNumber: '311', code: 'DKB' },
+        { roomNumber: '101', code: 'DKC' }, { roomNumber: '102', code: 'DKC' }, { roomNumber: '103', code: 'DKC' },
+        { roomNumber: '201', code: 'DKS' }, { roomNumber: '301', code: 'DKS' },
+        { roomNumber: '104', code: 'GKS' }, { roomNumber: '204', code: 'GKS' },
+        { roomNumber: '107', code: 'PKSB' }, { roomNumber: '207', code: 'PKSB' }, { roomNumber: '307', code: 'PKSB' },
+        { roomNumber: '105', code: 'TK' }, { roomNumber: '106', code: 'TK' }, { roomNumber: '109', code: 'TK' }, { roomNumber: '110', code: 'TK' }, { roomNumber: '111', code: 'TK' }, { roomNumber: '202', code: 'TK' }, { roomNumber: '205', code: 'TK' }, { roomNumber: '206', code: 'TK' }, { roomNumber: '209', code: 'TK' }, { roomNumber: '210', code: 'TK' }, { roomNumber: '211', code: 'TK' }, { roomNumber: '214', code: 'TK' }, { roomNumber: '302', code: 'TK' }, { roomNumber: '314', code: 'TK' },
+        { roomNumber: '114', code: 'TKHC' },
+        { roomNumber: '108', code: 'TQ' }, { roomNumber: '112', code: 'TQ' }, { roomNumber: '208', code: 'TQ' }, { roomNumber: '212', code: 'TQ' }, { roomNumber: '213', code: 'TQ' }, { roomNumber: '308', code: 'TQ' }, { roomNumber: '312', code: 'TQ' }, { roomNumber: '313', code: 'TQ' },
+        { roomNumber: '113', code: 'TQHC' }
     ]
+    // --- END OF NEW INVENTORY ---
 };
 
 
@@ -271,7 +294,7 @@ document.addEventListener('DOMContentLoaded', function() {
         resetAppState();
         displayCompletedUpgrades();
     });
-    updateRulesForm('fqi');
+    updateRulesForm('fqi'); // Default to FQI on load
 
     signinBtn.addEventListener('click', handleSignIn);
     signoutBtn.addEventListener('click', handleSignOut);
@@ -775,15 +798,25 @@ function generateRecommendationsFromData(allReservations, rules) {
 // --- ***MODIFICATION 4: Upgraded getBedType function*** ---
 /**
  * Gets the bed type from a room code.
- * This is now flexible to support 'TK-K', 'TQ-QQ', and '1QST-Q' style codes.
+ * This is now flexible to support 'TK-K', 'TQ-QQ', '1QST-Q', and 'DK' style codes.
  * @param {string} roomCode - The room type code (e.g., "KGST-K").
  * @returns {string} The bed type ('K', 'QQ', 'Q') or 'OTHER'.
  */
 function getBedType(roomCode) {
     if (!roomCode) return 'OTHER';
+    // Check suffixes first
     if (roomCode.endsWith('-K')) return 'K';
     if (roomCode.endsWith('-QQ')) return 'QQ';
     if (roomCode.endsWith('-Q')) return 'Q';
+    
+    // --- NEW: Handle SPEC profile codes ---
+    if (roomCode.startsWith('DK')) return 'K'; // DK, DKB, DKC, DKS
+    if (roomCode.startsWith('GK')) return 'K'; // GKS
+    if (roomCode.startsWith('PK')) return 'K'; // PKSB
+    if (roomCode.startsWith('TK')) return 'K'; // TK, TKHC
+    if (roomCode.startsWith('TQ')) return 'QQ'; // TQ, TQHC
+    // --- End new codes ---
+
     return 'OTHER';
 }
 
