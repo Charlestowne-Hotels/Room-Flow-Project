@@ -135,25 +135,30 @@ button:disabled {
   background-color: var(--primary-accent); /* Blue */
   color: white; 
   border: none; 
-  padding: 8px 14px; /* Adjusted padding */
+  padding: 8px 14px; 
   border-radius: 4px; 
   font-size: 13px; 
-  font-weight: 600; /* Added font weight */
+  font-weight: 600; 
   cursor: pointer; 
-  width: auto; /* Auto width */
+  width: auto; 
 }
 .pms-btn:hover { background-color: #2525DD; } /* Darker blue */
 .pms-btn:disabled { background-color: #aaa; cursor: not-allowed; }
 
-/* MODIFIED: Completed card styling */
 .rec-card.completed { 
-  opacity: 0.7; /* Keep it slightly faded */
+  opacity: 1; /* Make completed cards full opacity */
 }
-/* Make the header blue for completed cards */
+/* Make the header blue for completed cards (optional) */
 .rec-card.completed .rec-info h3 {
-  color: var(--primary-accent);
+  color: var(--heading-color); /* Kept black, but you can change to var(--primary-accent) */
 }
 
+/* --- NEW: Style for '✓ Completed' text in Analytics --- */
+.rec-status-completed {
+  color: var(--primary-accent); /* Use the primary blue */
+  font-weight: 600;
+  font-size: 14px;
+}
 
 #inventory, #message { 
   background-color: var(--card-bg); 
@@ -166,7 +171,7 @@ button:disabled {
   background-color: var(--card-bg); 
   color: var(--heading-color);
 }
-/* MODIFIED: Default matrix cell style (for 0-2) */
+/* Default matrix cell style (for 0-2) */
 #matrix-container td { 
   padding: 8px; text-align: center; 
   border: 1px solid var(--border-color); 
@@ -174,16 +179,15 @@ button:disabled {
   font-weight: 600;
 }
 
-/* --- NEW MATRIX STYLES --- */
-/* Use JavaScript to add these classes based on cell value */
+/* --- MATRIX STYLES (from previous request) --- */
 
 /* Red for negative numbers */
 #matrix-container td.matrix-neg {
-  color: var(--score-bg); /* Use the 'modern red' */
+  color: var(--score-bg); 
   font-weight: 600;
 }
 
-/* Black/default for 0-2 (covered by default td, but here for clarity) */
+/* Black/default for 0-2 (covered by default td) */
 #matrix-container td.matrix-low {
   color: var(--heading-color);
   font-weight: 600;
