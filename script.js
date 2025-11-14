@@ -570,7 +570,7 @@ function displayCompletedUpgrades() {
                                     </div>
                                 </div>
                                 <div class="rec-actions" style="color: var(--success-color);">
-                                    <strong>✓ Completed</strong>
+                                    <strong style="color: #4343FF;">✓ Completed</strong>
                                 </div>
             `;
             container.appendChild(card);
@@ -942,4 +942,5 @@ function generateMatrixData(totalInventory, reservationsByDate, startDate, roomH
     });
     return matrix;
 }
+
 
