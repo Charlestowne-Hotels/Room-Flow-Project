@@ -586,6 +586,9 @@ function displayCompletedUpgrades() {
 }
 
 
+// --- MODIFIED FUNCTION ---
+// This function now builds the table with simple <td> tags
+// and then calls 'colorMatrixCells()' to apply the classes.
 function displayMatrix(matrix) {
     const container = document.getElementById('matrix-container');
     if (!matrix || !matrix.headers || !matrix.rows) {
@@ -596,14 +599,53 @@ function displayMatrix(matrix) {
     matrix.rows.forEach(row => {
         html += `<tr><td><strong>${row.roomCode}</strong></td>`;
         row.availability.forEach(avail => {
-            let color = avail > 2 ? 'var(--success-color)' : (avail > 0 ? 'orange' : 'var(--secondary-accent)');
-            html += `<td style="color:${color}; font-weight: bold;">${avail}</td>`;
+            // MODIFICATION: Removed inline style logic.
+            // The new 'colorMatrixCells' function will handle styling.
+            html += `<td>${avail}</td>`;
         });
         html += '</tr>';
     });
     html += '</tbody></table>';
     container.innerHTML = html;
+
+    // NEW: Call the coloring function after the HTML is rendered
+    colorMatrixCells();
 }
+
+// --- NEW FUNCTION ---
+/**
+ * Applies color classes to the availability matrix cells based on their
+ * numeric value (red for < 0, black for 0-2, blue for 3+).
+ */
+function colorMatrixCells() {
+    // Find all data cells (td) inside the matrix table
+    // We skip the first cell in each row (the Room Type) using :not(:first-child)
+    const cells = document.querySelectorAll("#matrix-container td:not(:first-child)");
+
+    cells.forEach(cell => {
+        // Get the text from the cell and turn it into a number
+        const value = parseInt(cell.textContent, 10);
+
+        // Skip cells that aren't numbers (e.g., if they are empty)
+        if (isNaN(value)) {
+            return;
+        }
+
+        // Remove any old classes just in case
+        cell.classList.remove('matrix-neg', 'matrix-low', 'matrix-high');
+
+        // Add the correct class based on the value
+        if (value < 0) {
+            cell.classList.add('matrix-neg'); // Red (from CSS)
+        } else if (value >= 3) {
+            cell.classList.add('matrix-high'); // Blue (from CSS)
+        } else {
+            // This will cover 0, 1, and 2
+            cell.classList.add('matrix-low'); // Black (from CSS)
+        }
+    });
+}
+
 
 function showError(error) {
     showLoader(false);
@@ -757,10 +799,10 @@ function generateRecommendationsFromData(allReservations, rules) {
             // --- ***MODIFIED CODE (Addition 2)*** ---
             // This line is modified to filter out completed Res IDs.
             const eligibleReservations = arrivalsForThisDay.filter(res => 
-                res.roomType === roomToEvaluate &&                     // Matches room
+                res.roomType === roomToEvaluate &&                 // Matches room
                 !otaRates.some(ota => res.rate.toLowerCase().includes(ota)) && // Not an OTA rate
-                !completedResIdsForProfile.has(res.resId) &&           // NOT already completed
-                !ineligibleUpgrades.includes(res.roomType)             // <-- *** THIS IS THE NEW LINE ***
+                !completedResIdsForProfile.has(res.resId) &&      // NOT already completed
+                !ineligibleUpgrades.includes(res.roomType)        // <-- *** THIS IS THE NEW LINE ***
             );
             // --- ***END MODIFIED CODE*** ---
 
@@ -942,5 +984,3 @@ function generateMatrixData(totalInventory, reservationsByDate, startDate, roomH
     });
     return matrix;
 }
-
-
