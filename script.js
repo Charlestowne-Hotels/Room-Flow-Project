@@ -9,7 +9,14 @@ const db = firebase.firestore();
 const ADMIN_UIDS = [
     "7BdsGq6vJ7UTmAQgVoiEesgEiao1",    // jryan@charlestownehotels.com
     "WDOdrOdpcrPjVGyN5VmBEs4KdvW2",    // mspangler@charlestownehotels.com
-    "HjYycTyitXe10iN05MK1grYoklw2"     // jcapps@charlestownehotels.com
+    "HjYycTyitXe10iN05MK1grYoklw2",    // jcapps@charlestownehotels.com
+    "X8GhArhO62YyqSGLgrDznMlHTdv2",    // pbeam@charlestownehotels.com
+    "uk1RjvuRfsen7mG9Z69q0AWxZv63",    // kchouinard@charlestownehotels.com
+    "p3X9TJob5adaeGgfteXUqpBHBIQ2",    // bhill@charlestownehotels.com
+    "RtUsePG61cWLIct2NAHTunMyLx52",    // alane@charlestownehotels.com
+    "5GpiVNFuoJMIgY7yHuY421XfXfk2",    // smaley@charlestownehotels.com
+    "mvnlLEc3w5VafHxqbGsFbrKpErk1",    // kdehaven@charlestownehotels.com
+    "LpryX2KYn1fJMD1tqHYrjNef8tZ2"     // ndonnell@charlestownehotels.com
 ];
 
 
@@ -935,3 +942,4 @@ function generateMatrixData(totalInventory, reservationsByDate, startDate, roomH
     });
     return matrix;
 }
+
