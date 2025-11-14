@@ -14,8 +14,8 @@
 
   /* Other UI Colors (NEW) */
   --border-color: #E5E7EB;   /* Light gray for borders */
-  --score-bg: #EF4444;       /* A modern red for alerts/scores (kept for other potential uses) */
-  --success-color: #10B981;   /* A modern green (kept for other potential uses) */
+  --score-bg: #EF4444;       /* A modern red for alerts/scores */
+  --success-color: #10B981;   /* A modern green */
   --info-color: #0EA5E9;       /* A modern light blue */
 }
 
@@ -131,7 +131,6 @@ button:disabled {
 }
 .accept-btn:hover { background-color: #2525DD; } /* Darker blue */
 
-/* MODIFIED: PMS button to use primary accent blue */
 .pms-btn {
   background-color: var(--primary-accent); /* Blue */
   color: white; 
@@ -145,21 +144,57 @@ button:disabled {
 }
 .pms-btn:hover { background-color: #2525DD; } /* Darker blue */
 .pms-btn:disabled { background-color: #aaa; cursor: not-allowed; }
-.rec-card.completed { opacity: 0.6; }
+
+/* MODIFIED: Completed card styling */
+.rec-card.completed { 
+  opacity: 0.7; /* Keep it slightly faded */
+}
+/* Make the header blue for completed cards */
+.rec-card.completed .rec-info h3 {
+  color: var(--primary-accent);
+}
+
 
 #inventory, #message { 
   background-color: var(--card-bg); 
   padding: 15px; border-radius: 8px; margin-bottom: 15px; 
 }
 #matrix-container table { width: 100%; border-collapse: collapse; }
-#matrix-container th, #matrix-container td { 
+#matrix-container th { 
   padding: 8px; text-align: center; 
   border: 1px solid var(--border-color); 
-}
-#matrix-container th { 
   background-color: var(--card-bg); 
   color: var(--heading-color);
 }
+/* MODIFIED: Default matrix cell style (for 0-2) */
+#matrix-container td { 
+  padding: 8px; text-align: center; 
+  border: 1px solid var(--border-color); 
+  color: var(--heading-color); /* Default "black" */
+  font-weight: 600;
+}
+
+/* --- NEW MATRIX STYLES --- */
+/* Use JavaScript to add these classes based on cell value */
+
+/* Red for negative numbers */
+#matrix-container td.matrix-neg {
+  color: var(--score-bg); /* Use the 'modern red' */
+  font-weight: 600;
+}
+
+/* Black/default for 0-2 (covered by default td, but here for clarity) */
+#matrix-container td.matrix-low {
+  color: var(--heading-color);
+  font-weight: 600;
+}
+
+/* Blue for 3 and above */
+#matrix-container td.matrix-high {
+  color: var(--primary-accent);
+  font-weight: 600;
+}
+
 #loader { display: none; text-align: center; padding: 20px; font-size: 18px; }
 .spinner { 
   border: 4px solid rgba(0, 0, 0, 0.1); 
