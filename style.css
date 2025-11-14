@@ -14,8 +14,8 @@
 
   /* Other UI Colors (NEW) */
   --border-color: #E5E7EB;   /* Light gray for borders */
-  --score-bg: #EF4444;       /* A modern red for alerts/scores */
-  --success-color: #10B981;   /* A modern green */
+  --score-bg: #EF4444;       /* A modern red for alerts/scores (kept for other potential uses) */
+  --success-color: #10B981;   /* A modern green (kept for other potential uses) */
   --info-color: #0EA5E9;       /* A modern light blue */
 }
 
@@ -107,21 +107,32 @@ button:disabled {
 .rec-details { font-size: 14px; color: var(--label-color); line-height: 1.5; }
 .rec-reason { font-size: 12px; color: var(--text-color); margin-top: 5px; font-style: italic; }
 .rec-actions { display: flex; flex-direction: column; align-items: center; gap: 8px; margin-left: 20px; text-align: center; }
+
+/* MODIFIED: Score styling to be black text, no red bubble */
 .rec-score { 
-  background-color: var(--score-bg); 
-  color: white;
-  padding: 5px 10px; border-radius: 12px; font-weight: bold; font-size: 16px; min-width: 40px; 
+  background-color: transparent; /* No background */
+  color: var(--heading-color); /* Black text */
+  padding: 0; /* Remove padding */
+  border-radius: 0; /* No border-radius */
+  font-weight: bold; 
+  font-size: 16px; 
+  min-width: unset; /* Remove min-width */
 }
+
 .rec-upgrade-to strong { 
   font-size: 16px; 
   color: var(--primary-accent); 
 }
+
+/* MODIFIED: Accept button to use primary accent blue */
 .accept-btn {
-  background-color: var(--success-color); 
-  color: white; border: none; padding: 6px 12px;
+  background-color: var(--primary-accent); /* Blue */
+  color: white; 
+  border: none; padding: 6px 12px;
   border-radius: 4px; font-size: 13px; cursor: pointer; margin-top: 5px; width: 80px;
 }
-.accept-btn:hover { background-color: #0d9068; } /* Darker green */
+.accept-btn:hover { background-color: #2525DD; } /* Darker blue */
+
 .pms-btn {
   background-color: var(--info-color); 
   color: white; border: none; padding: 6px 12px;
