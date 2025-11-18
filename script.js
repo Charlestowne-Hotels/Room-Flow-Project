@@ -721,29 +721,27 @@ function processUpgradeData(csvContent, rules) {
     return generateRecommendationsFromData(allReservations, rules);
 }
 
-// --- THIS IS THE MODIFIED FUNCTION ---
+// --- MODIFIED FUNCTION: NOW INCLUDES DISTANCE SORTING ---
 function generateRecommendationsFromData(allReservations, rules) {
-    // --- ***MODIFICATION 2: Pass profile to get master inventory*** ---
+    // --- 1. Get Master Inventory based on Profile ---
     const masterInventory = getMasterInventory(rules.profile);
 
-    // --- NEW: Safety check if inventory fails to load ---
+    // Safety check if inventory fails to load
     if (Object.keys(masterInventory).length === 0) {
         return {
             error: `Could not load master inventory for profile '${rules.profile}'. Please check the MASTER_INVENTORIES configuration.`
         };
     }
 
-    // --- ***NEW CODE (Addition 1)*** ---
-    // Create a Set of all completed Res IDs for the current profile for fast lookup.
+    // --- 2. Filter out already completed upgrades for this specific profile ---
     const currentProfile = rules.profile;
     const completedResIdsForProfile = new Set(
         completedUpgrades
-            .filter(up => up.profile === currentProfile) // Filter for current profile
-            .map(up => up.resId)                     // Get just the Res ID
+            .filter(up => up.profile === currentProfile)
+            .map(up => up.resId)
     );
-    // --- ***END NEW CODE*** ---
 
-
+    // Check if we have reservations to process
     if (allReservations.length === 0) {
         return {
             recommendations: [],
@@ -752,15 +750,19 @@ function generateRecommendationsFromData(allReservations, rules) {
             message: 'No valid reservations found in the uploaded file matching the criteria.'
         };
     }
+
     const startDate = parseDate(rules.selectedDate);
     const reservationsByDate = buildReservationsByDate(allReservations);
     const todayInventory = getInventoryForDate(masterInventory, reservationsByDate, startDate);
     const roomHierarchy = rules.hierarchy.toUpperCase().split(',').map(r => r.trim()).filter(Boolean);
     const matrixData = generateMatrixData(masterInventory, reservationsByDate, startDate, roomHierarchy);
+    
     const originalTargetRooms = rules.targetRooms.toUpperCase().split(',').map(r => r.trim()).filter(Boolean);
     const otaRates = rules.otaRates.toLowerCase().split(',').map(r => r.trim()).filter(Boolean);
     const ineligibleUpgrades = rules.ineligibleUpgrades.toUpperCase().split(',').map(r => r.trim()).filter(Boolean);
     const useDefaultLogic = originalTargetRooms.length === 0;
+
+    // Helper to check availability across the entire stay
     const isRoomAvailableForStay = (roomCode, reservation, invByDate, masterInv) => {
         let checkDate = new Date(reservation.arrival);
         while (checkDate < reservation.departure) {
@@ -771,13 +773,21 @@ function generateRecommendationsFromData(allReservations, rules) {
         }
         return true;
     };
+
     let recommendations = [];
+
+    // --- 3. Loop through the next 7 days ---
     for (let dayOffset = 0; dayOffset < 7; dayOffset++) {
         const currentDate = new Date(startDate);
         currentDate.setUTCDate(currentDate.getUTCDate() + dayOffset);
         const currentTimestamp = currentDate.getTime();
+        
+        // Filter for reservations arriving on this specific day
         const arrivalsForThisDay = allReservations.filter(r => r.arrival && r.arrival.getTime() === currentTimestamp && r.status === 'RESERVATION');
+        
         let processingQueue = useDefaultLogic ? [...roomHierarchy] : [...originalTargetRooms];
+
+        // Logic to populate processing queue if specific target rooms are defined
         if (!useDefaultLogic) {
             originalTargetRooms.forEach(targetRoom => {
                 if (!arrivalsForThisDay.some(res => res.roomType === targetRoom)) {
@@ -794,47 +804,70 @@ function generateRecommendationsFromData(allReservations, rules) {
                 }
             });
         }
+
+        // --- 4. Evaluate Rooms ---
         processingQueue.forEach((roomToEvaluate) => {
-            
-            // --- ***MODIFIED CODE (Addition 2)*** ---
-            // This line is modified to filter out completed Res IDs.
             const eligibleReservations = arrivalsForThisDay.filter(res => 
-                res.roomType === roomToEvaluate &&                 // Matches room
-                !otaRates.some(ota => res.rate.toLowerCase().includes(ota)) && // Not an OTA rate
-                !completedResIdsForProfile.has(res.resId) &&      // NOT already completed
-                !ineligibleUpgrades.includes(res.roomType)        // <-- *** THIS IS THE NEW LINE ***
+                res.roomType === roomToEvaluate && 
+                !otaRates.some(ota => res.rate.toLowerCase().includes(ota)) && 
+                !completedResIdsForProfile.has(res.resId) && 
+                !ineligibleUpgrades.includes(res.roomType)
             );
-            // --- ***END MODIFIED CODE*** ---
 
             eligibleReservations.forEach(res => {
                 const currentRoomIndex = roomHierarchy.indexOf(res.roomType);
                 if (currentRoomIndex === -1) return;
                 
-                // --- ***MODIFICATION 3: Uses new getBedType function*** ---
                 const originalBedType = getBedType(res.roomType);
                 if (originalBedType === 'OTHER') return;
 
+                // Look for upgrade candidates up the hierarchy
                 for (let i = currentRoomIndex + 1; i < roomHierarchy.length; i++) {
                     const potentialUpgradeRoom = roomHierarchy[i];
-                    // --- ***MODIFICATION 3: Uses new getBedType function*** ---
                     const potentialBedType = getBedType(potentialUpgradeRoom);
                     
+                    // Must match bed type and not be ineligible
                     if (originalBedType !== potentialBedType || ineligibleUpgrades.includes(potentialUpgradeRoom)) continue;
+
+                    // Check availability
                     if (isRoomAvailableForStay(potentialUpgradeRoom, res, reservationsByDate, masterInventory)) {
                         const score = parseFloat(res.revenue.replace(/[$,]/g, '')) || 0;
+                        
+                        // --- NEW: Calculate Hierarchy Distance ---
+                        // Calculate how many steps away the upgrade is (e.g., 1 step is better than 5 steps)
+                        const distance = i - currentRoomIndex;
+
                         recommendations.push({
-                            name: res.name, resId: res.resId, revenue: res.revenue,
-                            room: res.roomType, rate: res.rate, nights: res.nights,
-                            upgradeTo: potentialUpgradeRoom, score: score,
+                            name: res.name, 
+                            resId: res.resId, 
+                            revenue: res.revenue,
+                            room: res.roomType, 
+                            rate: res.rate, 
+                            nights: res.nights,
+                            upgradeTo: potentialUpgradeRoom, 
+                            score: score,
+                            distance: distance, // Store distance for sorting
                             arrivalDate: currentDate.toLocaleDateString('en-US', { timeZone: 'UTC' })
                         });
-                        break;
+                        
+                        // Stop looking for higher rooms for this guest; we found the first available valid upgrade.
+                        break; 
                     }
                 }
             });
         });
     }
-    recommendations.sort((a, b) => b.score - a.score);
+
+    // --- 5. Sort Recommendations ---
+    // Primary Sort: Revenue (Score) Descending
+    // Secondary Sort (Tie-breaker): Distance Ascending (Closest upgrade wins)
+    recommendations.sort((a, b) => {
+        if (b.score !== a.score) {
+            return b.score - a.score; // High revenue first
+        }
+        return a.distance - b.distance; // If revenue matches, shortest jump first
+    });
+
     return {
         recommendations,
         inventory: todayInventory,
@@ -842,6 +875,7 @@ function generateRecommendationsFromData(allReservations, rules) {
         message: recommendations.length === 0 ? 'No suitable upgrade candidates found for the next 7 days.' : null
     };
 }
+
 // --- END OF MODIFIED FUNCTION ---
 
 // --- ***MODIFICATION 4: Upgraded getBedType function*** ---
