@@ -39,13 +39,20 @@ const profiles = {
         otaRates: 'Expedia, Booking.com, Priceline, GDS',
         ineligibleUpgrades: 'KHAN-K'
     },
-    // --- NEW "SPEC" PROFILE ADDED ---
     spec: {
         hierarchy: 'TQ, TQHC, TK, TKHC, DK, DKS, DKB, DKC, PKSB, GKS',
         targetRooms: '',
         prioritizedRates: 'Best Available, BAR, Rack',
         otaRates: 'Expedia, Booking.com, Priceline, GDS',
         ineligibleUpgrades: 'TKHC,TQHC' // Defaulted HC rooms to ineligible
+    },
+    // --- NEW "COL" PROFILE ADDED ---
+    col: {
+        hierarchy: 'QGST-Q, ADA-Q, KGST-K, QSTE-Q/POC, KGSTV-K, KSTE-K/POC, KSTEV-K/POC, 2BRDM-K/Q/POC',
+        targetRooms: '',
+        prioritizedRates: 'Best Available, BAR, Rack',
+        otaRates: 'Expedia, Booking.com, Priceline, GDS',
+        ineligibleUpgrades: 'ADA-Q' 
     }
     // --- END OF NEW PROFILE ---
 };
@@ -84,7 +91,6 @@ const MASTER_INVENTORIES = {
         { roomNumber: '114', code: 'QQST-QQ' }, { roomNumber: '115', code: 'QQST-QQ' }, { roomNumber: '210', code: 'QQST-QQ' }, { roomNumber: '211', code: 'QQST-QQ' }, { roomNumber: '212', code: 'QQST-QQ' }, { roomNumber: '310', code: 'QQST-QQ' }, { roomNumber: '311', code: 'QQST-QQ' }, { roomNumber: '312', code: 'QQST-QQ' }, { roomNumber: '313', code: 'QQST-QQ' },
         { roomNumber: '405', code: 'SUITE-K' }
     ],
-    // --- NEW "SPEC" INVENTORY ADDED ---
     spec: [
         { roomNumber: '203', code: 'DK' }, { roomNumber: '303', code: 'DK' },
         { roomNumber: '305', code: 'DKB' }, { roomNumber: '306', code: 'DKB' }, { roomNumber: '309', code: 'DKB' }, { roomNumber: '310', code: 'DKB' }, { roomNumber: '311', code: 'DKB' },
@@ -96,6 +102,17 @@ const MASTER_INVENTORIES = {
         { roomNumber: '114', code: 'TKHC' },
         { roomNumber: '108', code: 'TQ' }, { roomNumber: '112', code: 'TQ' }, { roomNumber: '208', code: 'TQ' }, { roomNumber: '212', code: 'TQ' }, { roomNumber: '213', code: 'TQ' }, { roomNumber: '308', code: 'TQ' }, { roomNumber: '312', code: 'TQ' }, { roomNumber: '313', code: 'TQ' },
         { roomNumber: '113', code: 'TQHC' }
+    ],
+    // --- NEW "COL" INVENTORY ADDED ---
+    col: [
+        { roomNumber: 'W101', code: '2BRDM-K/Q/POC' },
+        { roomNumber: 'S101', code: 'ADA-Q' }, { roomNumber: 'S102', code: 'ADA-Q' },
+        { roomNumber: 'C203', code: 'KGST-K' }, { roomNumber: 'D102', code: 'KGST-K' }, { roomNumber: 'H204', code: 'KGST-K' }, { roomNumber: 'R205', code: 'KGST-K' }, { roomNumber: 'S103', code: 'KGST-K' },
+        { roomNumber: 'R203', code: 'KGSTV-K' }, { roomNumber: 'S205', code: 'KGSTV-K' },
+        { roomNumber: 'C102', code: 'KSTE-K/POC' }, { roomNumber: 'C204', code: 'KSTE-K/POC' }, { roomNumber: 'D203', code: 'KSTE-K/POC' }, { roomNumber: 'H102', code: 'KSTE-K/POC' }, { roomNumber: 'H203', code: 'KSTE-K/POC' }, { roomNumber: 'M101', code: 'KSTE-K/POC' }, { roomNumber: 'M103', code: 'KSTE-K/POC' }, { roomNumber: 'M204', code: 'KSTE-K/POC' },
+        { roomNumber: 'D101', code: 'KSTEV-K/POC' }, { roomNumber: 'H101', code: 'KSTEV-K/POC' }, { roomNumber: 'R101', code: 'KSTEV-K/POC' }, { roomNumber: 'R102', code: 'KSTEV-K/POC' }, { roomNumber: 'S207', code: 'KSTEV-K/POC' }, { roomNumber: 'W202', code: 'KSTEV-K/POC' }, { roomNumber: 'W203', code: 'KSTEV-K/POC' },
+        { roomNumber: 'C101', code: 'QGST-Q' }, { roomNumber: 'R204', code: 'QGST-Q' }, { roomNumber: 'S206', code: 'QGST-Q' },
+        { roomNumber: 'M102', code: 'QSTE-Q/POC' }, { roomNumber: 'S104', code: 'QSTE-Q/POC' }
     ]
     // --- END OF NEW INVENTORY ---
 };
@@ -938,18 +955,22 @@ function generateRecommendationsFromData(allReservations, rules) {
  */
 function getBedType(roomCode) {
     if (!roomCode) return 'OTHER';
-    // Check suffixes first
-    if (roomCode.endsWith('-K')) return 'K';
-    if (roomCode.endsWith('-QQ')) return 'QQ';
-    if (roomCode.endsWith('-Q')) return 'Q';
+
+    // 1. Handle 2BRDM specifically (It is K/Q, usually treated as a Suite/Wildcard)
+    // We return 'K' here to allow King upgrades into it, assuming it's the top tier.
+    if (roomCode.includes('2BRDM')) return 'K'; 
+
+    // 2. Check for standard suffixes (Checking Includes handles the /POC issue)
+    if (roomCode.includes('-K')) return 'K';   // Covers KGST-K, KSTE-K/POC, etc.
+    if (roomCode.includes('-QQ')) return 'QQ'; // Covers TQ-QQ, etc.
+    if (roomCode.includes('-Q')) return 'Q';   // Covers ADA-Q, QSTE-Q/POC, etc.
     
-    // --- NEW: Handle SPEC profile codes ---
+    // 3. Handle SPEC profile codes (Prefix based)
     if (roomCode.startsWith('DK')) return 'K'; // DK, DKB, DKC, DKS
     if (roomCode.startsWith('GK')) return 'K'; // GKS
     if (roomCode.startsWith('PK')) return 'K'; // PKSB
     if (roomCode.startsWith('TK')) return 'K'; // TK, TKHC
     if (roomCode.startsWith('TQ')) return 'QQ'; // TQ, TQHC
-    // --- End new codes ---
 
     return 'OTHER';
 }
@@ -1069,4 +1090,3 @@ function generateMatrixData(totalInventory, reservationsByDate, startDate, roomH
     });
     return matrix;
 }
-
