@@ -527,7 +527,7 @@ function displayAcceptedUpgrades() {
             totalValue += parseFloat(rec.revenue.replace(/[$,]/g, '')) || 0;
             const card = document.createElement('div');
             card.className = 'rec-card';
-            card.style.borderLeft = '5px solid #28a745'; // Visual indicator
+            //card.style.borderLeft = '5px solid #28a745'; // Visual indicator
             
             card.innerHTML = `
                                 <div class="rec-info">
@@ -1069,3 +1069,4 @@ function generateMatrixData(totalInventory, reservationsByDate, startDate, roomH
     });
     return matrix;
 }
+
