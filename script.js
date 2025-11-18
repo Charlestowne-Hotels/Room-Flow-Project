@@ -372,15 +372,45 @@ function handleAcceptClick(event) {
     card.style.opacity = '0.5';
     button.disabled = true;
     button.textContent = 'Accepted';
+
+    // --- UPDATED LOGIC FOR UNDO SUPPORT ---
+    // 1. Add to our global accepted array immediately
+    acceptedUpgrades.push(acceptedRec);
+
     setTimeout(() => {
         try {
-            const results = acceptUpgradeAndRecalculate(acceptedRec, acceptedUpgrades, currentCsvContent, currentRules);
+            // 2. Recalculate based on the updated global array
+            const results = applyUpgradesAndRecalculate(acceptedUpgrades, currentCsvContent, currentRules);
             displayResults(results);
         } catch (err) {
             showError(err);
+            // If error, revert UI changes
+            acceptedUpgrades.pop(); // Remove the failed add
             card.style.opacity = '1';
             button.disabled = false;
             button.textContent = 'Accept';
+        }
+    }, 50);
+}
+
+// --- NEW FUNCTION FOR UNDO ---
+function handleUndoClick(event) {
+    const button = event.target;
+    const index = parseInt(button.dataset.index, 10);
+
+    // 1. Remove the item from the acceptedUpgrades array
+    acceptedUpgrades.splice(index, 1);
+
+    // 2. Show loader momentarily
+    showLoader(true, 'Reverting...');
+
+    // 3. Recalculate everything based on the REMAINING accepted upgrades
+    setTimeout(() => {
+        try {
+            const results = applyUpgradesAndRecalculate(acceptedUpgrades, currentCsvContent, currentRules);
+            displayResults(results);
+        } catch (err) {
+            showError(err);
         }
     }, 50);
 }
@@ -485,6 +515,7 @@ function displayRecommendations(recs) {
     }
 }
 
+// --- UPDATED FUNCTION: INCLUDES UNDO BUTTON ---
 function displayAcceptedUpgrades() {
     const container = document.getElementById('accepted-container');
     container.innerHTML = '';
@@ -495,7 +526,9 @@ function displayAcceptedUpgrades() {
         acceptedUpgrades.forEach((rec, index) => {
             totalValue += parseFloat(rec.revenue.replace(/[$,]/g, '')) || 0;
             const card = document.createElement('div');
-            card.className = 'rec-card'; // <-- FIX: was 'className'
+            card.className = 'rec-card';
+            card.style.borderLeft = '5px solid #28a745'; // Visual indicator
+            
             card.innerHTML = `
                                 <div class="rec-info">
                                     <h3>${rec.name} (${rec.resId})</h3>
@@ -505,15 +538,24 @@ function displayAcceptedUpgrades() {
                                     </div>
                                 </div>
                                 <div class="rec-actions">
-                                    <button class="pms-btn" data-index="${index}">Mark as PMS Updated</button>
+                                    <button class="pms-btn" data-index="${index}" style="margin-right: 5px;">Mark as PMS Updated</button>
+                                    <button class="undo-btn" data-index="${index}" style="background-color: #dc3545; color: white;">Undo</button>
                                 </div>
             `;
             container.appendChild(card);
         });
         totalHeader.textContent = `Total Value of Accepted Upgrades: ${totalValue.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}`;
+        
+        // PMS Update Listeners
         container.querySelectorAll('.pms-btn').forEach(btn => {
             btn.addEventListener('click', handlePmsUpdateClick);
         });
+        
+        // Undo Listeners
+        container.querySelectorAll('.undo-btn').forEach(btn => {
+            btn.addEventListener('click', handleUndoClick);
+        });
+
     } else {
         container.innerHTML = '<p>No upgrades have been accepted yet.</p>';
     }
@@ -692,18 +734,27 @@ function parseCsv(csvContent) {
     return { data, header };
 }
 
-function acceptUpgradeAndRecalculate(acceptedRec, previouslyAccepted, csvContent, rules) {
-    const allAccepted = [...previouslyAccepted, acceptedRec];
+// --- RENAMED AND UPGRADED FUNCTION FOR UNDO SUPPORT ---
+function applyUpgradesAndRecalculate(currentAcceptedList, csvContent, rules) {
+    // 1. Parse the original clean CSV data
     const { data, header } = parseCsv(csvContent);
     const allReservations = parseAllReservations(data, header);
-    allAccepted.forEach(rec => {
+
+    // 2. Apply ALL currently accepted upgrades to the clean data
+    // This simulates the PMS being updated so the "original" room is now the "upgraded" room
+    currentAcceptedList.forEach(rec => {
         const reservationToUpdate = allReservations.find(res => res.resId === rec.resId);
         if (reservationToUpdate) {
             reservationToUpdate.roomType = rec.upgradeTo;
         }
     });
+
+    // 3. Generate new recommendations based on this modified state
     const results = generateRecommendationsFromData(allReservations, rules);
-    results.acceptedUpgrades = allAccepted;
+    
+    // 4. Ensure the results object contains our updated list
+    results.acceptedUpgrades = currentAcceptedList;
+    
     return results;
 }
 
@@ -1018,4 +1069,3 @@ function generateMatrixData(totalInventory, reservationsByDate, startDate, roomH
     });
     return matrix;
 }
-
