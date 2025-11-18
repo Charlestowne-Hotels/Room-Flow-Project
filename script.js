@@ -52,7 +52,7 @@ const profiles = {
         targetRooms: '',
         prioritizedRates: 'Best Available, BAR, Rack',
         otaRates: 'Expedia, Booking.com, Priceline, GDS',
-        ineligibleUpgrades: 'ADA-Q' 
+        ineligibleUpgrades: 'ADA-Q,2BRDM-K/Q/POC' 
     }
     // --- END OF NEW PROFILE ---
 };
@@ -1090,3 +1090,4 @@ function generateMatrixData(totalInventory, reservationsByDate, startDate, roomH
     });
     return matrix;
 }
+
