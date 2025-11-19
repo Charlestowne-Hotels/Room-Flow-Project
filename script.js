@@ -16,7 +16,8 @@ const ADMIN_UIDS = [
     "RtUsePG61cWLIct2NAHTunMyLx52",    // alane@charlestownehotels.com
     "5GpiVNFuoJMIgY7yHuY421XfXfk2",    // smaley@charlestownehotels.com
     "mvnlLEc3w5VafHxqbGsFbrKpErk1",    // kdehaven@charlestownehotels.com
-    "LpryX2KYn1fJMD1tqHYrjNef8tZ2"     // ndonnell@charlestownehotels.com
+    "LpryX2KYn1fJMD1tqHYrjNef8tZ2",     // ndonnell@charlestownehotels.com
+    "YgGvmU25eZbNfByPhIwy8IZvRBK2"       //nknott@charlestownwhotels.com  
 ];
 
 
@@ -1090,4 +1091,5 @@ function generateMatrixData(totalInventory, reservationsByDate, startDate, roomH
     });
     return matrix;
 }
+
 
