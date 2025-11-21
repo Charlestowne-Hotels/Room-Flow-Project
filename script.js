@@ -562,19 +562,51 @@ function displayRecommendations(recs) {
     }
 }
 
-// --- UPDATED FUNCTION: INCLUDES UNDO BUTTON ---
+// --- UPDATED FUNCTION: INCLUDES UNDO BUTTON AND EXPORT BUTTON ---
 function displayAcceptedUpgrades() {
     const container = document.getElementById('accepted-container');
     container.innerHTML = '';
     let totalValue = 0;
     if (acceptedUpgrades && acceptedUpgrades.length > 0) {
-        const totalHeader = document.createElement('h3');
-        container.appendChild(totalHeader);
-        acceptedUpgrades.forEach((rec, index) => {
+
+        // --- NEW: Control Header Container ---
+        const controlsContainer = document.createElement('div');
+        controlsContainer.style.display = 'flex';
+        controlsContainer.style.justifyContent = 'space-between';
+        controlsContainer.style.alignItems = 'center';
+        controlsContainer.style.marginBottom = '20px';
+        controlsContainer.style.padding = '10px';
+        controlsContainer.style.backgroundColor = '#f8f9fa';
+        controlsContainer.style.borderRadius = '5px';
+
+        acceptedUpgrades.forEach((rec) => {
             totalValue += parseFloat(rec.revenue.replace(/[$,]/g, '')) || 0;
+        });
+
+        const totalHeader = document.createElement('h3');
+        totalHeader.style.margin = '0';
+        totalHeader.textContent = `Total Value: ${totalValue.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}`;
+
+        // Export Button
+        const exportBtn = document.createElement('button');
+        exportBtn.textContent = 'Download CSV';
+        exportBtn.style.backgroundColor = '#28a745'; // Green
+        exportBtn.style.color = 'white';
+        exportBtn.style.border = 'none';
+        exportBtn.style.padding = '10px 15px';
+        exportBtn.style.borderRadius = '4px';
+        exportBtn.style.cursor = 'pointer';
+        exportBtn.style.fontSize = '14px';
+        exportBtn.addEventListener('click', downloadAcceptedUpgradesCsv); // Attach new function
+
+        controlsContainer.appendChild(totalHeader);
+        controlsContainer.appendChild(exportBtn);
+        container.appendChild(controlsContainer);
+        // --- END NEW CONTROLS ---
+
+        acceptedUpgrades.forEach((rec, index) => {
             const card = document.createElement('div');
             card.className = 'rec-card';
-            //card.style.borderLeft = '5px solid #28a745'; // Visual indicator
             
             card.innerHTML = `
                                 <div class="rec-info">
@@ -591,7 +623,6 @@ function displayAcceptedUpgrades() {
             `;
             container.appendChild(card);
         });
-        totalHeader.textContent = `Total Value of Accepted Upgrades: ${totalValue.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}`;
         
         // PMS Update Listeners
         container.querySelectorAll('.pms-btn').forEach(btn => {
@@ -1129,5 +1160,42 @@ function generateMatrixData(totalInventory, reservationsByDate, startDate, roomH
     return matrix;
 }
 
+// --- NEW FUNCTION: Export Accepted Upgrades to CSV ---
+function downloadAcceptedUpgradesCsv() {
+    if (!acceptedUpgrades || acceptedUpgrades.length === 0) {
+        alert("No data to export.");
+        return;
+    }
 
+    // 1. Define CSV Headers
+    const headers = ['Guest Name', 'Res ID', 'Current Room Type', 'Room Type to Upgrade To'];
+    
+    // 2. Map the data to rows
+    // We wrap fields in quotes "" to handle potential commas within names
+    const rows = acceptedUpgrades.map(rec => {
+        return [
+            `"${rec.name}"`,
+            `"${rec.resId}"`,
+            `"${rec.room}"`,
+            `"${rec.upgradeTo}"`
+        ].join(',');
+    });
 
+    // 3. Combine headers and rows
+    const csvContent = [headers.join(','), ...rows].join('\n');
+
+    // 4. Create a Blob and Trigger Download
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    
+    // Generate a filename with the current date
+    const dateStr = new Date().toISOString().slice(0, 10);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `accepted_upgrades_${dateStr}.csv`);
+    link.style.visibility = 'hidden';
+    
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+}
