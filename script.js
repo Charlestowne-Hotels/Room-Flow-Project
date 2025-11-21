@@ -855,7 +855,7 @@ function processUpgradeData(csvContent, rules) {
     return generateRecommendationsFromData(allReservations, rules);
 }
 
-// --- MODIFIED FUNCTION: NOW INCLUDES DISTANCE SORTING ---
+// --- MODIFIED FUNCTION: NOW INCLUDES DEPARTURE DATE IN DATA ---
 function generateRecommendationsFromData(allReservations, rules) {
     // --- 1. Get Master Inventory based on Profile ---
     const masterInventory = getMasterInventory(rules.profile);
@@ -967,8 +967,7 @@ function generateRecommendationsFromData(allReservations, rules) {
                     if (isRoomAvailableForStay(potentialUpgradeRoom, res, reservationsByDate, masterInventory)) {
                         const score = parseFloat(res.revenue.replace(/[$,]/g, '')) || 0;
                         
-                        // --- NEW: Calculate Hierarchy Distance ---
-                        // Calculate how many steps away the upgrade is (e.g., 1 step is better than 5 steps)
+                        // Calculate Hierarchy Distance
                         const distance = i - currentRoomIndex;
 
                         recommendations.push({
@@ -981,7 +980,9 @@ function generateRecommendationsFromData(allReservations, rules) {
                             upgradeTo: potentialUpgradeRoom, 
                             score: score,
                             distance: distance, // Store distance for sorting
-                            arrivalDate: currentDate.toLocaleDateString('en-US', { timeZone: 'UTC' })
+                            arrivalDate: currentDate.toLocaleDateString('en-US', { timeZone: 'UTC' }),
+                            // --- NEW: Adding Departure Date to the object ---
+                            departureDate: res.departure.toLocaleDateString('en-US', { timeZone: 'UTC' })
                         });
                         
                         // Stop looking for higher rooms for this guest; we found the first available valid upgrade.
@@ -1165,15 +1166,22 @@ function generateMatrixData(totalInventory, reservationsByDate, startDate, roomH
     return matrix;
 }
 
-// --- NEW FUNCTION: Export Accepted Upgrades to CSV ---
+// --- UPDATED FUNCTION: Export Accepted Upgrades to CSV with Dates ---
 function downloadAcceptedUpgradesCsv() {
     if (!acceptedUpgrades || acceptedUpgrades.length === 0) {
         alert("No data to export.");
         return;
     }
 
-    // 1. Define CSV Headers
-    const headers = ['Guest Name', 'Res ID', 'Current Room Type', 'Room Type to Upgrade To'];
+    // 1. Define CSV Headers (Added Arrival and Departure)
+    const headers = [
+        'Guest Name', 
+        'Res ID', 
+        'Current Room Type', 
+        'Room Type to Upgrade To', 
+        'Arrival Date', 
+        'Departure Date'
+    ];
     
     // 2. Map the data to rows
     // We wrap fields in quotes "" to handle potential commas within names
@@ -1182,7 +1190,9 @@ function downloadAcceptedUpgradesCsv() {
             `"${rec.name}"`,
             `"${rec.resId}"`,
             `"${rec.room}"`,
-            `"${rec.upgradeTo}"`
+            `"${rec.upgradeTo}"`,
+            `"${rec.arrivalDate}"`,   // Existing field
+            `"${rec.departureDate}"` // New field added in generateRecommendationsFromData
         ].join(',');
     });
 
