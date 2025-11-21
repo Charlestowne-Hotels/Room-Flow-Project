@@ -16,8 +16,8 @@ const ADMIN_UIDS = [
     "RtUsePG61cWLIct2NAHTunMyLx52",    // alane@charlestownehotels.com
     "5GpiVNFuoJMIgY7yHuY421XfXfk2",    // smaley@charlestownehotels.com
     "mvnlLEc3w5VafHxqbGsFbrKpErk1",    // kdehaven@charlestownehotels.com
-    "LpryX2KYn1fJMD1tqHYrjNef8tZ2",     // ndonnell@charlestownehotels.com
-    "YgGvmU25eZbNfByPhIwy8IZvRBK2"       //nknott@charlestownwhotels.com  
+    "LpryX2KYn1fJMD1tqHYrjNef8tZ2",      // ndonnell@charlestownehotels.com
+    "YgGvmU25eZbNfByPhIwy8IZvRBK2"        //nknott@charlestownwhotels.com  
 ];
 
 
@@ -47,13 +47,20 @@ const profiles = {
         otaRates: 'Expedia, Booking.com, Priceline, GDS',
         ineligibleUpgrades: 'TKHC,TQHC' // Defaulted HC rooms to ineligible
     },
-    // --- NEW "COL" PROFILE ADDED ---
     col: {
         hierarchy: 'QGST-Q, ADA-Q, KGST-K, QSTE-Q/POC, KGSTV-K, KSTE-K/POC, KSTEV-K/POC, 2BRDM-K/Q/POC',
         targetRooms: '',
         prioritizedRates: 'Best Available, BAR, Rack',
         otaRates: 'Expedia, Booking.com, Priceline, GDS',
         ineligibleUpgrades: 'ADA-Q,2BRDM-K/Q/POC' 
+    },
+    // --- NEW "IVY" PROFILE ADDED ---
+    ivy: {
+        hierarchy: 'SQ, KS, KSO, DQS, CSQ, CKS, DQSA, KSA, SQA',
+        targetRooms: '',
+        prioritizedRates: 'Best Available, BAR, Rack',
+        otaRates: 'Expedia, Booking.com, Priceline, GDS',
+        ineligibleUpgrades: 'DQSA, KSA, SQA' // Defaulted ADA/Accessible rooms to ineligible
     }
     // --- END OF NEW PROFILE ---
 };
@@ -104,7 +111,6 @@ const MASTER_INVENTORIES = {
         { roomNumber: '108', code: 'TQ' }, { roomNumber: '112', code: 'TQ' }, { roomNumber: '208', code: 'TQ' }, { roomNumber: '212', code: 'TQ' }, { roomNumber: '213', code: 'TQ' }, { roomNumber: '308', code: 'TQ' }, { roomNumber: '312', code: 'TQ' }, { roomNumber: '313', code: 'TQ' },
         { roomNumber: '113', code: 'TQHC' }
     ],
-    // --- NEW "COL" INVENTORY ADDED ---
     col: [
         { roomNumber: 'W101', code: '2BRDM-K/Q/POC' },
         { roomNumber: 'S101', code: 'ADA-Q' }, { roomNumber: 'S102', code: 'ADA-Q' },
@@ -114,6 +120,31 @@ const MASTER_INVENTORIES = {
         { roomNumber: 'D101', code: 'KSTEV-K/POC' }, { roomNumber: 'H101', code: 'KSTEV-K/POC' }, { roomNumber: 'R101', code: 'KSTEV-K/POC' }, { roomNumber: 'R102', code: 'KSTEV-K/POC' }, { roomNumber: 'S207', code: 'KSTEV-K/POC' }, { roomNumber: 'W202', code: 'KSTEV-K/POC' }, { roomNumber: 'W203', code: 'KSTEV-K/POC' },
         { roomNumber: 'C101', code: 'QGST-Q' }, { roomNumber: 'R204', code: 'QGST-Q' }, { roomNumber: 'S206', code: 'QGST-Q' },
         { roomNumber: 'M102', code: 'QSTE-Q/POC' }, { roomNumber: 'S104', code: 'QSTE-Q/POC' }
+    ],
+    // --- NEW "IVY" INVENTORY ADDED ---
+    ivy: [
+        // CKS
+        { roomNumber: '1401', code: 'CKS' }, { roomNumber: '1402', code: 'CKS' }, { roomNumber: '1404', code: 'CKS' }, { roomNumber: '1405', code: 'CKS' },
+        // CSQ
+        { roomNumber: '1403', code: 'CSQ' },
+        // DQS
+        { roomNumber: '201', code: 'DQS' }, { roomNumber: '205', code: 'DQS' }, { roomNumber: '301', code: 'DQS' }, { roomNumber: '305', code: 'DQS' }, { roomNumber: '401', code: 'DQS' },
+        // DQSA
+        { roomNumber: '405', code: 'DQSA' },
+        // KS
+        { roomNumber: '1001', code: 'KS' }, { roomNumber: '1002', code: 'KS' }, { roomNumber: '1101', code: 'KS' }, { roomNumber: '1202', code: 'KS' }, { roomNumber: '1301', code: 'KS' }, { roomNumber: '1302', code: 'KS' },
+        { roomNumber: '202', code: 'KS' }, { roomNumber: '302', code: 'KS' }, { roomNumber: '402', code: 'KS' }, { roomNumber: '501', code: 'KS' }, { roomNumber: '601', code: 'KS' }, { roomNumber: '602', code: 'KS' },
+        { roomNumber: '701', code: 'KS' }, { roomNumber: '702', code: 'KS' }, { roomNumber: '801', code: 'KS' }, { roomNumber: '802', code: 'KS' }, { roomNumber: '901', code: 'KS' }, { roomNumber: '902', code: 'KS' },
+        // KSA
+        { roomNumber: '1201', code: 'KSA' }, { roomNumber: '502', code: 'KSA' },
+        // KSO
+        { roomNumber: '1004', code: 'KSO' }, { roomNumber: '1005', code: 'KSO' }, { roomNumber: '1104', code: 'KSO' }, { roomNumber: '1105', code: 'KSO' }, { roomNumber: '1204', code: 'KSO' }, { roomNumber: '1205', code: 'KSO' }, { roomNumber: '1304', code: 'KSO' }, { roomNumber: '1305', code: 'KSO' },
+        { roomNumber: '204', code: 'KSO' }, { roomNumber: '304', code: 'KSO' }, { roomNumber: '404', code: 'KSO' }, { roomNumber: '504', code: 'KSO' }, { roomNumber: '505', code: 'KSO' }, { roomNumber: '604', code: 'KSO' }, { roomNumber: '605', code: 'KSO' },
+        { roomNumber: '704', code: 'KSO' }, { roomNumber: '705', code: 'KSO' }, { roomNumber: '804', code: 'KSO' }, { roomNumber: '805', code: 'KSO' }, { roomNumber: '904', code: 'KSO' }, { roomNumber: '905', code: 'KSO' },
+        // SQ
+        { roomNumber: '1003', code: 'SQ' }, { roomNumber: '1103', code: 'SQ' }, { roomNumber: '1203', code: 'SQ' }, { roomNumber: '1303', code: 'SQ' }, { roomNumber: '403', code: 'SQ' }, { roomNumber: '503', code: 'SQ' }, { roomNumber: '603', code: 'SQ' }, { roomNumber: '703', code: 'SQ' }, { roomNumber: '903', code: 'SQ' },
+        // SQA
+        { roomNumber: '803', code: 'SQA' }
     ]
     // --- END OF NEW INVENTORY ---
 };
@@ -170,8 +201,6 @@ function setAdminControls(isAdmin) {
         document.getElementById('prioritized-rates'),
         document.getElementById('ota-rates'),
         document.getElementById('ineligible-upgrades'),
-
-
     ];
 
     // Loop through each element and set its 'disabled' state
@@ -950,8 +979,8 @@ function generateRecommendationsFromData(allReservations, rules) {
 // --- ***MODIFICATION 4: Upgraded getBedType function*** ---
 /**
  * Gets the bed type from a room code.
- * This is now flexible to support 'TK-K', 'TQ-QQ', '1QST-Q', and 'DK' style codes.
- * @param {string} roomCode - The room type code (e.g., "KGST-K").
+ * This is now flexible to support 'TK-K', 'TQ-QQ', '1QST-Q', 'DK', and new IVY (SQ, KS) style codes.
+ * @param {string} roomCode - The room type code (e.g., "KGST-K", "SQ", "KS").
  * @returns {string} The bed type ('K', 'QQ', 'Q') or 'OTHER'.
  */
 function getBedType(roomCode) {
@@ -962,16 +991,24 @@ function getBedType(roomCode) {
     if (roomCode.includes('2BRDM')) return 'K'; 
 
     // 2. Check for standard suffixes (Checking Includes handles the /POC issue)
-    if (roomCode.includes('-K')) return 'K';   // Covers KGST-K, KSTE-K/POC, etc.
+    if (roomCode.includes('-K')) return 'K';    // Covers KGST-K, KSTE-K/POC, etc.
     if (roomCode.includes('-QQ')) return 'QQ'; // Covers TQ-QQ, etc.
-    if (roomCode.includes('-Q')) return 'Q';   // Covers ADA-Q, QSTE-Q/POC, etc.
+    if (roomCode.includes('-Q')) return 'Q';    // Covers ADA-Q, QSTE-Q/POC, etc.
     
-    // 3. Handle SPEC profile codes (Prefix based)
-    if (roomCode.startsWith('DK')) return 'K'; // DK, DKB, DKC, DKS
+    // 3. Handle SPEC profile codes (Prefix based - Specifics)
+    if (roomCode.startsWith('DK')) return 'K'; // DK, DKB, DKC, DKS (Note: Starts with D, but is King)
     if (roomCode.startsWith('GK')) return 'K'; // GKS
     if (roomCode.startsWith('PK')) return 'K'; // PKSB
     if (roomCode.startsWith('TK')) return 'K'; // TK, TKHC
     if (roomCode.startsWith('TQ')) return 'QQ'; // TQ, TQHC
+
+    // 4. Handle IVY profile codes (Prefix/Whole based)
+    if (roomCode === 'CKS') return 'K'; // Corner King Suite
+    if (roomCode === 'CSQ') return 'Q'; // Corner Standard Queen
+    
+    if (roomCode.startsWith('KS')) return 'K'; // KS, KSO, KSA
+    if (roomCode.startsWith('SQ')) return 'Q'; // SQ, SQA
+    if (roomCode.startsWith('DQ')) return 'QQ'; // DQS, DQSA
 
     return 'OTHER';
 }
@@ -1091,5 +1128,3 @@ function generateMatrixData(totalInventory, reservationsByDate, startDate, roomH
     });
     return matrix;
 }
-
-
