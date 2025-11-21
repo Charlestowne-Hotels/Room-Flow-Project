@@ -584,7 +584,7 @@ function displayAcceptedUpgrades() {
         const exportBtn = document.createElement('button');
         exportBtn.textContent = 'Download CSV';
         // Changed to standard blue. Adjust hex if needed.
-        exportBtn.style.backgroundColor = '#007bff'; 
+        exportBtn.style.backgroundColor = '#4343FF'; 
         exportBtn.style.color = 'white';
         exportBtn.style.border = 'none';
         exportBtn.style.padding = '10px 15px';
@@ -1192,3 +1192,4 @@ function downloadAcceptedUpgradesCsv() {
     link.click();
     document.body.removeChild(link);
 }
+
