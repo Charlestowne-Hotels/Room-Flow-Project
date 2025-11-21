@@ -5,7 +5,7 @@ firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.firestore();
 
-// --- NEW: An array to hold all Admin UIDs ---
+// --- ADMIN UIDS ---
 const ADMIN_UIDS = [
     "7BdsGq6vJ7UTmAQgVoiEesgEiao1",    // jryan@charlestownehotels.com
     "WDOdrOdpcrPjVGyN5VmBEs4KdvW2",    // mspangler@charlestownehotels.com
@@ -23,8 +23,11 @@ const ADMIN_UIDS = [
 
 // --- DOM ELEMENT REFERENCES ---
 let loginContainer, appContainer, signinBtn, signoutBtn, emailInput, passwordInput, errorMessage, clearAnalyticsBtn;
+// New references for saving rules
+let saveRulesBtn, saveStatus;
 
 // --- STATE MANAGEMENT & PROFILES ---
+// These serve as DEFAULTS. If Firebase has data, it will overwrite these.
 const profiles = {
     fqi: {
         hierarchy: 'TQ-QQ,TQHC-QQ,TK-K, DK-K, KJS-K/POC, QJS-QQ/POC, CTK-K, KBS-K/POC, PMVB-QQ, DMVT-QQ, GMVC-QQ, LKBS-K/POC, GMVB-QQ/POC, GMVT-QQ/POC',
@@ -45,7 +48,7 @@ const profiles = {
         targetRooms: '',
         prioritizedRates: 'Best Available, BAR, Rack',
         otaRates: 'Expedia, Booking.com, Priceline, GDS',
-        ineligibleUpgrades: 'TKHC,TQHC' // Defaulted HC rooms to ineligible
+        ineligibleUpgrades: 'TKHC,TQHC'
     },
     col: {
         hierarchy: 'QGST-Q, ADA-Q, KGST-K, QSTE-Q/POC, KGSTV-K, KSTE-K/POC, KSTEV-K/POC, 2BRDM-K/Q/POC',
@@ -54,18 +57,16 @@ const profiles = {
         otaRates: 'Expedia, Booking.com, Priceline, GDS',
         ineligibleUpgrades: 'ADA-Q,2BRDM-K/Q/POC' 
     },
-    // --- NEW "IVY" PROFILE ADDED ---
     ivy: {
         hierarchy: 'SQ, KS, KSO, DQS, CSQ, CKS, DQSA, KSA, SQA',
         targetRooms: '',
         prioritizedRates: 'Best Available, BAR, Rack',
         otaRates: 'Expedia, Booking.com, HotelTonight, Priceline', 
-        ineligibleUpgrades: 'DQSA, KSA, SQA' // Defaulted ADA/Accessible rooms to ineligible
+        ineligibleUpgrades: 'DQSA, KSA, SQA'
     }
-    // --- END OF NEW PROFILE ---
 };
 
-// --- NEW: A central object for all master inventory lists ---
+// --- MASTER INVENTORIES ---
 const MASTER_INVENTORIES = {
     fqi: [
         { roomNumber: '301', code: 'CTK-K' }, { roomNumber: '320', code: 'CTK-K' }, { roomNumber: '102', code: 'DK-K' },
@@ -121,32 +122,21 @@ const MASTER_INVENTORIES = {
         { roomNumber: 'C101', code: 'QGST-Q' }, { roomNumber: 'R204', code: 'QGST-Q' }, { roomNumber: 'S206', code: 'QGST-Q' },
         { roomNumber: 'M102', code: 'QSTE-Q/POC' }, { roomNumber: 'S104', code: 'QSTE-Q/POC' }
     ],
-    // --- NEW "IVY" INVENTORY ADDED ---
     ivy: [
-        // CKS
         { roomNumber: '1401', code: 'CKS' }, { roomNumber: '1402', code: 'CKS' }, { roomNumber: '1404', code: 'CKS' }, { roomNumber: '1405', code: 'CKS' },
-        // CSQ
         { roomNumber: '1403', code: 'CSQ' },
-        // DQS
         { roomNumber: '201', code: 'DQS' }, { roomNumber: '205', code: 'DQS' }, { roomNumber: '301', code: 'DQS' }, { roomNumber: '305', code: 'DQS' }, { roomNumber: '401', code: 'DQS' },
-        // DQSA
         { roomNumber: '405', code: 'DQSA' },
-        // KS
         { roomNumber: '1001', code: 'KS' }, { roomNumber: '1002', code: 'KS' }, { roomNumber: '1101', code: 'KS' }, { roomNumber: '1102', code: 'KS' }, { roomNumber: '1202', code: 'KS' }, { roomNumber: '1301', code: 'KS' }, { roomNumber: '1302', code: 'KS' },
         { roomNumber: '202', code: 'KS' }, { roomNumber: '302', code: 'KS' }, { roomNumber: '402', code: 'KS' }, { roomNumber: '501', code: 'KS' }, { roomNumber: '601', code: 'KS' }, { roomNumber: '602', code: 'KS' },
         { roomNumber: '701', code: 'KS' }, { roomNumber: '702', code: 'KS' }, { roomNumber: '801', code: 'KS' }, { roomNumber: '802', code: 'KS' }, { roomNumber: '901', code: 'KS' }, { roomNumber: '902', code: 'KS' },
-        // KSA
         { roomNumber: '1201', code: 'KSA' }, { roomNumber: '502', code: 'KSA' },
-        // KSO
         { roomNumber: '1004', code: 'KSO' }, { roomNumber: '1005', code: 'KSO' }, { roomNumber: '1104', code: 'KSO' }, { roomNumber: '1105', code: 'KSO' }, { roomNumber: '1204', code: 'KSO' }, { roomNumber: '1205', code: 'KSO' }, { roomNumber: '1304', code: 'KSO' }, { roomNumber: '1305', code: 'KSO' },
         { roomNumber: '204', code: 'KSO' }, { roomNumber: '304', code: 'KSO' }, { roomNumber: '404', code: 'KSO' }, { roomNumber: '504', code: 'KSO' }, { roomNumber: '505', code: 'KSO' }, { roomNumber: '604', code: 'KSO' }, { roomNumber: '605', code: 'KSO' },
         { roomNumber: '704', code: 'KSO' }, { roomNumber: '705', code: 'KSO' }, { roomNumber: '804', code: 'KSO' }, { roomNumber: '805', code: 'KSO' }, { roomNumber: '904', code: 'KSO' }, { roomNumber: '905', code: 'KSO' },
-        // SQ
         { roomNumber: '1003', code: 'SQ' }, { roomNumber: '1103', code: 'SQ' }, { roomNumber: '1203', code: 'SQ' }, { roomNumber: '1303', code: 'SQ' }, { roomNumber: '403', code: 'SQ' }, { roomNumber: '503', code: 'SQ' }, { roomNumber: '603', code: 'SQ' }, { roomNumber: '703', code: 'SQ' }, { roomNumber: '903', code: 'SQ' },
-        // SQA
         { roomNumber: '803', code: 'SQA' }
     ]
-    // --- END OF NEW INVENTORY ---
 };
 
 
@@ -186,16 +176,11 @@ function updateRulesForm(profileName) {
 }
 
 /**
- * NEW FUNCTION: Enables or disables all admin-only controls.
- * @param {boolean} isAdmin - True if the user is an admin, false otherwise.
+ * Enables or disables all admin-only controls.
  */
 function setAdminControls(isAdmin) {
-    // We want to DISABLE the controls if the user is NOT an admin.
     const shouldBeDisabled = !isAdmin;
-
-    // Get all the elements to lock
     const elementsToToggle = [
-        // "Define Upgrade Rules" section
         document.getElementById('hierarchy'),
         document.getElementById('target-rooms'),
         document.getElementById('prioritized-rates'),
@@ -203,16 +188,89 @@ function setAdminControls(isAdmin) {
         document.getElementById('ineligible-upgrades'),
     ];
 
-    // Loop through each element and set its 'disabled' state
     elementsToToggle.forEach(el => {
-        // This 'if (el)' check is crucial.
-        // It prevents errors if this function runs before the DOM is loaded.
         if (el) {
             el.disabled = shouldBeDisabled;
         }
     });
 }
 
+// --- NEW: LOAD SAVED RULES FROM CLOUD ---
+async function loadRemoteProfiles() {
+    try {
+        // Access 'app_settings' collection, 'profile_rules' document
+        const docRef = db.collection('app_settings').doc('profile_rules');
+        const doc = await docRef.get();
+
+        if (doc.exists) {
+            const savedData = doc.data();
+            // Merge saved data into your local 'profiles' object
+            Object.keys(savedData).forEach(profileKey => {
+                if (profiles[profileKey]) {
+                    profiles[profileKey] = { 
+                        ...profiles[profileKey], 
+                        ...savedData[profileKey] 
+                    };
+                }
+            });
+            console.log("Remote rules loaded and merged from Firebase.");
+        }
+        
+        // Refresh the form with the newly loaded data
+        const currentProfile = document.getElementById('profile-dropdown').value;
+        updateRulesForm(currentProfile);
+
+    } catch (error) {
+        console.error("Error loading remote profiles:", error);
+    }
+}
+
+// --- NEW: SAVE RULES TO CLOUD ---
+async function handleSaveRules() {
+    const currentProfile = document.getElementById('profile-dropdown').value;
+    const btn = document.getElementById('save-rules-btn');
+    const status = document.getElementById('save-status');
+
+    // 1. Capture current values from DOM
+    const newRules = {
+        hierarchy: document.getElementById('hierarchy').value,
+        targetRooms: document.getElementById('target-rooms').value,
+        prioritizedRates: document.getElementById('prioritized-rates').value,
+        otaRates: document.getElementById('ota-rates').value,
+        ineligibleUpgrades: document.getElementById('ineligible-upgrades').value
+    };
+
+    // 2. Update local state immediately
+    if (profiles[currentProfile]) {
+        Object.assign(profiles[currentProfile], newRules);
+    }
+
+    // 3. UI Feedback
+    btn.disabled = true;
+    btn.textContent = "Saving...";
+    status.textContent = "";
+
+    try {
+        // 4. Save to Firestore (Merge logic)
+        // Using { merge: true } ensures we don't overwrite other profiles in the same document
+        await db.collection('app_settings').doc('profile_rules').set({
+            [currentProfile]: newRules
+        }, { merge: true });
+
+        status.textContent = "Saved successfully!";
+        status.style.color = "green";
+        setTimeout(() => { status.textContent = ""; }, 3000);
+
+    } catch (error) {
+        console.error("Error saving rules:", error);
+        status.textContent = "Error saving.";
+        status.style.color = "red";
+        alert("Failed to save rules: " + error.message);
+    } finally {
+        btn.disabled = false;
+        btn.textContent = "Save Rules for Everyone";
+    }
+}
 
 async function loadCompletedUpgrades(userId) {
     if (!userId) return;
@@ -293,7 +351,7 @@ async function handleClearAnalytics() {
 
 
 document.addEventListener('DOMContentLoaded', function() {
-    // --- 1. ALL DOM ELEMENT REFERENCES ARE ASSIGNED FIRST ---
+    // --- 1. DOM REFERENCES ---
     loginContainer = document.getElementById('login-container');
     appContainer = document.getElementById('app-container');
     signinBtn = document.getElementById('signin-btn');
@@ -302,65 +360,70 @@ document.addEventListener('DOMContentLoaded', function() {
     passwordInput = document.getElementById('password-input');
     errorMessage = document.getElementById('error-message');
     clearAnalyticsBtn = document.getElementById('clear-analytics-btn');
+    // New
+    saveRulesBtn = document.getElementById('save-rules-btn');
+    saveStatus = document.getElementById('save-status');
 
-    // --- 2. THE AUTH LISTENER IS NOW *INSIDE* DOMCONTENTLOADED ---
-    // This guarantees all elements above are found BEFORE this code runs.
-    auth.onAuthStateChanged(user => {
+    // --- 2. AUTH LISTENER ---
+    auth.onAuthStateChanged(async user => {
         const adminButton = document.getElementById('clear-analytics-btn');
+        const saveBtn = document.getElementById('save-rules-btn'); 
 
         if (user) {
             console.log("User is signed in:", user.uid);
             if (loginContainer) loginContainer.classList.add('hidden');
             if (appContainer) appContainer.classList.remove('hidden');
 
-            // --- NEW LOGIC ---
-            // 1. Check if the user is an admin and store it in a variable
+            // --- NEW: LOAD RULES FROM CLOUD ---
+            await loadRemoteProfiles(); 
+            // ----------------------------------
+
             const isUserAdmin = ADMIN_UIDS.includes(user.uid);
 
-            // Check if the signed-in user's UID is in the admin list
-            if (isUserAdmin && adminButton) {
+            if (isUserAdmin) {
                 console.log("User is an admin!");
-                adminButton.classList.remove('hidden');
+                if(adminButton) adminButton.classList.remove('hidden');
+                if(saveBtn) saveBtn.classList.remove('hidden'); // Show Save button
+            } else {
+                if(saveBtn) saveBtn.classList.add('hidden'); // Hide Save button
+                if(adminButton) adminButton.classList.add('hidden');
             }
 
-            // 2. Call our new function to lock or unlock controls
             setAdminControls(isUserAdmin);
-            // --- END NEW LOGIC ---
-
             loadCompletedUpgrades(user.uid);
         } else {
             console.log("User is signed out.");
             if (loginContainer) loginContainer.classList.remove('hidden');
             if (appContainer) appContainer.classList.add('hidden');
             if (adminButton) adminButton.classList.add('hidden');
+            if (saveBtn) saveBtn.classList.add('hidden');
 
-            // 3. Call our new function to lock controls for signed-out users
             setAdminControls(false);
         }
     });
-    // --- END OF MOVED AUTH LISTENER ---
 
-
-    // --- 3. ALL OTHER EVENT LISTENERS ARE ADDED ---
+    // --- 3. OTHER LISTENERS ---
     const profileDropdown = document.getElementById('profile-dropdown');
     profileDropdown.addEventListener('change', (event) => {
         updateRulesForm(event.target.value);
         resetAppState();
         displayCompletedUpgrades();
     });
-    updateRulesForm('fqi'); // Default to FQI on load
+    updateRulesForm('fqi'); 
 
-    // --- NEW: ENABLE ENTER KEY TO SIGN IN ---
+    // NEW: Listener for Save Rules
+    if(saveRulesBtn) {
+        saveRulesBtn.addEventListener('click', handleSaveRules);
+    }
+
     const triggerSignInOnEnter = (event) => {
         if (event.key === 'Enter') {
             handleSignIn();
         }
     };
 
-    // Attach the Enter key listener to both inputs
     if (emailInput) emailInput.addEventListener('keydown', triggerSignInOnEnter);
     if (passwordInput) passwordInput.addEventListener('keydown', triggerSignInOnEnter);
-    // ----------------------------------------
 
     signinBtn.addEventListener('click', handleSignIn);
     signoutBtn.addEventListener('click', handleSignOut);
@@ -371,6 +434,7 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('selected-date').value = futureDate.toISOString().slice(0, 10);
     document.getElementById('generate-btn').addEventListener('click', handleGenerateClick);
     document.getElementById('sort-date-dropdown').addEventListener('change', displayCompletedUpgrades);
+    
     const tabs = document.querySelectorAll('[data-tab-target]');
     const tabContents = document.querySelectorAll('.tab-content');
     tabs.forEach(tab => {
@@ -400,7 +464,7 @@ function handleGenerateClick() {
         otaRates: document.getElementById('ota-rates').value,
         ineligibleUpgrades: document.getElementById('ineligible-upgrades').value,
         selectedDate: document.getElementById('selected-date').value,
-        profile: document.getElementById('profile-dropdown').value // <-- ***MODIFICATION 1: Profile is added to rules***
+        profile: document.getElementById('profile-dropdown').value 
     };
     const reader = new FileReader();
     reader.onload = function(e) {
@@ -432,19 +496,15 @@ function handleAcceptClick(event) {
     button.disabled = true;
     button.textContent = 'Accepted';
 
-    // --- UPDATED LOGIC FOR UNDO SUPPORT ---
-    // 1. Add to our global accepted array immediately
     acceptedUpgrades.push(acceptedRec);
 
     setTimeout(() => {
         try {
-            // 2. Recalculate based on the updated global array
             const results = applyUpgradesAndRecalculate(acceptedUpgrades, currentCsvContent, currentRules);
             displayResults(results);
         } catch (err) {
             showError(err);
-            // If error, revert UI changes
-            acceptedUpgrades.pop(); // Remove the failed add
+            acceptedUpgrades.pop(); 
             card.style.opacity = '1';
             button.disabled = false;
             button.textContent = 'Accept';
@@ -452,18 +512,13 @@ function handleAcceptClick(event) {
     }, 50);
 }
 
-// --- NEW FUNCTION FOR UNDO ---
 function handleUndoClick(event) {
     const button = event.target;
     const index = parseInt(button.dataset.index, 10);
 
-    // 1. Remove the item from the acceptedUpgrades array
     acceptedUpgrades.splice(index, 1);
-
-    // 2. Show loader momentarily
     showLoader(true, 'Reverting...');
 
-    // 3. Recalculate everything based on the REMAINING accepted upgrades
     setTimeout(() => {
         try {
             const results = applyUpgradesAndRecalculate(acceptedUpgrades, currentCsvContent, currentRules);
@@ -574,17 +629,14 @@ function displayRecommendations(recs) {
     }
 }
 
-// --- UPDATED FUNCTION: INCLUDES EXPORT BUTTON (Blue, No Total) ---
 function displayAcceptedUpgrades() {
     const container = document.getElementById('accepted-container');
     container.innerHTML = '';
     
     if (acceptedUpgrades && acceptedUpgrades.length > 0) {
 
-        // --- NEW: Control Header Container ---
         const controlsContainer = document.createElement('div');
         controlsContainer.style.display = 'flex';
-        // Align button to the right
         controlsContainer.style.justifyContent = 'flex-end'; 
         controlsContainer.style.alignItems = 'center';
         controlsContainer.style.marginBottom = '20px';
@@ -592,10 +644,8 @@ function displayAcceptedUpgrades() {
         controlsContainer.style.backgroundColor = '#f8f9fa';
         controlsContainer.style.borderRadius = '5px';
 
-        // Export Button
         const exportBtn = document.createElement('button');
         exportBtn.textContent = 'Download CSV';
-        // Changed to standard blue. Adjust hex if needed.
         exportBtn.style.backgroundColor = '#4343FF'; 
         exportBtn.style.color = 'white';
         exportBtn.style.border = 'none';
@@ -603,11 +653,10 @@ function displayAcceptedUpgrades() {
         exportBtn.style.borderRadius = '4px';
         exportBtn.style.cursor = 'pointer';
         exportBtn.style.fontSize = '14px';
-        exportBtn.addEventListener('click', downloadAcceptedUpgradesCsv); // Attach new function
+        exportBtn.addEventListener('click', downloadAcceptedUpgradesCsv); 
 
         controlsContainer.appendChild(exportBtn);
         container.appendChild(controlsContainer);
-        // --- END NEW CONTROLS ---
 
         acceptedUpgrades.forEach((rec, index) => {
             const card = document.createElement('div');
@@ -629,12 +678,10 @@ function displayAcceptedUpgrades() {
             container.appendChild(card);
         });
         
-        // PMS Update Listeners
         container.querySelectorAll('.pms-btn').forEach(btn => {
             btn.addEventListener('click', handlePmsUpdateClick);
         });
         
-        // Undo Listeners
         container.querySelectorAll('.undo-btn').forEach(btn => {
             btn.addEventListener('click', handleUndoClick);
         });
@@ -649,13 +696,10 @@ function displayCompletedUpgrades() {
     const dateDropdown = document.getElementById('sort-date-dropdown');
     const profileDropdown = document.getElementById('profile-dropdown');
 
-    // --- SAFETY CHECK ---
-    // This check prevents a crash if elements aren't ready
     if (!container || !dateDropdown || !profileDropdown) {
         console.warn('displayCompletedUpgrades called before DOM was ready.');
         return;
     }
-    // --- END SAFETY CHECK ---
 
     const selectedDate = dateDropdown.value;
     const currentProfile = profileDropdown.value;
@@ -710,10 +754,6 @@ function displayCompletedUpgrades() {
     }
 }
 
-
-// --- MODIFIED FUNCTION ---
-// This function now builds the table with simple <td> tags
-// and then calls 'colorMatrixCells()' to apply the classes.
 function displayMatrix(matrix) {
     const container = document.getElementById('matrix-container');
     if (!matrix || !matrix.headers || !matrix.rows) {
@@ -724,8 +764,6 @@ function displayMatrix(matrix) {
     matrix.rows.forEach(row => {
         html += `<tr><td><strong>${row.roomCode}</strong></td>`;
         row.availability.forEach(avail => {
-            // MODIFICATION: Removed inline style logic.
-            // The new 'colorMatrixCells' function will handle styling.
             html += `<td>${avail}</td>`;
         });
         html += '</tr>';
@@ -733,40 +771,27 @@ function displayMatrix(matrix) {
     html += '</tbody></table>';
     container.innerHTML = html;
 
-    // NEW: Call the coloring function after the HTML is rendered
     colorMatrixCells();
 }
 
-// --- NEW FUNCTION ---
-/**
- * Applies color classes to the availability matrix cells based on their
- * numeric value (red for < 0, black for 0-2, blue for 3+).
- */
 function colorMatrixCells() {
-    // Find all data cells (td) inside the matrix table
-    // We skip the first cell in each row (the Room Type) using :not(:first-child)
     const cells = document.querySelectorAll("#matrix-container td:not(:first-child)");
 
     cells.forEach(cell => {
-        // Get the text from the cell and turn it into a number
         const value = parseInt(cell.textContent, 10);
 
-        // Skip cells that aren't numbers (e.g., if they are empty)
         if (isNaN(value)) {
             return;
         }
 
-        // Remove any old classes just in case
         cell.classList.remove('matrix-neg', 'matrix-low', 'matrix-high');
 
-        // Add the correct class based on the value
         if (value < 0) {
-            cell.classList.add('matrix-neg'); // Red (from CSS)
+            cell.classList.add('matrix-neg'); 
         } else if (value >= 3) {
-            cell.classList.add('matrix-high'); // Blue (from CSS)
+            cell.classList.add('matrix-high'); 
         } else {
-            // This will cover 0, 1, and 2
-            cell.classList.add('matrix-low'); // Black (from CSS)
+            cell.classList.add('matrix-low'); 
         }
     });
 }
@@ -817,14 +842,10 @@ function parseCsv(csvContent) {
     return { data, header };
 }
 
-// --- RENAMED AND UPGRADED FUNCTION FOR UNDO SUPPORT ---
 function applyUpgradesAndRecalculate(currentAcceptedList, csvContent, rules) {
-    // 1. Parse the original clean CSV data
     const { data, header } = parseCsv(csvContent);
     const allReservations = parseAllReservations(data, header);
 
-    // 2. Apply ALL currently accepted upgrades to the clean data
-    // This simulates the PMS being updated so the "original" room is now the "upgraded" room
     currentAcceptedList.forEach(rec => {
         const reservationToUpdate = allReservations.find(res => res.resId === rec.resId);
         if (reservationToUpdate) {
@@ -832,12 +853,8 @@ function applyUpgradesAndRecalculate(currentAcceptedList, csvContent, rules) {
         }
     });
 
-    // 3. Generate new recommendations based on this modified state
     const results = generateRecommendationsFromData(allReservations, rules);
-    
-    // 4. Ensure the results object contains our updated list
     results.acceptedUpgrades = currentAcceptedList;
-    
     return results;
 }
 
@@ -855,19 +872,15 @@ function processUpgradeData(csvContent, rules) {
     return generateRecommendationsFromData(allReservations, rules);
 }
 
-// --- MODIFIED FUNCTION: NOW INCLUDES DEPARTURE DATE IN DATA ---
 function generateRecommendationsFromData(allReservations, rules) {
-    // --- 1. Get Master Inventory based on Profile ---
     const masterInventory = getMasterInventory(rules.profile);
 
-    // Safety check if inventory fails to load
     if (Object.keys(masterInventory).length === 0) {
         return {
             error: `Could not load master inventory for profile '${rules.profile}'. Please check the MASTER_INVENTORIES configuration.`
         };
     }
 
-    // --- 2. Filter out already completed upgrades for this specific profile ---
     const currentProfile = rules.profile;
     const completedResIdsForProfile = new Set(
         completedUpgrades
@@ -875,7 +888,6 @@ function generateRecommendationsFromData(allReservations, rules) {
             .map(up => up.resId)
     );
 
-    // Check if we have reservations to process
     if (allReservations.length === 0) {
         return {
             recommendations: [],
@@ -896,7 +908,6 @@ function generateRecommendationsFromData(allReservations, rules) {
     const ineligibleUpgrades = rules.ineligibleUpgrades.toUpperCase().split(',').map(r => r.trim()).filter(Boolean);
     const useDefaultLogic = originalTargetRooms.length === 0;
 
-    // Helper to check availability across the entire stay
     const isRoomAvailableForStay = (roomCode, reservation, invByDate, masterInv) => {
         let checkDate = new Date(reservation.arrival);
         while (checkDate < reservation.departure) {
@@ -910,18 +921,15 @@ function generateRecommendationsFromData(allReservations, rules) {
 
     let recommendations = [];
 
-    // --- 3. Loop through the next 7 days ---
     for (let dayOffset = 0; dayOffset < 7; dayOffset++) {
         const currentDate = new Date(startDate);
         currentDate.setUTCDate(currentDate.getUTCDate() + dayOffset);
         const currentTimestamp = currentDate.getTime();
         
-        // Filter for reservations arriving on this specific day
         const arrivalsForThisDay = allReservations.filter(r => r.arrival && r.arrival.getTime() === currentTimestamp && r.status === 'RESERVATION');
         
         let processingQueue = useDefaultLogic ? [...roomHierarchy] : [...originalTargetRooms];
 
-        // Logic to populate processing queue if specific target rooms are defined
         if (!useDefaultLogic) {
             originalTargetRooms.forEach(targetRoom => {
                 if (!arrivalsForThisDay.some(res => res.roomType === targetRoom)) {
@@ -939,7 +947,6 @@ function generateRecommendationsFromData(allReservations, rules) {
             });
         }
 
-        // --- 4. Evaluate Rooms ---
         processingQueue.forEach((roomToEvaluate) => {
             const eligibleReservations = arrivalsForThisDay.filter(res => 
                 res.roomType === roomToEvaluate && 
@@ -955,19 +962,15 @@ function generateRecommendationsFromData(allReservations, rules) {
                 const originalBedType = getBedType(res.roomType);
                 if (originalBedType === 'OTHER') return;
 
-                // Look for upgrade candidates up the hierarchy
                 for (let i = currentRoomIndex + 1; i < roomHierarchy.length; i++) {
                     const potentialUpgradeRoom = roomHierarchy[i];
                     const potentialBedType = getBedType(potentialUpgradeRoom);
                     
-                    // Must match bed type and not be ineligible
                     if (originalBedType !== potentialBedType || ineligibleUpgrades.includes(potentialUpgradeRoom)) continue;
 
-                    // Check availability
                     if (isRoomAvailableForStay(potentialUpgradeRoom, res, reservationsByDate, masterInventory)) {
                         const score = parseFloat(res.revenue.replace(/[$,]/g, '')) || 0;
                         
-                        // Calculate Hierarchy Distance
                         const distance = i - currentRoomIndex;
 
                         recommendations.push({
@@ -979,13 +982,11 @@ function generateRecommendationsFromData(allReservations, rules) {
                             nights: res.nights,
                             upgradeTo: potentialUpgradeRoom, 
                             score: score,
-                            distance: distance, // Store distance for sorting
+                            distance: distance,
                             arrivalDate: currentDate.toLocaleDateString('en-US', { timeZone: 'UTC' }),
-                            // --- NEW: Adding Departure Date to the object ---
                             departureDate: res.departure.toLocaleDateString('en-US', { timeZone: 'UTC' })
                         });
                         
-                        // Stop looking for higher rooms for this guest; we found the first available valid upgrade.
                         break; 
                     }
                 }
@@ -993,14 +994,11 @@ function generateRecommendationsFromData(allReservations, rules) {
         });
     }
 
-    // --- 5. Sort Recommendations ---
-    // Primary Sort: Revenue (Score) Descending
-    // Secondary Sort (Tie-breaker): Distance Ascending (Closest upgrade wins)
     recommendations.sort((a, b) => {
         if (b.score !== a.score) {
-            return b.score - a.score; // High revenue first
+            return b.score - a.score; 
         }
-        return a.distance - b.distance; // If revenue matches, shortest jump first
+        return a.distance - b.distance; 
     });
 
     return {
@@ -1011,41 +1009,27 @@ function generateRecommendationsFromData(allReservations, rules) {
     };
 }
 
-// --- END OF MODIFIED FUNCTION ---
-
-// --- ***MODIFICATION 4: Upgraded getBedType function*** ---
-/**
- * Gets the bed type from a room code.
- * This is now flexible to support 'TK-K', 'TQ-QQ', '1QST-Q', 'DK', and new IVY (SQ, KS) style codes.
- * @param {string} roomCode - The room type code (e.g., "KGST-K", "SQ", "KS").
- * @returns {string} The bed type ('K', 'QQ', 'Q') or 'OTHER'.
- */
 function getBedType(roomCode) {
     if (!roomCode) return 'OTHER';
 
-    // 1. Handle 2BRDM specifically (It is K/Q, usually treated as a Suite/Wildcard)
-    // We return 'K' here to allow King upgrades into it, assuming it's the top tier.
     if (roomCode.includes('2BRDM')) return 'K'; 
 
-    // 2. Check for standard suffixes (Checking Includes handles the /POC issue)
-    if (roomCode.includes('-K')) return 'K';    // Covers KGST-K, KSTE-K/POC, etc.
-    if (roomCode.includes('-QQ')) return 'QQ'; // Covers TQ-QQ, etc.
-    if (roomCode.includes('-Q')) return 'Q';    // Covers ADA-Q, QSTE-Q/POC, etc.
+    if (roomCode.includes('-K')) return 'K';    
+    if (roomCode.includes('-QQ')) return 'QQ'; 
+    if (roomCode.includes('-Q')) return 'Q';    
     
-    // 3. Handle SPEC profile codes (Prefix based - Specifics)
-    if (roomCode.startsWith('DK')) return 'K'; // DK, DKB, DKC, DKS (Note: Starts with D, but is King)
-    if (roomCode.startsWith('GK')) return 'K'; // GKS
-    if (roomCode.startsWith('PK')) return 'K'; // PKSB
-    if (roomCode.startsWith('TK')) return 'K'; // TK, TKHC
-    if (roomCode.startsWith('TQ')) return 'QQ'; // TQ, TQHC
+    if (roomCode.startsWith('DK')) return 'K'; 
+    if (roomCode.startsWith('GK')) return 'K'; 
+    if (roomCode.startsWith('PK')) return 'K'; 
+    if (roomCode.startsWith('TK')) return 'K'; 
+    if (roomCode.startsWith('TQ')) return 'QQ'; 
 
-    // 4. Handle IVY profile codes (Prefix/Whole based)
-    if (roomCode === 'CKS') return 'K'; // Corner King Suite
-    if (roomCode === 'CSQ') return 'Q'; // Corner Standard Queen
+    if (roomCode === 'CKS') return 'K'; 
+    if (roomCode === 'CSQ') return 'Q'; 
     
-    if (roomCode.startsWith('KS')) return 'K'; // KS, KSO, KSA
-    if (roomCode.startsWith('SQ')) return 'Q'; // SQ, SQA
-    if (roomCode.startsWith('DQ')) return 'QQ'; // DQS, DQSA
+    if (roomCode.startsWith('KS')) return 'K'; 
+    if (roomCode.startsWith('SQ')) return 'Q'; 
+    if (roomCode.startsWith('DQ')) return 'QQ'; 
 
     return 'OTHER';
 }
@@ -1111,29 +1095,18 @@ function getInventoryForDate(masterInventory, reservationsByDate, date) {
     return inventory;
 }
 
-// --- ***MODIFICATION 5: getMasterInventory is now profile-aware*** ---
-/**
- * Gets the master inventory count for a specific hotel profile.
- * @param {string} profileName - The name of the profile (e.g., 'fqi', 'hvi').
- * @returns {Object} An object mapping room codes to their total count.
- */
 function getMasterInventory(profileName) {
-    // Look up the correct room list based on the profileName
     const masterRoomList = MASTER_INVENTORIES[profileName];
-
-    // Safety check: if no inventory is found, return an empty object.
     if (!masterRoomList) {
         console.error(`No master inventory found for profile: ${profileName}`);
         return {};
     }
-
     const totalInventory = {};
     masterRoomList.forEach(room => {
         totalInventory[room.code.toUpperCase()] = (totalInventory[room.code.toUpperCase()] || 0) + 1;
     });
     return totalInventory;
 }
-
 
 function parseDate(dateStr) {
     if (!dateStr) return null;
@@ -1166,14 +1139,12 @@ function generateMatrixData(totalInventory, reservationsByDate, startDate, roomH
     return matrix;
 }
 
-// --- UPDATED FUNCTION: Export Accepted Upgrades to CSV with Dates ---
 function downloadAcceptedUpgradesCsv() {
     if (!acceptedUpgrades || acceptedUpgrades.length === 0) {
         alert("No data to export.");
         return;
     }
 
-    // 1. Define CSV Headers (Added Arrival and Departure)
     const headers = [
         'Guest Name', 
         'Res ID', 
@@ -1183,28 +1154,23 @@ function downloadAcceptedUpgradesCsv() {
         'Departure Date'
     ];
     
-    // 2. Map the data to rows
-    // We wrap fields in quotes "" to handle potential commas within names
     const rows = acceptedUpgrades.map(rec => {
         return [
             `"${rec.name}"`,
             `"${rec.resId}"`,
             `"${rec.room}"`,
             `"${rec.upgradeTo}"`,
-            `"${rec.arrivalDate}"`,   // Existing field
-            `"${rec.departureDate}"` // New field added in generateRecommendationsFromData
+            `"${rec.arrivalDate}"`,   
+            `"${rec.departureDate}"` 
         ].join(',');
     });
 
-    // 3. Combine headers and rows
     const csvContent = [headers.join(','), ...rows].join('\n');
 
-    // 4. Create a Blob and Trigger Download
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
     const url = URL.createObjectURL(blob);
     
-    // Generate a filename with the current date
     const dateStr = new Date().toISOString().slice(0, 10);
     link.setAttribute('href', url);
     link.setAttribute('download', `accepted_upgrades_${dateStr}.csv`);
