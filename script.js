@@ -562,35 +562,29 @@ function displayRecommendations(recs) {
     }
 }
 
-// --- UPDATED FUNCTION: INCLUDES UNDO BUTTON AND EXPORT BUTTON ---
+// --- UPDATED FUNCTION: INCLUDES EXPORT BUTTON (Blue, No Total) ---
 function displayAcceptedUpgrades() {
     const container = document.getElementById('accepted-container');
     container.innerHTML = '';
-    let totalValue = 0;
+    
     if (acceptedUpgrades && acceptedUpgrades.length > 0) {
 
         // --- NEW: Control Header Container ---
         const controlsContainer = document.createElement('div');
         controlsContainer.style.display = 'flex';
-        controlsContainer.style.justifyContent = 'space-between';
+        // Align button to the right
+        controlsContainer.style.justifyContent = 'flex-end'; 
         controlsContainer.style.alignItems = 'center';
         controlsContainer.style.marginBottom = '20px';
         controlsContainer.style.padding = '10px';
         controlsContainer.style.backgroundColor = '#f8f9fa';
         controlsContainer.style.borderRadius = '5px';
 
-        acceptedUpgrades.forEach((rec) => {
-            totalValue += parseFloat(rec.revenue.replace(/[$,]/g, '')) || 0;
-        });
-
-        const totalHeader = document.createElement('h3');
-        totalHeader.style.margin = '0';
-        totalHeader.textContent = `Total Value: ${totalValue.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}`;
-
         // Export Button
         const exportBtn = document.createElement('button');
         exportBtn.textContent = 'Download CSV';
-        exportBtn.style.backgroundColor = '#28a745'; // Green
+        // Changed to standard blue. Adjust hex if needed.
+        exportBtn.style.backgroundColor = '#007bff'; 
         exportBtn.style.color = 'white';
         exportBtn.style.border = 'none';
         exportBtn.style.padding = '10px 15px';
@@ -599,7 +593,6 @@ function displayAcceptedUpgrades() {
         exportBtn.style.fontSize = '14px';
         exportBtn.addEventListener('click', downloadAcceptedUpgradesCsv); // Attach new function
 
-        controlsContainer.appendChild(totalHeader);
         controlsContainer.appendChild(exportBtn);
         container.appendChild(controlsContainer);
         // --- END NEW CONTROLS ---
