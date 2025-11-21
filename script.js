@@ -350,6 +350,18 @@ document.addEventListener('DOMContentLoaded', function() {
     });
     updateRulesForm('fqi'); // Default to FQI on load
 
+    // --- NEW: ENABLE ENTER KEY TO SIGN IN ---
+    const triggerSignInOnEnter = (event) => {
+        if (event.key === 'Enter') {
+            handleSignIn();
+        }
+    };
+
+    // Attach the Enter key listener to both inputs
+    if (emailInput) emailInput.addEventListener('keydown', triggerSignInOnEnter);
+    if (passwordInput) passwordInput.addEventListener('keydown', triggerSignInOnEnter);
+    // ----------------------------------------
+
     signinBtn.addEventListener('click', handleSignIn);
     signoutBtn.addEventListener('click', handleSignOut);
     clearAnalyticsBtn.addEventListener('click', handleClearAnalytics);
@@ -1192,4 +1204,3 @@ function downloadAcceptedUpgradesCsv() {
     link.click();
     document.body.removeChild(link);
 }
-
