@@ -59,7 +59,7 @@ const profiles = {
         hierarchy: 'SQ, KS, KSO, DQS, CSQ, CKS, DQSA, KSA, SQA',
         targetRooms: '',
         prioritizedRates: 'Best Available, BAR, Rack',
-        otaRates: 'Expedia, Booking.com, Priceline, GDS',
+        otaRates: 'Expedia, Booking.com, Priceline', 
         ineligibleUpgrades: 'DQSA, KSA, SQA' // Defaulted ADA/Accessible rooms to ineligible
     }
     // --- END OF NEW PROFILE ---
@@ -1128,3 +1128,4 @@ function generateMatrixData(totalInventory, reservationsByDate, startDate, roomH
     });
     return matrix;
 }
+
