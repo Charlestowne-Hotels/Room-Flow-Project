@@ -26,14 +26,14 @@
             <div class="logo">Hotel Upgrade Assistant</div>
             <div class="nav-controls">
                 <select id="profile-dropdown">
-                    <option value="fqi">FQI - French Quarter Inn</option>
-                    <option value="hvi">HVI - HarbourView Inn</option>
-                    <option value="spec">SPEC - Spectator Hotel</option>
-                    <option value="col">COL - The Collector</option>
-                    <option value="ivy">IVY - The Ivy Hotel</option>
+                    <option value="fqi">FQI</option>
+                    <option value="hvi">HVI</option>
+                    <option value="spec">SPEC</option>
+                    <option value="col">COL</option>
+                    <option value="ivy">IVY</option>
                 </select>
                 
-                <button id="settings-trigger-btn" class="icon-btn" title="Settings & Upload">
+                <button id="settings-trigger-btn" class="icon-btn" title="Settings">
                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
                 </button>
                 
@@ -44,21 +44,13 @@
         <div id="settings-modal" class="modal-overlay hidden">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h2>Configuration & Upload</h2>
+                    <h2>Configuration</h2>
                     <button id="close-settings-btn" class="close-btn">&times;</button>
                 </div>
 
                 <div class="modal-body">
-                    <div class="setting-group">
-                        <h3>1. Upload Data</h3>
-                        <div class="input-row">
-                            <label>CSV File (PMS Export)</label>
-                            <input type="file" id="csv-file" accept=".csv" />
-                        </div>
-                    </div>
-
                     <div id="admin-rules-container" class="setting-group">
-                        <h3>2. Upgrade Logic (Admin Only)</h3>
+                        <h3>Upgrade Logic (Admin Only)</h3>
                         
                         <label for="hierarchy">Room Value Hierarchy (Low to High)</label>
                         <textarea id="hierarchy"></textarea>
@@ -85,18 +77,24 @@
                 <div class="modal-footer">
                     <span id="save-status"></span>
                     <button id="save-rules-btn" class="secondary-btn hidden">Save Rules</button>
-                    </div>
+                </div>
             </div>
         </div>
 
         <div class="main-content">
             
             <div class="controls-container">
-                <div class="control-item">
+                <div class="control-item file-control">
+                    <label for="csv-file">Upload PMS Export (.csv)</label>
+                    <input type="file" id="csv-file" accept=".csv" />
+                </div>
+
+                <div class="control-item date-control">
                     <label for="selected-date">Analysis Start Date</label>
                     <input type="date" id="selected-date" />
                 </div>
-                <div class="control-item">
+
+                <div class="control-item button-control">
                     <label>&nbsp;</label> <button id="generate-btn" class="primary-btn">Generate Suggestions</button>
                 </div>
             </div>
