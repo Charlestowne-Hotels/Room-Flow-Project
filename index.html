@@ -21,7 +21,6 @@
     </div>
 
     <div id="app-container" class="container hidden">
-      
       <div class="sidebar">
         <div class="profile-selector">
             <label for="profile-dropdown">Select Profile:</label>
@@ -37,54 +36,45 @@
         <h1>Hotel Upgrade Assistant</h1>
         <p>Strategically upgrade guests to maximize revenue.</p>
         <button id="signout-btn">Sign Out</button>
-        
-        <hr style="border: 0; border-top: 1px solid #ddd; margin: 15px 0;">
 
-        <button id="toggle-config-btn" type="button" style="width: 100%; margin-bottom: 15px; padding: 10px; cursor: pointer; background-color: #6c757d; color: white; border: none; border-radius: 4px;">
-            Show Settings & Upload
-        </button>
+        <div class="card">
+          <h2>Define Upgrades</h2>
+          <label for="hierarchy">Room Value Hierarchy</label>
+          <textarea id="hierarchy"></textarea>
 
-        <div id="config-panel" style="display: none;">
-            
-            <div class="card">
-              <h2>Define Upgrades</h2>
-              <label for="hierarchy">Room Value Hierarchy</label>
-              <textarea id="hierarchy"></textarea>
+          <label for="target-rooms">Target Rooms to Free Up</label>
+          <input type="text" id="target-rooms">
+          <p class="note">This list acts as a priority queue.</p>
 
-              <label for="target-rooms">Target Rooms to Free Up</label>
-              <input type="text" id="target-rooms">
-              <p class="note">This list acts as a priority queue.</p>
+          <label for="prioritized-rates">Prioritized Rate Keywords</label>
+          <input type="text" id="prioritized-rates">
 
-              <label for="prioritized-rates">Prioritized Rate Keywords</label>
-              <input type="text" id="prioritized-rates">
+          <label for="ota-rates">Ineligible Rate Keywords</label>
+          <input type="text" id="ota-rates">
 
-              <label for="ota-rates">Ineligible Rate Keywords</label>
-              <input type="text" id="ota-rates">
+          <label for="ineligible-upgrades">Never Upgrade To</label>
+          <input type="text" id="ineligible-upgrades">
 
-              <label for="ineligible-upgrades">Never Upgrade To</label>
-              <input type="text" id="ineligible-upgrades">
+          <div class="rules-actions" style="margin-top: 15px; border-top: 1px solid #eee; padding-top: 10px;">
+            <button id="save-rules-btn" class="hidden" style="background-color: #4343FF; color: white; padding: 8px 16px; border: none; border-radius: 4px; cursor: pointer; width: 100%;">
+                Save Rules
+            </button>
+            <div id="save-status" style="margin-top: 5px; font-size: 0.9em; text-align: center; height: 20px;"></div>
+          </div>
+          </div>
 
-              <div class="rules-actions" style="margin-top: 15px; border-top: 1px solid #eee; padding-top: 10px;">
-                <button id="save-rules-btn" class="hidden" style="background-color: #4343FF; color: white; padding: 8px 16px; border: none; border-radius: 4px; cursor: pointer; width: 100%;">
-                    Save Rules
-                </button>
-                <div id="save-status" style="margin-top: 5px; font-size: 0.9em; text-align: center; height: 20px;"></div>
-              </div>
-            </div>
+        <div class="card">
+          <h2>File Upload</h2>
+          <label for="csv-file">Daily Hotel Status CSV File</label>
+          <input type="file" id="csv-file" accept=".csv">
 
-            <div class="card">
-              <h2>File Upload</h2>
-              <label for="csv-file">Daily Hotel Status CSV File</label>
-              <input type="file" id="csv-file" accept=".csv">
+          <label for="selected-date">Select Start Date for 7-Day Period</label>
+          <input type="date" id="selected-date">
 
-              <label for="selected-date">Select Start Date for 7-Day Period</label>
-              <input type="date" id="selected-date">
-
-              <button id="generate-btn">Generate Suggestions</button>
-            </div>
-
-        </div> 
+          <button id="generate-btn">Generate Suggestions</button>
         </div>
+      </div>
+
       <div class="main-content">
         <div id="loader"><div class="spinner"></div>Generating...</div>
         <div id="output" style="display: none;">
@@ -124,3 +114,5 @@
 
 </body>
 </html>
+
+
