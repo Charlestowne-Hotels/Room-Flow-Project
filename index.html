@@ -34,10 +34,7 @@
                 </select>
                 
                 <button id="settings-trigger-btn" class="icon-btn" title="Settings & Upload">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <circle cx="12" cy="12" r="3"></circle>
-                        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
-                    </svg>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
                 </button>
                 
                 <button id="signout-btn">Sign Out</button>
@@ -55,12 +52,8 @@
                     <div class="setting-group">
                         <h3>1. Upload Data</h3>
                         <div class="input-row">
-                            <label>CSV File</label>
+                            <label>CSV File (PMS Export)</label>
                             <input type="file" id="csv-file" accept=".csv" />
-                        </div>
-                        <div class="input-row">
-                            <label>Start Date</label>
-                            <input type="date" id="selected-date" />
                         </div>
                     </div>
 
@@ -72,15 +65,14 @@
 
                         <label for="target-rooms">Target Rooms to Free Up</label>
                         <input type="text" id="target-rooms" placeholder="e.g. TQHC-QQ, TK-K">
-                        <p class="note">This list acts as a priority queue.</p>
-
+                        
                         <div class="grid-2">
                             <div>
-                                <label for="prioritized-rates">Prioritized Rate Keywords</label>
+                                <label for="prioritized-rates">Prioritized Rates</label>
                                 <input type="text" id="prioritized-rates">
                             </div>
                             <div>
-                                <label for="ota-rates">Ineligible Rate Keywords</label>
+                                <label for="ota-rates">Ineligible Rates</label>
                                 <input type="text" id="ota-rates">
                             </div>
                         </div>
@@ -93,13 +85,24 @@
                 <div class="modal-footer">
                     <span id="save-status"></span>
                     <button id="save-rules-btn" class="secondary-btn hidden">Save Rules</button>
-                    <button id="generate-btn" class="primary-btn">Generate Suggestions</button>
-                </div>
+                    </div>
             </div>
         </div>
 
         <div class="main-content">
+            
+            <div class="controls-container">
+                <div class="control-item">
+                    <label for="selected-date">Analysis Start Date</label>
+                    <input type="date" id="selected-date" />
+                </div>
+                <div class="control-item">
+                    <label>&nbsp;</label> <button id="generate-btn" class="primary-btn">Generate Suggestions</button>
+                </div>
+            </div>
+
             <div id="loader"><div class="spinner"></div>Generating...</div>
+            
             <div id="output" style="display: none;">
                 <div id="message"></div>
                 <div id="inventory"></div>
