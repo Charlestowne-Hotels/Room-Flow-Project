@@ -194,7 +194,6 @@ function setAdminControls(isAdmin) {
         }
     });
     
-    // Also show/hide the admin section wrapper in the modal if desired
     const rulesContainer = document.getElementById('admin-rules-container');
     if(rulesContainer) {
         rulesContainer.style.display = isAdmin ? 'block' : 'none';
@@ -380,18 +379,16 @@ document.addEventListener('DOMContentLoaded', function() {
             if (loginContainer) loginContainer.classList.add('hidden');
             if (appContainer) appContainer.classList.remove('hidden');
 
-            // --- NEW: LOAD RULES FROM CLOUD ---
             await loadRemoteProfiles(); 
-            // ----------------------------------
 
             const isUserAdmin = ADMIN_UIDS.includes(user.uid);
 
             if (isUserAdmin) {
                 console.log("User is an admin!");
                 if(adminButton) adminButton.classList.remove('hidden');
-                if(saveBtn) saveBtn.classList.remove('hidden'); // Show Save button
+                if(saveBtn) saveBtn.classList.remove('hidden');
             } else {
-                if(saveBtn) saveBtn.classList.add('hidden'); // Hide Save button
+                if(saveBtn) saveBtn.classList.add('hidden');
                 if(adminButton) adminButton.classList.add('hidden');
             }
 
@@ -421,25 +418,15 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Close on overlay click
     window.addEventListener('click', (e) => {
         if (e.target === settingsModal) {
             settingsModal.classList.add('hidden');
         }
     });
 
+    // Update Generate Listener - Simple call now
     if(generateBtn) {
-        generateBtn.addEventListener('click', () => {
-            // Check file first
-            const fileInput = document.getElementById('csv-file');
-            if (fileInput.files.length === 0) {
-                alert('Please upload a CSV file.');
-                return;
-            }
-            // If file exists, generate and close modal
-            handleGenerateClick();
-            settingsModal.classList.add('hidden');
-        });
+        generateBtn.addEventListener('click', handleGenerateClick);
     }
 
 
@@ -452,7 +439,6 @@ document.addEventListener('DOMContentLoaded', function() {
     });
     updateRulesForm('fqi'); 
 
-    // NEW: Listener for Save Rules
     if(saveRulesBtn) {
         saveRulesBtn.addEventListener('click', handleSaveRules);
     }
@@ -491,10 +477,14 @@ document.addEventListener('DOMContentLoaded', function() {
 
 function handleGenerateClick() {
     const fileInput = document.getElementById('csv-file');
-    // Validation is done in event listener too, but safe to keep here
+    // Validation: Check if file is uploaded
     if (fileInput.files.length === 0) {
+        alert('Please upload a CSV file in the Settings menu first.');
+        // Optional: Open settings modal for them
+        document.getElementById('settings-modal').classList.remove('hidden');
         return;
     }
+    
     acceptedUpgrades = [];
     displayAcceptedUpgrades();
 
