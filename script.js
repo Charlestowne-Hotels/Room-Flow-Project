@@ -424,7 +424,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    // Update Generate Listener - Simple call now
+    // Generate Listener
     if(generateBtn) {
         generateBtn.addEventListener('click', handleGenerateClick);
     }
@@ -478,10 +478,8 @@ document.addEventListener('DOMContentLoaded', function() {
 function handleGenerateClick() {
     const fileInput = document.getElementById('csv-file');
     // Validation: Check if file is uploaded
-    if (fileInput.files.length === 0) {
-        alert('Please upload a CSV file in the Settings menu first.');
-        // Optional: Open settings modal for them
-        document.getElementById('settings-modal').classList.remove('hidden');
+    if (!fileInput.files || fileInput.files.length === 0) {
+        alert('Please select a PMS export file first.');
         return;
     }
     
