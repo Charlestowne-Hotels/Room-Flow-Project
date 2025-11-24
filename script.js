@@ -193,18 +193,22 @@ function setAdminControls(isAdmin) {
             el.disabled = shouldBeDisabled;
         }
     });
+    
+    // Also show/hide the admin section wrapper in the modal if desired
+    const rulesContainer = document.getElementById('admin-rules-container');
+    if(rulesContainer) {
+        rulesContainer.style.display = isAdmin ? 'block' : 'none';
+    }
 }
 
 // --- NEW: LOAD SAVED RULES FROM CLOUD ---
 async function loadRemoteProfiles() {
     try {
-        // Access 'app_settings' collection, 'profile_rules' document
         const docRef = db.collection('app_settings').doc('profile_rules');
         const doc = await docRef.get();
 
         if (doc.exists) {
             const savedData = doc.data();
-            // Merge saved data into your local 'profiles' object
             Object.keys(savedData).forEach(profileKey => {
                 if (profiles[profileKey]) {
                     profiles[profileKey] = { 
@@ -216,7 +220,6 @@ async function loadRemoteProfiles() {
             console.log("Remote rules loaded and merged from Firebase.");
         }
         
-        // Refresh the form with the newly loaded data
         const currentProfile = document.getElementById('profile-dropdown').value;
         updateRulesForm(currentProfile);
 
@@ -251,8 +254,6 @@ async function handleSaveRules() {
     status.textContent = "";
 
     try {
-        // 4. Save to Firestore (Merge logic)
-        // Using { merge: true } ensures we don't overwrite other profiles in the same document
         await db.collection('app_settings').doc('profile_rules').set({
             [currentProfile]: newRules
         }, { merge: true });
@@ -268,7 +269,7 @@ async function handleSaveRules() {
         alert("Failed to save rules: " + error.message);
     } finally {
         btn.disabled = false;
-        btn.textContent = "Save Rules for Everyone";
+        btn.textContent = "Save Rules";
     }
 }
 
@@ -360,9 +361,14 @@ document.addEventListener('DOMContentLoaded', function() {
     passwordInput = document.getElementById('password-input');
     errorMessage = document.getElementById('error-message');
     clearAnalyticsBtn = document.getElementById('clear-analytics-btn');
-    // New
     saveRulesBtn = document.getElementById('save-rules-btn');
     saveStatus = document.getElementById('save-status');
+
+    // --- MODAL REFERENCES ---
+    const settingsModal = document.getElementById('settings-modal');
+    const settingsTriggerBtn = document.getElementById('settings-trigger-btn');
+    const closeSettingsBtn = document.getElementById('close-settings-btn');
+    const generateBtn = document.getElementById('generate-btn');
 
     // --- 2. AUTH LISTENER ---
     auth.onAuthStateChanged(async user => {
@@ -402,7 +408,42 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    // --- 3. OTHER LISTENERS ---
+    // --- 3. MODAL LISTENERS ---
+    if(settingsTriggerBtn) {
+        settingsTriggerBtn.addEventListener('click', () => {
+            settingsModal.classList.remove('hidden');
+        });
+    }
+
+    if(closeSettingsBtn) {
+        closeSettingsBtn.addEventListener('click', () => {
+            settingsModal.classList.add('hidden');
+        });
+    }
+
+    // Close on overlay click
+    window.addEventListener('click', (e) => {
+        if (e.target === settingsModal) {
+            settingsModal.classList.add('hidden');
+        }
+    });
+
+    if(generateBtn) {
+        generateBtn.addEventListener('click', () => {
+            // Check file first
+            const fileInput = document.getElementById('csv-file');
+            if (fileInput.files.length === 0) {
+                alert('Please upload a CSV file.');
+                return;
+            }
+            // If file exists, generate and close modal
+            handleGenerateClick();
+            settingsModal.classList.add('hidden');
+        });
+    }
+
+
+    // --- 4. OTHER LISTENERS ---
     const profileDropdown = document.getElementById('profile-dropdown');
     profileDropdown.addEventListener('change', (event) => {
         updateRulesForm(event.target.value);
@@ -432,7 +473,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const futureDate = new Date();
     futureDate.setDate(futureDate.getDate() + 3);
     document.getElementById('selected-date').value = futureDate.toISOString().slice(0, 10);
-    document.getElementById('generate-btn').addEventListener('click', handleGenerateClick);
+    
     document.getElementById('sort-date-dropdown').addEventListener('change', displayCompletedUpgrades);
     
     const tabs = document.querySelectorAll('[data-tab-target]');
@@ -450,8 +491,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
 function handleGenerateClick() {
     const fileInput = document.getElementById('csv-file');
+    // Validation is done in event listener too, but safe to keep here
     if (fileInput.files.length === 0) {
-        alert('Please upload a CSV file.');
         return;
     }
     acceptedUpgrades = [];
