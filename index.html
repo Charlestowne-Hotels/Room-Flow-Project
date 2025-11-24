@@ -20,89 +20,112 @@
         </div>
     </div>
 
-    <div id="app-container" class="container hidden">
-      <div class="sidebar">
-        <div class="profile-selector">
-            <label for="profile-dropdown">Select Profile:</label>
-            <select id="profile-dropdown">
-                <option value="fqi">FQI</option>
-                <option value="hvi">HVI</option>
-                <option value="spec">SPEC</option>
-                <option value="col">COL</option>
-                <option value="ivy">IVY</option>
-            </select>
-        </div>
+    <div id="app-container" class="hidden">
         
-        <h1>Hotel Upgrade Assistant</h1>
-        <p>Strategically upgrade guests to maximize revenue.</p>
-        <button id="signout-btn">Sign Out</button>
-
-        <div class="card">
-          <h2>Define Upgrades</h2>
-          <label for="hierarchy">Room Value Hierarchy</label>
-          <textarea id="hierarchy"></textarea>
-
-          <label for="target-rooms">Target Rooms to Free Up</label>
-          <input type="text" id="target-rooms">
-          <p class="note">This list acts as a priority queue.</p>
-
-          <label for="prioritized-rates">Prioritized Rate Keywords</label>
-          <input type="text" id="prioritized-rates">
-
-          <label for="ota-rates">Ineligible Rate Keywords</label>
-          <input type="text" id="ota-rates">
-
-          <label for="ineligible-upgrades">Never Upgrade To</label>
-          <input type="text" id="ineligible-upgrades">
-
-          <div class="rules-actions" style="margin-top: 15px; border-top: 1px solid #eee; padding-top: 10px;">
-            <button id="save-rules-btn" class="hidden" style="background-color: #4343FF; color: white; padding: 8px 16px; border: none; border-radius: 4px; cursor: pointer; width: 100%;">
-                Save Rules
-            </button>
-            <div id="save-status" style="margin-top: 5px; font-size: 0.9em; text-align: center; height: 20px;"></div>
-          </div>
-          </div>
-
-        <div class="card">
-          <h2>File Upload</h2>
-          <label for="csv-file">Daily Hotel Status CSV File</label>
-          <input type="file" id="csv-file" accept=".csv">
-
-          <label for="selected-date">Select Start Date for 7-Day Period</label>
-          <input type="date" id="selected-date">
-
-          <button id="generate-btn">Generate Suggestions</button>
-        </div>
-      </div>
-
-      <div class="main-content">
-        <div id="loader"><div class="spinner"></div>Generating...</div>
-        <div id="output" style="display: none;">
-          <div id="message"></div>
-          <div id="inventory"></div>
-
-          <div class="tabs">
-            <div class="tab active" data-tab-target="#recommendations">Recommendations</div>
-            <div class="tab" data-tab-target="#matrix">Availability Matrix</div>
-            <div class="tab" data-tab-target="#accepted">Accepted Upgrades</div>
-            <div class="tab" data-tab-target="#analytics">Analytics</div>
-          </div>
-
-          <div id="recommendations" class="tab-content active"><div id="recommendations-container"></div></div>
-          <div id="matrix" class="tab-content"><div id="matrix-container"></div></div>
-          <div id="accepted" class="tab-content"><div id="accepted-container"><p>No upgrades have been accepted yet.</p></div></div>
-          <div id="analytics" class="tab-content">
-            <div class="analytics-header">
-              <label for="sort-date-dropdown">Filter by Date Completed</label>
-              <select id="sort-date-dropdown">
-                <option value="all">All Dates</option>
-              </select>
-              <button id="clear-analytics-btn" class="admin-only-btn hidden">Clear Profile Data</button>
+        <nav class="app-header">
+            <div class="logo">Hotel Upgrade Assistant</div>
+            <div class="nav-controls">
+                <select id="profile-dropdown">
+                    <option value="fqi">FQI - French Quarter Inn</option>
+                    <option value="hvi">HVI - HarbourView Inn</option>
+                    <option value="spec">SPEC - Spectator Hotel</option>
+                    <option value="col">COL - The Collector</option>
+                    <option value="ivy">IVY - The Ivy Hotel</option>
+                </select>
+                
+                <button id="settings-trigger-btn" class="icon-btn" title="Settings & Upload">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="3"></circle>
+                        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+                    </svg>
+                </button>
+                
+                <button id="signout-btn">Sign Out</button>
             </div>
-            <div id="completed-container"><p>No upgrades have been marked as completed yet.</p></div>
-          </div>
+        </nav>
+
+        <div id="settings-modal" class="modal-overlay hidden">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>Configuration & Upload</h2>
+                    <button id="close-settings-btn" class="close-btn">&times;</button>
+                </div>
+
+                <div class="modal-body">
+                    <div class="setting-group">
+                        <h3>1. Upload Data</h3>
+                        <div class="input-row">
+                            <label>CSV File</label>
+                            <input type="file" id="csv-file" accept=".csv" />
+                        </div>
+                        <div class="input-row">
+                            <label>Start Date</label>
+                            <input type="date" id="selected-date" />
+                        </div>
+                    </div>
+
+                    <div id="admin-rules-container" class="setting-group">
+                        <h3>2. Upgrade Logic (Admin Only)</h3>
+                        
+                        <label for="hierarchy">Room Value Hierarchy (Low to High)</label>
+                        <textarea id="hierarchy"></textarea>
+
+                        <label for="target-rooms">Target Rooms to Free Up</label>
+                        <input type="text" id="target-rooms" placeholder="e.g. TQHC-QQ, TK-K">
+                        <p class="note">This list acts as a priority queue.</p>
+
+                        <div class="grid-2">
+                            <div>
+                                <label for="prioritized-rates">Prioritized Rate Keywords</label>
+                                <input type="text" id="prioritized-rates">
+                            </div>
+                            <div>
+                                <label for="ota-rates">Ineligible Rate Keywords</label>
+                                <input type="text" id="ota-rates">
+                            </div>
+                        </div>
+
+                        <label for="ineligible-upgrades">Never Upgrade To</label>
+                        <input type="text" id="ineligible-upgrades">
+                    </div>
+                </div>
+
+                <div class="modal-footer">
+                    <span id="save-status"></span>
+                    <button id="save-rules-btn" class="secondary-btn hidden">Save Rules</button>
+                    <button id="generate-btn" class="primary-btn">Generate Suggestions</button>
+                </div>
+            </div>
         </div>
-      </div>
+
+        <div class="main-content">
+            <div id="loader"><div class="spinner"></div>Generating...</div>
+            <div id="output" style="display: none;">
+                <div id="message"></div>
+                <div id="inventory"></div>
+
+                <div class="tabs">
+                    <div class="tab active" data-tab-target="#recommendations">Recommendations</div>
+                    <div class="tab" data-tab-target="#matrix">Availability Matrix</div>
+                    <div class="tab" data-tab-target="#accepted">Accepted Upgrades</div>
+                    <div class="tab" data-tab-target="#analytics">Analytics</div>
+                </div>
+
+                <div id="recommendations" class="tab-content active"><div id="recommendations-container"></div></div>
+                <div id="matrix" class="tab-content"><div id="matrix-container"></div></div>
+                <div id="accepted" class="tab-content"><div id="accepted-container"><p>No upgrades have been accepted yet.</p></div></div>
+                <div id="analytics" class="tab-content">
+                    <div class="analytics-header">
+                        <label for="sort-date-dropdown">Filter by Date Completed</label>
+                        <select id="sort-date-dropdown">
+                            <option value="all">All Dates</option>
+                        </select>
+                        <button id="clear-analytics-btn" class="admin-only-btn hidden">Clear Profile Data</button>
+                    </div>
+                    <div id="completed-container"><p>No upgrades have been marked as completed yet.</p></div>
+                </div>
+            </div>
+        </div>
     </div>
 
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
@@ -114,5 +137,3 @@
 
 </body>
 </html>
-
-
