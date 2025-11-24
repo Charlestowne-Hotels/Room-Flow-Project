@@ -360,26 +360,9 @@ document.addEventListener('DOMContentLoaded', function() {
     passwordInput = document.getElementById('password-input');
     errorMessage = document.getElementById('error-message');
     clearAnalyticsBtn = document.getElementById('clear-analytics-btn');
+    // New
     saveRulesBtn = document.getElementById('save-rules-btn');
     saveStatus = document.getElementById('save-status');
-
-    // --- FIX: ROBUST COLLAPSIBLE LOGIC ---
-    const toggleConfigBtn = document.getElementById('toggle-config-btn');
-    const configPanel = document.getElementById('config-panel');
-
-    if (toggleConfigBtn && configPanel) {
-        // Toggle click handler
-        toggleConfigBtn.addEventListener('click', () => {
-            // Check current inline style
-            if (configPanel.style.display === 'none') {
-                configPanel.style.display = 'block';
-                toggleConfigBtn.textContent = 'Hide Settings & Upload';
-            } else {
-                configPanel.style.display = 'none';
-                toggleConfigBtn.textContent = 'Show Settings & Upload';
-            }
-        });
-    }
 
     // --- 2. AUTH LISTENER ---
     auth.onAuthStateChanged(async user => {
@@ -391,15 +374,18 @@ document.addEventListener('DOMContentLoaded', function() {
             if (loginContainer) loginContainer.classList.add('hidden');
             if (appContainer) appContainer.classList.remove('hidden');
 
+            // --- NEW: LOAD RULES FROM CLOUD ---
             await loadRemoteProfiles(); 
+            // ----------------------------------
 
             const isUserAdmin = ADMIN_UIDS.includes(user.uid);
 
             if (isUserAdmin) {
+                console.log("User is an admin!");
                 if(adminButton) adminButton.classList.remove('hidden');
-                if(saveBtn) saveBtn.classList.remove('hidden'); 
+                if(saveBtn) saveBtn.classList.remove('hidden'); // Show Save button
             } else {
-                if(saveBtn) saveBtn.classList.add('hidden'); 
+                if(saveBtn) saveBtn.classList.add('hidden'); // Hide Save button
                 if(adminButton) adminButton.classList.add('hidden');
             }
 
@@ -418,15 +404,14 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // --- 3. OTHER LISTENERS ---
     const profileDropdown = document.getElementById('profile-dropdown');
-    if (profileDropdown) {
-        profileDropdown.addEventListener('change', (event) => {
-            updateRulesForm(event.target.value);
-            resetAppState();
-            displayCompletedUpgrades();
-        });
-        updateRulesForm('fqi'); 
-    }
+    profileDropdown.addEventListener('change', (event) => {
+        updateRulesForm(event.target.value);
+        resetAppState();
+        displayCompletedUpgrades();
+    });
+    updateRulesForm('fqi'); 
 
+    // NEW: Listener for Save Rules
     if(saveRulesBtn) {
         saveRulesBtn.addEventListener('click', handleSaveRules);
     }
@@ -440,34 +425,25 @@ document.addEventListener('DOMContentLoaded', function() {
     if (emailInput) emailInput.addEventListener('keydown', triggerSignInOnEnter);
     if (passwordInput) passwordInput.addEventListener('keydown', triggerSignInOnEnter);
 
-    if (signinBtn) signinBtn.addEventListener('click', handleSignIn);
-    if (signoutBtn) signoutBtn.addEventListener('click', handleSignOut);
-    if (clearAnalyticsBtn) clearAnalyticsBtn.addEventListener('click', handleClearAnalytics);
+    signinBtn.addEventListener('click', handleSignIn);
+    signoutBtn.addEventListener('click', handleSignOut);
+    clearAnalyticsBtn.addEventListener('click', handleClearAnalytics);
 
     const futureDate = new Date();
     futureDate.setDate(futureDate.getDate() + 3);
-    const dateInput = document.getElementById('selected-date');
-    if (dateInput) dateInput.value = futureDate.toISOString().slice(0, 10);
-
-    const generateBtn = document.getElementById('generate-btn');
-    if (generateBtn) generateBtn.addEventListener('click', handleGenerateClick);
-
-    const sortDateDropdown = document.getElementById('sort-date-dropdown');
-    if (sortDateDropdown) sortDateDropdown.addEventListener('change', displayCompletedUpgrades);
+    document.getElementById('selected-date').value = futureDate.toISOString().slice(0, 10);
+    document.getElementById('generate-btn').addEventListener('click', handleGenerateClick);
+    document.getElementById('sort-date-dropdown').addEventListener('change', displayCompletedUpgrades);
     
-    // Tabs Logic
     const tabs = document.querySelectorAll('[data-tab-target]');
     const tabContents = document.querySelectorAll('.tab-content');
     tabs.forEach(tab => {
         tab.addEventListener('click', () => {
-            const targetSelector = tab.dataset.tabTarget;
-            const target = document.querySelector(targetSelector);
-            if (target) {
-                tabContents.forEach(tc => tc.classList.remove('active'));
-                tabs.forEach(t => t.classList.remove('active'));
-                tab.classList.add('active');
-                target.classList.add('active');
-            }
+            const target = document.querySelector(tab.dataset.tabTarget);
+            tabContents.forEach(tc => tc.classList.remove('active'));
+            tabs.forEach(t => t.classList.remove('active'));
+            tab.classList.add('active');
+            target.classList.add('active');
         });
     });
 });
