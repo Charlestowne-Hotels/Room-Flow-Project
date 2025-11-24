@@ -26,43 +26,87 @@ body {
   margin: 0; padding: 0;
 }
 
-/* --- HEADER STYLING --- */
+/* --- HEADER STYLING (UPDATED) --- */
 .app-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 15px 20px;
+    height: 60px; /* Fixed compact height */
+    padding: 0 20px;
     background-color: white;
     border-bottom: 1px solid var(--border-color);
-    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
 }
 
 .logo { 
     font-weight: bold; 
-    font-size: 1.2rem; 
+    font-size: 1.1rem; 
     color: var(--heading-color);
 }
 
 .nav-controls {
     display: flex;
     align-items: center;
-    gap: 15px;
+    gap: 12px; /* Tighter gap between items */
 }
 
-/* Gear Icon Button */
+/* Ensure header inputs don't have the large bottom margin form inputs usually have */
+.nav-controls select, 
+.nav-controls button {
+    margin-bottom: 0 !important;
+}
+
+/* Compact Profile Dropdown */
+#profile-dropdown {
+    padding: 6px 10px;
+    font-size: 13px;
+    height: 32px;
+    width: auto;
+    cursor: pointer;
+}
+
+/* Gear Icon Button - Small */
 .icon-btn {
     background: none;
     border: none;
     cursor: pointer;
-    color: #555;
-    padding: 5px;
-    width: auto; /* Overrides generic button width */
-    transition: transform 0.2s;
+    color: #666;
+    padding: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+    transition: all 0.2s;
+}
+.icon-btn svg {
+    width: 20px; /* Smaller icon size */
+    height: 20px;
 }
 .icon-btn:hover { 
     color: var(--primary-accent); 
-    background-color: transparent;
+    background-color: #f3f4f6;
     transform: rotate(45deg); 
+}
+
+/* Sign Out Button - Small & Outline style */
+#signout-btn {
+    width: auto; 
+    padding: 6px 12px; 
+    background-color: transparent; /* Remove heavy background */
+    color: var(--text-color);
+    border: 1px solid var(--border-color); 
+    border-radius: 4px; 
+    font-size: 12px; /* Smaller text */
+    font-weight: 500;
+    cursor: pointer; 
+    height: 32px;
+    display: flex;
+    align-items: center;
+}
+#signout-btn:hover { 
+    background-color: #f3f4f6; 
+    border-color: #d1d5db;
+    color: var(--heading-color);
 }
 
 /* --- MODAL STYLING --- */
@@ -117,7 +161,9 @@ body {
     cursor: pointer;
     width: auto;
     padding: 0;
+    color: #999;
 }
+.close-btn:hover { color: #333; }
 
 /* Utility for Modal Grid */
 .setting-group { margin-bottom: 20px; }
@@ -173,7 +219,7 @@ select { width: auto; padding-right: 30px;}
 textarea { height: 60px; }
 .note { font-size: 12px; color: var(--label-color); margin-top: -10px; }
 
-/* Generic Button Style (Sidebar buttons etc) */
+/* Generic Button Style (Global fallback) */
 button {
   background-color: var(--primary-accent); 
   color: white; 
@@ -346,14 +392,8 @@ button:disabled {
   min-height: 20px;
   font-size: 0.9em; margin-bottom: 0; text-align: left;
 }
-#signout-btn {
-  width: auto; padding: 8px 15px; 
-  background-color: white;
-  color: var(--text-color);
-  border: 1px solid var(--border-color); 
-  border-radius: 4px; cursor: pointer;
-}
-#signout-btn:hover { background-color: #f0f0f0; }
+/* Login specific signout if needed */
+#signout-btn:hover { background-color: #f3f4f6; }
 
 .admin-only-btn {
   width: auto;
