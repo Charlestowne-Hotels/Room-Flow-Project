@@ -364,6 +364,25 @@ document.addEventListener('DOMContentLoaded', function() {
     saveRulesBtn = document.getElementById('save-rules-btn');
     saveStatus = document.getElementById('save-status');
 
+    // --- NEW: COLLAPSIBLE CONFIG LOGIC ---
+    const toggleConfigBtn = document.getElementById('toggle-config-btn');
+    const configPanel = document.getElementById('config-panel');
+
+    if (toggleConfigBtn && configPanel) {
+        toggleConfigBtn.addEventListener('click', () => {
+            const isHidden = configPanel.classList.contains('hidden');
+            if (isHidden) {
+                // Show
+                configPanel.classList.remove('hidden');
+                toggleConfigBtn.textContent = 'Hide Settings & Upload';
+            } else {
+                // Hide
+                configPanel.classList.add('hidden');
+                toggleConfigBtn.textContent = 'Show Settings & Upload';
+            }
+        });
+    }
+
     // --- 2. AUTH LISTENER ---
     auth.onAuthStateChanged(async user => {
         const adminButton = document.getElementById('clear-analytics-btn');
