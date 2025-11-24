@@ -105,7 +105,7 @@ body {
     color: var(--heading-color);
 }
 
-/* --- CONTROLS CONTAINER (NEW) --- */
+/* --- CONTROLS CONTAINER (Updated for File Upload) --- */
 .controls-container {
     display: flex;
     align-items: flex-end;
@@ -115,11 +115,26 @@ body {
     border-radius: 8px;
     border: 1px solid var(--border-color);
     margin-bottom: 20px;
+    flex-wrap: wrap; /* Allows wrapping on very small screens */
 }
 
 .control-item {
     display: flex;
     flex-direction: column;
+}
+
+/* Sizing Logic */
+.file-control {
+    flex-grow: 1; /* File input takes remaining space */
+    min-width: 250px;
+}
+.date-control {
+    width: 180px;
+    flex-shrink: 0;
+}
+.button-control {
+    width: auto;
+    flex-shrink: 0;
 }
 
 .control-item label {
@@ -129,16 +144,23 @@ body {
     margin-bottom: 8px;
 }
 
-.control-item input[type="date"] {
+.control-item input[type="date"],
+.control-item input[type="file"] {
     margin-bottom: 0;
-    width: 200px;
     height: 40px;
+    background-color: white; /* Contrast against card bg */
+}
+
+/* File input specific styling to match height */
+.control-item input[type="file"] {
+    padding: 6px; /* Adjust padding so text aligns vertically */
 }
 
 .control-item button {
     margin-bottom: 0;
     height: 40px;
     width: auto;
+    white-space: nowrap;
 }
 
 /* --- MODAL STYLING --- */
