@@ -280,6 +280,9 @@ async function loadCompletedUpgrades(userId) {
         const snapshot = await upgradesRef.get();
         snapshot.forEach(doc => {
             const upgrade = doc.data();
+            // Capture the Firestore ID to enable undoing later
+            upgrade.firestoreId = doc.id;
+            
             if (upgrade.completedTimestamp && upgrade.completedTimestamp.toDate) {
                 upgrade.completedTimestamp = upgrade.completedTimestamp.toDate();
             }
@@ -576,6 +579,9 @@ function handlePmsUpdateClick(event) {
         upgradesRef.add(upgradeToComplete)
             .then((docRef) => {
                 console.log(`Upgrade saved to Firestore with ID: ${docRef.id} under profile: ${upgradeToComplete.profile}`);
+                // Update local object with new ID
+                upgradeToComplete.firestoreId = docRef.id;
+                displayCompletedUpgrades(); // Re-render to ensure ID is attached to undo button
             })
             .catch((error) => {
                 console.error("Error saving upgrade: ", error);
@@ -585,6 +591,61 @@ function handlePmsUpdateClick(event) {
             });
         displayAcceptedUpgrades();
         displayCompletedUpgrades();
+    }
+}
+
+// --- NEW FUNCTION: UNDO A COMPLETED UPGRADE ---
+async function handleUndoCompletedClick(event) {
+    const user = auth.currentUser;
+    if (!user) return;
+
+    if (!confirm("This will remove this record from Analytics and move it back to the 'Accepted Upgrades' list. Continue?")) {
+        return;
+    }
+
+    const btn = event.target;
+    const firestoreId = btn.dataset.firestoreId;
+    
+    // 1. Find the local object
+    const itemIndex = completedUpgrades.findIndex(u => u.firestoreId === firestoreId);
+    if (itemIndex === -1) {
+        alert("Error: Item not found locally.");
+        return;
+    }
+    
+    const itemToRestore = completedUpgrades[itemIndex];
+    btn.disabled = true;
+    btn.textContent = "Reverting...";
+
+    try {
+        // 2. Delete from Firestore
+        await db.collection('users').doc(user.uid).collection('completedUpgrades').doc(firestoreId).delete();
+
+        // 3. Remove from local Completed array
+        completedUpgrades.splice(itemIndex, 1);
+
+        // 4. Move back to Accepted Upgrades array
+        // We remove the timestamp and ID so it looks like a fresh accepted upgrade
+        delete itemToRestore.completedTimestamp;
+        delete itemToRestore.firestoreId; 
+        
+        acceptedUpgrades.push(itemToRestore);
+
+        // 5. Update UI
+        displayCompletedUpgrades(); // Refresh Analytics tab
+        displayAcceptedUpgrades();  // Refresh Accepted tab
+        
+        // 6. Recalculate matrix if needed (if a CSV is loaded)
+        if (currentCsvContent && currentRules) {
+             const results = applyUpgradesAndRecalculate(acceptedUpgrades, currentCsvContent, currentRules);
+             displayResults(results);
+        }
+
+    } catch (error) {
+        console.error("Error undoing completed upgrade:", error);
+        alert("Failed to undo. Please check console.");
+        btn.disabled = false;
+        btn.textContent = "Undo";
     }
 }
 
@@ -767,8 +828,11 @@ function displayCompletedUpgrades() {
                                         Completed On: <strong>${rec.completedTimestamp.toLocaleDateString()}</strong>
                                     </div>
                                 </div>
-                                <div class="rec-actions" style="color: var(--success-color);">
-                                    <strong style="color: #4343FF;">✓ Completed</strong>
+                                <div class="rec-actions" style="flex-direction: column; align-items: flex-end;">
+                                    <div style="color: var(--success-color); margin-bottom: 5px;">
+                                        <strong style="color: #4343FF;">✓ Completed</strong>
+                                    </div>
+                                    <button class="undo-completed-btn" data-firestore-id="${rec.firestoreId}" style="background-color: #dc3545; color: white; padding: 5px 10px; font-size: 12px; border: none; border-radius: 4px; cursor: pointer;">Undo</button>
                                 </div>
             `;
             container.appendChild(card);
@@ -778,6 +842,12 @@ function displayCompletedUpgrades() {
         totalHeader.style.marginTop = '20px';
         totalHeader.textContent = `Total Value: ${totalValue.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}`;
         container.appendChild(totalHeader);
+
+        // Attach listeners for the new undo buttons
+        container.querySelectorAll('.undo-completed-btn').forEach(btn => {
+            btn.addEventListener('click', handleUndoCompletedClick);
+        });
+
     } else {
         container.innerHTML = '<p>No upgrades have been marked as completed for this profile and date.</p>';
     }
