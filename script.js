@@ -145,27 +145,34 @@ const MASTER_INVENTORIES = {
         { roomNumber: '803', code: 'SQA' }
     ],
     msi: [
-        { roomNumber: '211', code: 'Q' }, { roomNumber: '212', code: 'Q' }, { roomNumber: '213', code: 'Q' }, 
-        { roomNumber: '214', code: 'Q' }, { roomNumber: '215', code: 'Q' }, { roomNumber: '305', code: 'Q' }, 
-        { roomNumber: '307', code: 'Q' }, { roomNumber: '308', code: 'Q' }, { roomNumber: '309', code: 'Q' }, 
-        { roomNumber: '310', code: 'Q' }, { roomNumber: '311', code: 'Q' }, { roomNumber: '312', code: 'Q' }, 
-        { roomNumber: '313', code: 'Q' }, { roomNumber: '314', code: 'Q' }, { roomNumber: '315', code: 'Q' }, 
-        { roomNumber: '402', code: 'Q' }, { roomNumber: '403', code: 'Q' }, { roomNumber: '404', code: 'Q' }, 
-        { roomNumber: '405', code: 'Q' }, { roomNumber: '406', code: 'Q' },
+        // Q Rooms (27 Total)
+        { roomNumber: '211', code: 'Q' }, { roomNumber: '212', code: 'Q' }, { roomNumber: '213', code: 'Q' }, { roomNumber: '214', code: 'Q' }, { roomNumber: '215', code: 'Q' },
+        { roomNumber: '305', code: 'Q' }, { roomNumber: '306', code: 'Q' }, { roomNumber: '307', code: 'Q' }, { roomNumber: '308', code: 'Q' }, { roomNumber: '309', code: 'Q' },
+        { roomNumber: '310', code: 'Q' }, { roomNumber: '311', code: 'Q' }, { roomNumber: '312', code: 'Q' }, { roomNumber: '313', code: 'Q' }, { roomNumber: '314', code: 'Q' }, { roomNumber: '315', code: 'Q' },
+        { roomNumber: '402', code: 'Q' }, { roomNumber: '403', code: 'Q' }, { roomNumber: '404', code: 'Q' }, { roomNumber: '405', code: 'Q' }, { roomNumber: '406', code: 'Q' },
+        { roomNumber: '407', code: 'Q' }, { roomNumber: '408', code: 'Q' }, { roomNumber: '409', code: 'Q' }, { roomNumber: '410', code: 'Q' }, { roomNumber: '411', code: 'Q' }, { roomNumber: '412', code: 'Q' },
 
+        // RD Rooms (8 Total)
         { roomNumber: '101', code: 'RD' }, { roomNumber: '110', code: 'RD' }, { roomNumber: '205', code: 'RD' }, 
         { roomNumber: '206', code: 'RD' }, { roomNumber: '207', code: 'RD' }, { roomNumber: '208', code: 'RD' }, 
         { roomNumber: '209', code: 'RD' }, { roomNumber: '210', code: 'RD' },
 
+        // RDCY Rooms (8 Total)
         { roomNumber: '102', code: 'RDCY' }, { roomNumber: '103', code: 'RDCY' }, { roomNumber: '104', code: 'RDCY' }, 
         { roomNumber: '105', code: 'RDCY' }, { roomNumber: '106', code: 'RDCY' }, { roomNumber: '107', code: 'RDCY' }, 
         { roomNumber: '108', code: 'RDCY' }, { roomNumber: '109', code: 'RDCY' },
 
+        // DQ Rooms (2 Total)
         { roomNumber: '204', code: 'DQ' }, { roomNumber: '216', code: 'DQ' },
 
-        { roomNumber: '304', code: 'DD' }, { roomNumber: '316', code: 'DD' }, { roomNumber: '401', code: 'DD' }, 
-        { roomNumber: '413', code: 'DD' },
+        // DD Rooms (4 Total)
+        { roomNumber: '304', code: 'DD' }, { roomNumber: '316', code: 'DD' }, { roomNumber: '401', code: 'DD' }, { roomNumber: '413', code: 'DD' },
 
+        // HHK Rooms (6 Total)
+        { roomNumber: '201', code: 'HHK' }, { roomNumber: '202', code: 'HHK' }, { roomNumber: '203', code: 'HHK' },
+        { roomNumber: '301', code: 'HHK' }, { roomNumber: '302', code: 'HHK' }, { roomNumber: '303', code: 'HHK' },
+
+        // TQACC Room (1 Total)
         { roomNumber: '111', code: 'TQACC' }
     ]
 };
@@ -1161,20 +1168,12 @@ function getBedType(roomCode) {
     if (roomCode.startsWith('DQ')) return 'QQ'; 
 
     // --- NEW LOGIC FOR MSI BED TYPES ---
-    // Assuming simple mapping based on the provided hierarchy:
-    // Q = Queen, RD = (Assuming King/Queen match logic or manual override needed? Treated as default), 
-    // DQ = Double Queen, DD = Double Double (treated like QQ), TQACC = Queen or QQ?
-    // You may need to refine this block based on actual bed types for the new MSI rooms.
-    // For now, I will add basic inferences:
-    
     if (roomCode === 'Q') return 'Q';
     if (roomCode === 'DQ') return 'QQ';
     if (roomCode === 'DD') return 'QQ';
-    if (roomCode === 'RD') return 'K'; // Assumption
-    if (roomCode === 'RDCY') return 'K'; // Assumption
-    
-    // If exact match fails, return 'OTHER' which prevents upgrades unless logic is added.
-    // If you want to allow all upgrades regardless of bed type for MSI, remove the 'OTHER' check in the loop above.
+    if (roomCode === 'RD') return 'K'; 
+    if (roomCode === 'RDCY') return 'K';
+    if (roomCode === 'HHK') return 'K'; // Added HHK mapping
     
     return 'OTHER';
 }
