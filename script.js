@@ -63,6 +63,13 @@ const profiles = {
         prioritizedRates: 'Best Available, BAR, Rack',
         otaRates: 'Expedia, Booking.com, HotelTonight, Priceline', 
         ineligibleUpgrades: 'DQSA, KSA, SQA'
+    },
+    msi: {
+        hierarchy: 'Q, RD, RDCY, DQ, DD, HHK, TQACC',
+        targetRooms: '',
+        prioritizedRates: 'Best Available, BAR, Rack',
+        otaRates: 'Expedia, Booking.com, Priceline, GDS', 
+        ineligibleUpgrades: 'TQACC'
     }
 };
 
@@ -136,6 +143,30 @@ const MASTER_INVENTORIES = {
         { roomNumber: '704', code: 'KSO' }, { roomNumber: '705', code: 'KSO' }, { roomNumber: '804', code: 'KSO' }, { roomNumber: '805', code: 'KSO' }, { roomNumber: '904', code: 'KSO' }, { roomNumber: '905', code: 'KSO' },
         { roomNumber: '1003', code: 'SQ' }, { roomNumber: '1103', code: 'SQ' }, { roomNumber: '1203', code: 'SQ' }, { roomNumber: '1303', code: 'SQ' }, { roomNumber: '403', code: 'SQ' }, { roomNumber: '503', code: 'SQ' }, { roomNumber: '603', code: 'SQ' }, { roomNumber: '703', code: 'SQ' }, { roomNumber: '903', code: 'SQ' },
         { roomNumber: '803', code: 'SQA' }
+    ],
+    msi: [
+        { roomNumber: '211', code: 'Q' }, { roomNumber: '212', code: 'Q' }, { roomNumber: '213', code: 'Q' }, 
+        { roomNumber: '214', code: 'Q' }, { roomNumber: '215', code: 'Q' }, { roomNumber: '305', code: 'Q' }, 
+        { roomNumber: '307', code: 'Q' }, { roomNumber: '308', code: 'Q' }, { roomNumber: '309', code: 'Q' }, 
+        { roomNumber: '310', code: 'Q' }, { roomNumber: '311', code: 'Q' }, { roomNumber: '312', code: 'Q' }, 
+        { roomNumber: '313', code: 'Q' }, { roomNumber: '314', code: 'Q' }, { roomNumber: '315', code: 'Q' }, 
+        { roomNumber: '402', code: 'Q' }, { roomNumber: '403', code: 'Q' }, { roomNumber: '404', code: 'Q' }, 
+        { roomNumber: '405', code: 'Q' }, { roomNumber: '406', code: 'Q' },
+
+        { roomNumber: '101', code: 'RD' }, { roomNumber: '110', code: 'RD' }, { roomNumber: '205', code: 'RD' }, 
+        { roomNumber: '206', code: 'RD' }, { roomNumber: '207', code: 'RD' }, { roomNumber: '208', code: 'RD' }, 
+        { roomNumber: '209', code: 'RD' }, { roomNumber: '210', code: 'RD' },
+
+        { roomNumber: '102', code: 'RDCY' }, { roomNumber: '103', code: 'RDCY' }, { roomNumber: '104', code: 'RDCY' }, 
+        { roomNumber: '105', code: 'RDCY' }, { roomNumber: '106', code: 'RDCY' }, { roomNumber: '107', code: 'RDCY' }, 
+        { roomNumber: '108', code: 'RDCY' }, { roomNumber: '109', code: 'RDCY' },
+
+        { roomNumber: '204', code: 'DQ' }, { roomNumber: '216', code: 'DQ' },
+
+        { roomNumber: '304', code: 'DD' }, { roomNumber: '316', code: 'DD' }, { roomNumber: '401', code: 'DD' }, 
+        { roomNumber: '413', code: 'DD' },
+
+        { roomNumber: '111', code: 'TQACC' }
     ]
 };
 
@@ -1129,6 +1160,22 @@ function getBedType(roomCode) {
     if (roomCode.startsWith('SQ')) return 'Q'; 
     if (roomCode.startsWith('DQ')) return 'QQ'; 
 
+    // --- NEW LOGIC FOR MSI BED TYPES ---
+    // Assuming simple mapping based on the provided hierarchy:
+    // Q = Queen, RD = (Assuming King/Queen match logic or manual override needed? Treated as default), 
+    // DQ = Double Queen, DD = Double Double (treated like QQ), TQACC = Queen or QQ?
+    // You may need to refine this block based on actual bed types for the new MSI rooms.
+    // For now, I will add basic inferences:
+    
+    if (roomCode === 'Q') return 'Q';
+    if (roomCode === 'DQ') return 'QQ';
+    if (roomCode === 'DD') return 'QQ';
+    if (roomCode === 'RD') return 'K'; // Assumption
+    if (roomCode === 'RDCY') return 'K'; // Assumption
+    
+    // If exact match fails, return 'OTHER' which prevents upgrades unless logic is added.
+    // If you want to allow all upgrades regardless of bed type for MSI, remove the 'OTHER' check in the loop above.
+    
     return 'OTHER';
 }
 
