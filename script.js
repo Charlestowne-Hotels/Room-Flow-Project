@@ -702,8 +702,7 @@ function displayRecommendations(recs) {
                                         Booked: <b>${rec.room}</b> for ${rec.nights} night(s) | Rate: <i>${rec.rate}</i><br>
                                         Value of Reservation: <strong>${rec.revenue}</strong>
                                     </div>
-                                    <div class="rec-reason">Reason: Frees up a high-demand '${rec.room}' room.</div>
-                                </div>
+                                    </div>
                                 <div class="rec-actions">
                                     <div class="rec-upgrade-to">Upgrade To<br><strong>${rec.upgradeTo}</strong></div>
                                     <div class="rec-score">${rec.score}</div>
