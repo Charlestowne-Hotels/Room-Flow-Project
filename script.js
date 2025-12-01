@@ -480,9 +480,13 @@ document.addEventListener('DOMContentLoaded', function() {
                 console.log("User is an admin!");
                 if(adminButton) adminButton.classList.remove('hidden');
                 if(saveBtn) saveBtn.classList.remove('hidden');
+                // SHOW SETTINGS ICON FOR ADMIN
+                if(settingsTriggerBtn) settingsTriggerBtn.classList.remove('hidden');
             } else {
                 if(saveBtn) saveBtn.classList.add('hidden');
                 if(adminButton) adminButton.classList.add('hidden');
+                // HIDE SETTINGS ICON FOR NON-ADMIN
+                if(settingsTriggerBtn) settingsTriggerBtn.classList.add('hidden');
             }
 
             setAdminControls(isUserAdmin);
@@ -493,6 +497,8 @@ document.addEventListener('DOMContentLoaded', function() {
             if (appContainer) appContainer.classList.add('hidden');
             if (adminButton) adminButton.classList.add('hidden');
             if (saveBtn) saveBtn.classList.add('hidden');
+            // HIDE SETTINGS ICON ON LOGOUT
+            if(settingsTriggerBtn) settingsTriggerBtn.classList.add('hidden');
 
             setAdminControls(false);
         }
@@ -1383,4 +1389,3 @@ function downloadAcceptedUpgradesCsv() {
     link.click();
     document.body.removeChild(link);
 }
-
