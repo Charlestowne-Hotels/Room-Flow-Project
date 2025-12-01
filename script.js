@@ -235,6 +235,7 @@ let currentRules = null;
 let currentRecommendations = [];
 let acceptedUpgrades = [];
 let completedUpgrades = [];
+let oooRecords = []; // <--- NEW OOO STATE
 
 // --- FUNCTIONS ---
 
@@ -263,6 +264,166 @@ function updateRulesForm(profileName) {
     document.getElementById('prioritized-rates').value = profile.prioritizedRates;
     document.getElementById('ota-rates').value = profile.otaRates;
     document.getElementById('ineligible-upgrades').value = profile.ineligibleUpgrades;
+    populateOooDropdown(); // Re-populate OOO dropdown based on hierarchy
+}
+
+// --- OOO MANAGEMENT FUNCTIONS ---
+
+// Load OOO records from Firebase for the current profile
+async function loadOooRecords() {
+    const currentProfile = document.getElementById('profile-dropdown').value;
+    const listContainer = document.getElementById('ooo-list');
+    
+    oooRecords = []; // Reset local state
+    if(listContainer) listContainer.innerHTML = '<p>Loading...</p>';
+
+    try {
+        const snapshot = await db.collection('ooo_logs')
+            .where('profile', '==', currentProfile)
+            .get();
+
+        snapshot.forEach(doc => {
+            const data = doc.data();
+            // Convert timestamps back to Date objects
+            oooRecords.push({
+                id: doc.id,
+                roomType: data.roomType,
+                startDate: data.startDate.toDate(),
+                endDate: data.endDate.toDate(),
+                profile: data.profile
+            });
+        });
+
+        renderOooList();
+        populateOooDropdown(); 
+    } catch (error) {
+        console.error("Error loading OOO records:", error);
+        if(listContainer) listContainer.innerHTML = '<p style="color:red">Error loading OOO records.</p>';
+    }
+}
+
+// Add a new OOO Record
+async function handleAddOoo() {
+    const profile = document.getElementById('profile-dropdown').value;
+    const roomType = document.getElementById('ooo-room-type').value;
+    const startStr = document.getElementById('ooo-start-date').value;
+    const endStr = document.getElementById('ooo-end-date').value;
+
+    if (!roomType || !startStr || !endStr) {
+        alert("Please fill in all OOO fields.");
+        return;
+    }
+
+    const startDate = new Date(startStr); 
+    // Fix timezone offset for accurate date storage (store as UTC noon to avoid shifting)
+    const utcStart = new Date(Date.UTC(startDate.getFullYear(), startDate.getMonth(), startDate.getDate(), 12, 0, 0));
+    
+    const endDate = new Date(endStr);
+    const utcEnd = new Date(Date.UTC(endDate.getFullYear(), endDate.getMonth(), endDate.getDate(), 12, 0, 0));
+
+    if (utcEnd < utcStart) {
+        alert("End date cannot be before start date.");
+        return;
+    }
+
+    const newRecord = {
+        profile: profile,
+        roomType: roomType,
+        startDate: utcStart,
+        endDate: utcEnd
+    };
+
+    const btn = document.getElementById('add-ooo-btn');
+    btn.disabled = true;
+    btn.textContent = "Adding...";
+
+    try {
+        const docRef = await db.collection('ooo_logs').add(newRecord);
+        
+        // Add to local state immediately so we see it without refresh
+        oooRecords.push({ ...newRecord, id: docRef.id });
+        
+        renderOooList();
+        
+        // Reset inputs
+        document.getElementById('ooo-room-type').value = "";
+        document.getElementById('ooo-start-date').value = "";
+        document.getElementById('ooo-end-date').value = "";
+    } catch (error) {
+        console.error("Error adding OOO:", error);
+        alert("Failed to save. Ensure you are an Admin.");
+    } finally {
+        btn.disabled = false;
+        btn.textContent = "Add";
+    }
+}
+
+// Delete an OOO Record
+async function handleDeleteOoo(id) {
+    if(!confirm("Remove this OOO record? This will add the room back to inventory.")) return;
+
+    try {
+        await db.collection('ooo_logs').doc(id).delete();
+        // Remove from local array
+        oooRecords = oooRecords.filter(r => r.id !== id);
+        renderOooList();
+    } catch (error) {
+        console.error("Error deleting OOO:", error);
+        alert("Failed to delete.");
+    }
+}
+
+// Render the running list in the HTML
+function renderOooList() {
+    const container = document.getElementById('ooo-list');
+    if(!container) return;
+
+    if (oooRecords.length === 0) {
+        container.innerHTML = '<p style="color: #888; font-size: 13px;">No active OOO records.</p>';
+        return;
+    }
+
+    // Sort by start date
+    oooRecords.sort((a, b) => a.startDate - b.startDate);
+
+    let html = '<ul style="list-style: none; padding: 0; margin: 0;">';
+    oooRecords.forEach(rec => {
+        const start = rec.startDate.toISOString().split('T')[0];
+        const end = rec.endDate.toISOString().split('T')[0];
+        
+        html += `
+            <li style="display: flex; justify-content: space-between; align-items: center; background: white; padding: 8px; border-bottom: 1px solid #eee; margin-bottom: 4px; font-size: 13px;">
+                <span>
+                    <strong>${rec.roomType}</strong> <br>
+                    <small>${start} to ${end}</small>
+                </span>
+                <button onclick="handleDeleteOoo('${rec.id}')" style="color: red; background: none; border: none; cursor: pointer; font-weight: bold; font-size: 14px;">&times;</button>
+            </li>
+        `;
+    });
+    html += '</ul>';
+    container.innerHTML = html;
+}
+
+// Populate the OOO dropdown based on current profile hierarchy
+function populateOooDropdown() {
+    const dropdown = document.getElementById('ooo-room-type');
+    const hierarchyVal = document.getElementById('hierarchy').value;
+    if(!dropdown || !hierarchyVal) return;
+
+    const hierarchy = hierarchyVal.split(',');
+    
+    dropdown.innerHTML = '<option value="">Select Room</option>';
+    
+    hierarchy.forEach(code => {
+        const cleanCode = code.trim().toUpperCase();
+        if(cleanCode) {
+            const opt = document.createElement('option');
+            opt.value = cleanCode;
+            opt.textContent = cleanCode;
+            dropdown.appendChild(opt);
+        }
+    });
 }
 
 /**
@@ -276,6 +437,10 @@ function setAdminControls(isAdmin) {
         document.getElementById('prioritized-rates'),
         document.getElementById('ota-rates'),
         document.getElementById('ineligible-upgrades'),
+        document.getElementById('ooo-start-date'),
+        document.getElementById('ooo-end-date'),
+        document.getElementById('ooo-room-type'),
+        document.getElementById('add-ooo-btn')
     ];
 
     elementsToToggle.forEach(el => {
@@ -287,6 +452,12 @@ function setAdminControls(isAdmin) {
     const rulesContainer = document.getElementById('admin-rules-container');
     if(rulesContainer) {
         rulesContainer.style.display = isAdmin ? 'block' : 'none';
+    }
+    // Also toggle the OOO container logic
+    const oooContainer = document.getElementById('ooo-container');
+    if(oooContainer) {
+        // We still show the list to non-admins, but disable inputs above
+        // oooContainer.style.display = isAdmin ? 'block' : 'none'; 
     }
 }
 
@@ -473,6 +644,7 @@ document.addEventListener('DOMContentLoaded', function() {
             if (appContainer) appContainer.classList.remove('hidden');
 
             await loadRemoteProfiles(); 
+            await loadOooRecords(); // <--- LOAD OOO HERE
 
             const isUserAdmin = ADMIN_UIDS.includes(user.uid);
 
@@ -508,6 +680,7 @@ document.addEventListener('DOMContentLoaded', function() {
     if(settingsTriggerBtn) {
         settingsTriggerBtn.addEventListener('click', () => {
             settingsModal.classList.remove('hidden');
+            populateOooDropdown(); // Populate dropdown when opening modal
         });
     }
 
@@ -535,11 +708,17 @@ document.addEventListener('DOMContentLoaded', function() {
         updateRulesForm(event.target.value);
         resetAppState();
         displayCompletedUpgrades();
+        loadOooRecords(); // <--- RELOAD OOO ON PROFILE CHANGE
     });
     updateRulesForm('fqi'); 
 
     if(saveRulesBtn) {
         saveRulesBtn.addEventListener('click', handleSaveRules);
+    }
+
+    const addOooBtn = document.getElementById('add-ooo-btn');
+    if (addOooBtn) {
+        addOooBtn.addEventListener('click', handleAddOoo);
     }
 
     const triggerSignInOnEnter = (event) => {
@@ -1106,8 +1285,22 @@ function generateRecommendationsFromData(allReservations, rules) {
         let checkDate = new Date(reservation.arrival);
         while (checkDate < reservation.departure) {
             const dateString = checkDate.toISOString().split('T')[0];
+            const checkTime = checkDate.getTime();
+            
+            // 1. Get Physical Reservations
             const occupiedCount = invByDate[dateString]?.[roomCode] || 0;
-            if (occupiedCount >= (masterInv[roomCode] || 0)) return false;
+            
+            // 2. Get OOO Deductions
+            const oooDeduction = oooRecords.filter(rec => {
+                 const rStart = new Date(Date.UTC(rec.startDate.getUTCFullYear(), rec.startDate.getUTCMonth(), rec.startDate.getUTCDate())).getTime();
+                 const rEnd = new Date(Date.UTC(rec.endDate.getUTCFullYear(), rec.endDate.getUTCMonth(), rec.endDate.getUTCDate())).getTime();
+                 // We compare using UTC timestamps constructed from date parts to be safe
+                 const cTime = new Date(Date.UTC(checkDate.getUTCFullYear(), checkDate.getUTCMonth(), checkDate.getUTCDate())).getTime();
+                 return rec.roomType === roomCode && (cTime >= rStart && cTime <= rEnd);
+            }).length;
+
+            if ((occupiedCount + oooDeduction) >= (masterInv[roomCode] || 0)) return false;
+            
             checkDate.setUTCDate(checkDate.getUTCDate() + 1);
         }
         return true;
@@ -1298,8 +1491,24 @@ function buildReservationsByDate(allReservations) {
 function getInventoryForDate(masterInventory, reservationsByDate, date) {
     const inventory = {};
     const dateString = date.toISOString().split('T')[0];
+    
     for (const roomCode in masterInventory) {
-        inventory[roomCode] = masterInventory[roomCode] - (reservationsByDate[dateString]?.[roomCode] || 0);
+        const totalPhysical = masterInventory[roomCode];
+        const reservedCount = reservationsByDate[dateString]?.[roomCode] || 0;
+        
+        // Calculate OOO deduction
+        const oooDeduction = oooRecords.filter(rec => {
+            const isMatch = rec.roomType === roomCode;
+            // Check if 'date' falls within the start/end range
+            // We strip time from comparison to be safe
+            const dTime = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate())).getTime();
+            const rStart = new Date(Date.UTC(rec.startDate.getUTCFullYear(), rec.startDate.getUTCMonth(), rec.startDate.getUTCDate())).getTime();
+            const rEnd = new Date(Date.UTC(rec.endDate.getUTCFullYear(), rec.endDate.getUTCMonth(), rec.endDate.getUTCDate())).getTime();
+            
+            return isMatch && (dTime >= rStart && dTime <= rEnd);
+        }).length;
+
+        inventory[roomCode] = totalPhysical - reservedCount - oooDeduction;
     }
     return inventory;
 }
@@ -1337,11 +1546,23 @@ function generateMatrixData(totalInventory, reservationsByDate, startDate, roomH
         return date;
     });
     dates.forEach(date => matrix.headers.push(`${date.toLocaleDateString('en-US', { weekday: 'short', timeZone: 'UTC' })}<br>${date.getUTCMonth() + 1}/${date.getUTCDate()}`));
+    
     roomHierarchy.forEach(roomCode => {
         const row = { roomCode, availability: [] };
         dates.forEach(date => {
             const dateString = date.toISOString().split('T')[0];
-            row.availability.push((totalInventory[roomCode] || 0) - (reservationsByDate[dateString]?.[roomCode] || 0));
+            
+            // Calculate OOO
+            const dTime = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate())).getTime();
+            
+            const oooCount = oooRecords.filter(rec => {
+                 const rStart = new Date(Date.UTC(rec.startDate.getUTCFullYear(), rec.startDate.getUTCMonth(), rec.startDate.getUTCDate())).getTime();
+                 const rEnd = new Date(Date.UTC(rec.endDate.getUTCFullYear(), rec.endDate.getUTCMonth(), rec.endDate.getUTCDate())).getTime();
+                 return rec.roomType === roomCode && (dTime >= rStart && dTime <= rEnd);
+            }).length;
+
+            const finalAvail = (totalInventory[roomCode] || 0) - (reservationsByDate[dateString]?.[roomCode] || 0) - oooCount;
+            row.availability.push(finalAvail);
         });
         matrix.rows.push(row);
     });
