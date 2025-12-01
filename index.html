@@ -6,6 +6,55 @@
     <title>Hotel Upgrade Assistant</title>
     <link rel="icon" href="Hotel_Upgrade_Favicon.ico" type="image/x-icon">
     <link rel="stylesheet" href="style.css">
+    
+    <style>
+        .ooo-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr; /* 3 Equal columns */
+            gap: 20px; /* Equidistant spacing */
+            align-items: end; /* Aligns inputs and button to the bottom line */
+        }
+
+        .input-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .input-group label {
+            font-size: 11px;
+            font-weight: bold;
+            margin-bottom: 6px;
+            color: #495057;
+        }
+
+        /* Enforce uniform height and width behavior */
+        .ooo-input-field {
+            width: 100%;
+            height: 42px; /* Fixed height so button matches inputs */
+            padding: 8px;
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+            box-sizing: border-box;
+            font-family: inherit;
+        }
+
+        .ooo-btn-container {
+            height: 42px; /* Container matches input height */
+        }
+
+        #add-ooo-btn {
+            width: 100%;
+            height: 100%; /* Fills the fixed height */
+            border-radius: 4px;
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            padding: 0; /* Remove padding to let flex center it */
+        }
+    </style>
 </head>
 <body>
 
@@ -83,37 +132,37 @@
                             Add a record for out of order rooms.
                         </p>
                         
-                        <div class="ooo-inputs" style="display: flex; gap: 20px; align-items: stretch; background: #f8f9fa; padding: 15px; border-radius: 6px; border: 1px solid #e9ecef;">
+                        <div class="ooo-grid" style="background: #f8f9fa; padding: 15px; border-radius: 6px; border: 1px solid #e9ecef;">
                             
-                            <div style="flex: 1; display: flex; flex-direction: column; gap: 10px; justify-content: center;">
-                                <div>
-                                    <label style="font-size: 11px; font-weight: bold; display: block; margin-bottom: 4px; color: #495057;">Room Type</label>
-                                    <select id="ooo-room-type" style="width: 100%; padding: 8px; border: 1px solid #ced4da; border-radius: 4px; box-sizing: border-box;">
-                                        <option value="">Select Room</option>
-                                        </select>
-                                </div>
-                                <div>
-                                    <label style="font-size: 11px; font-weight: bold; display: block; margin-bottom: 4px; color: #495057;">Count</label>
-                                    <input type="number" id="ooo-count" value="1" min="1" style="width: 80px; padding: 7px; border: 1px solid #ced4da; border-radius: 4px; box-sizing: border-box;">
-                                </div>
+                            <div class="input-group">
+                                <label>Room Type</label>
+                                <select id="ooo-room-type" class="ooo-input-field">
+                                    <option value="">Select Room</option>
+                                </select>
+                            </div>
+                            
+                            <div class="input-group">
+                                <label>Start Date</label>
+                                <input type="date" id="ooo-start-date" class="ooo-input-field">
                             </div>
 
-                            <div style="width: 180px; display: flex; flex-direction: column; gap: 10px; justify-content: center;">
-                                <div>
-                                    <label style="font-size: 11px; font-weight: bold; display: block; margin-bottom: 4px; color: #495057;">Start Date</label>
-                                    <input type="date" id="ooo-start-date" style="width: 100%; padding: 7px; border: 1px solid #ced4da; border-radius: 4px; box-sizing: border-box;">
-                                </div>
-                                <div>
-                                    <label style="font-size: 11px; font-weight: bold; display: block; margin-bottom: 4px; color: #495057;">End Date</label>
-                                    <input type="date" id="ooo-end-date" style="width: 100%; padding: 7px; border: 1px solid #ced4da; border-radius: 4px; box-sizing: border-box;">
-                                </div>
+                             <div></div>
+
+                            <div class="input-group">
+                                <label>Count</label>
+                                <input type="number" id="ooo-count" value="1" min="1" class="ooo-input-field">
                             </div>
 
-                            <div style="display: flex; align-items: center;">
-                                <button id="add-ooo-btn" class="primary-btn" style="padding: 0 25px; height: 100%; max-height: 80px; border-radius: 4px; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center;">Add</button>
+                            <div class="input-group">
+                                <label>End Date</label>
+                                <input type="date" id="ooo-end-date" class="ooo-input-field">
                             </div>
+
+                            <div class="ooo-btn-container">
+                                <button id="add-ooo-btn" class="primary-btn">Add</button>
+                            </div>
+
                         </div>
-
                         <h4 style="margin-bottom: 8px; margin-top: 15px;">Current OOO List</h4>
                         <div id="ooo-list" style="max-height: 150px; overflow-y: auto; border: 1px solid #eee; padding: 10px; background: #f9f9f9; border-radius: 4px;">
                             <p style="color: #888; font-size: 13px;">No rooms currently out of order.</p>
