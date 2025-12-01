@@ -284,10 +284,10 @@ async function loadOooRecords() {
 
         snapshot.forEach(doc => {
             const data = doc.data();
-            // Convert timestamps back to Date objects
             oooRecords.push({
                 id: doc.id,
                 roomType: data.roomType,
+                count: data.count || 1, // Default to 1 if missing
                 startDate: data.startDate.toDate(),
                 endDate: data.endDate.toDate(),
                 profile: data.profile
@@ -306,11 +306,14 @@ async function loadOooRecords() {
 async function handleAddOoo() {
     const profile = document.getElementById('profile-dropdown').value;
     const roomType = document.getElementById('ooo-room-type').value;
+    const countInput = document.getElementById('ooo-count');
     const startStr = document.getElementById('ooo-start-date').value;
     const endStr = document.getElementById('ooo-end-date').value;
+    
+    const count = parseInt(countInput.value, 10);
 
-    if (!roomType || !startStr || !endStr) {
-        alert("Please fill in all OOO fields.");
+    if (!roomType || !startStr || !endStr || isNaN(count) || count < 1) {
+        alert("Please fill in all OOO fields correctly.");
         return;
     }
 
@@ -329,6 +332,7 @@ async function handleAddOoo() {
     const newRecord = {
         profile: profile,
         roomType: roomType,
+        count: count,
         startDate: utcStart,
         endDate: utcEnd
     };
@@ -347,6 +351,7 @@ async function handleAddOoo() {
         
         // Reset inputs
         document.getElementById('ooo-room-type').value = "";
+        countInput.value = "1";
         document.getElementById('ooo-start-date').value = "";
         document.getElementById('ooo-end-date').value = "";
     } catch (error) {
@@ -390,11 +395,13 @@ function renderOooList() {
     oooRecords.forEach(rec => {
         const start = rec.startDate.toISOString().split('T')[0];
         const end = rec.endDate.toISOString().split('T')[0];
+        // Show count if greater than 1
+        const countDisplay = rec.count > 1 ? `<strong style="color: #d63384;">(x${rec.count})</strong>` : '';
         
         html += `
             <li style="display: flex; justify-content: space-between; align-items: center; background: white; padding: 8px; border-bottom: 1px solid #eee; margin-bottom: 4px; font-size: 13px;">
                 <span>
-                    <strong>${rec.roomType}</strong> <br>
+                    <strong>${rec.roomType}</strong> ${countDisplay} <br>
                     <small>${start} to ${end}</small>
                 </span>
                 <button onclick="handleDeleteOoo('${rec.id}')" style="color: red; background: none; border: none; cursor: pointer; font-weight: bold; font-size: 14px;">&times;</button>
@@ -440,6 +447,7 @@ function setAdminControls(isAdmin) {
         document.getElementById('ooo-start-date'),
         document.getElementById('ooo-end-date'),
         document.getElementById('ooo-room-type'),
+        document.getElementById('ooo-count'),
         document.getElementById('add-ooo-btn')
     ];
 
@@ -452,12 +460,6 @@ function setAdminControls(isAdmin) {
     const rulesContainer = document.getElementById('admin-rules-container');
     if(rulesContainer) {
         rulesContainer.style.display = isAdmin ? 'block' : 'none';
-    }
-    // Also toggle the OOO container logic
-    const oooContainer = document.getElementById('ooo-container');
-    if(oooContainer) {
-        // We still show the list to non-admins, but disable inputs above
-        // oooContainer.style.display = isAdmin ? 'block' : 'none'; 
     }
 }
 
@@ -1285,19 +1287,21 @@ function generateRecommendationsFromData(allReservations, rules) {
         let checkDate = new Date(reservation.arrival);
         while (checkDate < reservation.departure) {
             const dateString = checkDate.toISOString().split('T')[0];
-            const checkTime = checkDate.getTime();
             
             // 1. Get Physical Reservations
             const occupiedCount = invByDate[dateString]?.[roomCode] || 0;
             
-            // 2. Get OOO Deductions
-            const oooDeduction = oooRecords.filter(rec => {
+            // 2. Get OOO Deductions (SUM OF COUNTS)
+            const oooDeduction = oooRecords.reduce((total, rec) => {
                  const rStart = new Date(Date.UTC(rec.startDate.getUTCFullYear(), rec.startDate.getUTCMonth(), rec.startDate.getUTCDate())).getTime();
                  const rEnd = new Date(Date.UTC(rec.endDate.getUTCFullYear(), rec.endDate.getUTCMonth(), rec.endDate.getUTCDate())).getTime();
-                 // We compare using UTC timestamps constructed from date parts to be safe
                  const cTime = new Date(Date.UTC(checkDate.getUTCFullYear(), checkDate.getUTCMonth(), checkDate.getUTCDate())).getTime();
-                 return rec.roomType === roomCode && (cTime >= rStart && cTime <= rEnd);
-            }).length;
+                 
+                 if (rec.roomType === roomCode && (cTime >= rStart && cTime <= rEnd)) {
+                     return total + (rec.count || 1);
+                 }
+                 return total;
+            }, 0);
 
             if ((occupiedCount + oooDeduction) >= (masterInv[roomCode] || 0)) return false;
             
@@ -1496,17 +1500,18 @@ function getInventoryForDate(masterInventory, reservationsByDate, date) {
         const totalPhysical = masterInventory[roomCode];
         const reservedCount = reservationsByDate[dateString]?.[roomCode] || 0;
         
-        // Calculate OOO deduction
-        const oooDeduction = oooRecords.filter(rec => {
+        // Calculate OOO deduction (SUM OF COUNTS)
+        const oooDeduction = oooRecords.reduce((total, rec) => {
             const isMatch = rec.roomType === roomCode;
-            // Check if 'date' falls within the start/end range
-            // We strip time from comparison to be safe
             const dTime = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate())).getTime();
             const rStart = new Date(Date.UTC(rec.startDate.getUTCFullYear(), rec.startDate.getUTCMonth(), rec.startDate.getUTCDate())).getTime();
             const rEnd = new Date(Date.UTC(rec.endDate.getUTCFullYear(), rec.endDate.getUTCMonth(), rec.endDate.getUTCDate())).getTime();
             
-            return isMatch && (dTime >= rStart && dTime <= rEnd);
-        }).length;
+            if (isMatch && (dTime >= rStart && dTime <= rEnd)) {
+                return total + (rec.count || 1);
+            }
+            return total;
+        }, 0);
 
         inventory[roomCode] = totalPhysical - reservedCount - oooDeduction;
     }
@@ -1551,15 +1556,18 @@ function generateMatrixData(totalInventory, reservationsByDate, startDate, roomH
         const row = { roomCode, availability: [] };
         dates.forEach(date => {
             const dateString = date.toISOString().split('T')[0];
-            
-            // Calculate OOO
             const dTime = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate())).getTime();
             
-            const oooCount = oooRecords.filter(rec => {
+            // Calculate OOO (SUM OF COUNTS)
+            const oooCount = oooRecords.reduce((total, rec) => {
                  const rStart = new Date(Date.UTC(rec.startDate.getUTCFullYear(), rec.startDate.getUTCMonth(), rec.startDate.getUTCDate())).getTime();
                  const rEnd = new Date(Date.UTC(rec.endDate.getUTCFullYear(), rec.endDate.getUTCMonth(), rec.endDate.getUTCDate())).getTime();
-                 return rec.roomType === roomCode && (dTime >= rStart && dTime <= rEnd);
-            }).length;
+                 
+                 if (rec.roomType === roomCode && (dTime >= rStart && dTime <= rEnd)) {
+                     return total + (rec.count || 1);
+                 }
+                 return total;
+            }, 0);
 
             const finalAvail = (totalInventory[roomCode] || 0) - (reservationsByDate[dateString]?.[roomCode] || 0) - oooCount;
             row.availability.push(finalAvail);
