@@ -11,7 +11,7 @@
         .ooo-grid {
             display: grid;
             grid-template-columns: 1fr 1fr 1fr; /* 3 Equal columns */
-            gap: 20px; /* Equidistant spacing */
+            gap: 20px; 
             align-items: end; /* Aligns inputs and button to the bottom line */
         }
 
@@ -52,7 +52,13 @@
             align-items: center;
             justify-content: center;
             font-weight: bold;
-            padding: 0; /* Remove padding to let flex center it */
+            padding: 0; 
+            background-color: #4361ee; /* Ensure button color stands out */
+            color: white;
+        }
+
+        #add-ooo-btn:hover {
+            background-color: #3f37c9;
         }
     </style>
 </head>
@@ -134,7 +140,7 @@
                         
                         <div class="ooo-grid" style="background: #f8f9fa; padding: 15px; border-radius: 6px; border: 1px solid #e9ecef;">
                             
-                            <div class="input-group">
+                            <div class="input-group" style="grid-column: span 2;">
                                 <label>Room Type</label>
                                 <select id="ooo-room-type" class="ooo-input-field">
                                     <option value="">Select Room</option>
@@ -145,8 +151,6 @@
                                 <label>Start Date</label>
                                 <input type="date" id="ooo-start-date" class="ooo-input-field">
                             </div>
-
-                             <div></div>
 
                             <div class="input-group">
                                 <label>Count</label>
