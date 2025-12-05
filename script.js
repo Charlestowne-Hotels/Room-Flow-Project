@@ -270,12 +270,17 @@ function updateRulesForm(profileName) {
 // --- OOO MANAGEMENT FUNCTIONS ---
 
 // Load OOO records from Firebase for the current profile
+// UPDATED: Now filters out expired records automatically
 async function loadOooRecords() {
     const currentProfile = document.getElementById('profile-dropdown').value;
     const listContainer = document.getElementById('ooo-list');
     
     oooRecords = []; // Reset local state
     if(listContainer) listContainer.innerHTML = '<p>Loading...</p>';
+
+    // Get today's date (at midnight) to compare
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
 
     try {
         const snapshot = await db.collection('ooo_logs')
@@ -284,14 +289,19 @@ async function loadOooRecords() {
 
         snapshot.forEach(doc => {
             const data = doc.data();
-            oooRecords.push({
-                id: doc.id,
-                roomType: data.roomType,
-                count: data.count || 1, // Default to 1 if missing
-                startDate: data.startDate.toDate(),
-                endDate: data.endDate.toDate(),
-                profile: data.profile
-            });
+            const endDate = data.endDate.toDate();
+
+            // ONLY add to the list if the end date is today or in the future
+            if (endDate >= today) {
+                oooRecords.push({
+                    id: doc.id,
+                    roomType: data.roomType,
+                    count: data.count || 1, // Default to 1 if missing
+                    startDate: data.startDate.toDate(),
+                    endDate: endDate,
+                    profile: data.profile
+                });
+            }
         });
 
         renderOooList();
