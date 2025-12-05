@@ -105,7 +105,7 @@ body {
     color: var(--heading-color);
 }
 
-/* --- CONTROLS CONTAINER --- */
+/* --- CONTROLS CONTAINER (Updated for File Upload) --- */
 .controls-container {
     display: flex;
     align-items: flex-end;
@@ -279,8 +279,8 @@ button {
 button:hover { background-color: #2525DD; }
 button:disabled { background-color: #aaa; cursor: not-allowed; }
 
-.tabs { display: flex; border-bottom: 1px solid var(--border-color); margin-bottom: 15px; overflow-x: auto; }
-.tab { padding: 10px 15px; cursor: pointer; white-space: nowrap; }
+.tabs { display: flex; border-bottom: 1px solid var(--border-color); margin-bottom: 15px; }
+.tab { padding: 10px 15px; cursor: pointer; }
 .tab.active { 
   border-bottom: 2px solid var(--primary-accent); 
   font-weight: bold;
@@ -399,43 +399,4 @@ button:disabled { background-color: #aaa; cursor: not-allowed; }
 }
 .admin-only-btn:hover {
   background-color: #FFFFFF; border: 1px solid var(--primary-accent); color: var(--primary-accent);
-}
-
-/* --- DEMAND INSIGHTS STYLES --- */
-.insight-card {
-    background-color: white;
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
-    padding: 15px;
-    margin-bottom: 15px;
-    border-left: 4px solid var(--primary-accent);
-}
-
-.insight-card h4 {
-    margin-top: 0;
-    margin-bottom: 10px;
-    color: var(--heading-color);
-}
-
-.insight-card.high-alert {
-    border-left-color: var(--score-bg);
-}
-
-.insight-card .alert-item {
-    padding: 8px;
-    background-color: #FFF5F5;
-    border: 1px solid #FED7D7;
-    color: #C53030;
-    margin-bottom: 5px;
-    border-radius: 4px;
-    font-size: 13px;
-    display: flex;
-    justify-content: space-between;
-}
-
-.placeholder-text {
-    color: var(--label-color);
-    font-style: italic;
-    text-align: center;
-    padding: 20px;
 }
