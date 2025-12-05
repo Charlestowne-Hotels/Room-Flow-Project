@@ -5,15 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Hotel Upgrade Assistant</title>
     <link rel="icon" href="Hotel_Upgrade_Favicon.ico" type="image/x-icon">
-    <link rel="stylesheet" href="Room.css">
-    <!-- Using external CSS file as requested, ensuring style.css link is updated to Room.css if that is the filename -->
+    <link rel="stylesheet" href="style.css">
     
     <style>
-        /* Inline styles for OOO specific stack (kept from your original file) */
         .ooo-stack {
             display: flex;
             flex-direction: column;
-            gap: 15px; 
+            gap: 15px; /* Space between each stacked item */
             background: #f8f9fa; 
             padding: 20px; 
             border-radius: 6px; 
@@ -23,7 +21,7 @@
         .input-group {
             display: flex;
             flex-direction: column;
-            width: 100%; 
+            width: 100%; /* Ensure full width */
         }
 
         .input-group label {
@@ -33,20 +31,21 @@
             color: #495057;
         }
 
+        /* Enforce uniform height and width behavior */
         .ooo-input-field {
             width: 100%;
-            height: 42px; 
+            height: 42px; /* Fixed height for uniformity */
             padding: 8px;
             border: 1px solid #ced4da;
             border-radius: 4px;
-            box-sizing: border-box; 
+            box-sizing: border-box; /* Ensures padding doesn't affect width */
             font-family: inherit;
         }
 
         .ooo-btn-container {
             width: 100%;
             height: 42px;
-            margin-top: 10px; 
+            margin-top: 10px; /* Slight extra space before button */
         }
 
         #add-ooo-btn {
@@ -180,7 +179,7 @@
                             <p style="color: #888; font-size: 13px;">No rooms currently out of order.</p>
                         </div>
                     </div>
-                </div>
+                    </div>
 
                 <div class="modal-footer">
                     <span id="save-status"></span>
@@ -213,21 +212,17 @@
                 <div id="message"></div>
                 <div id="inventory"></div>
 
-                <!-- UPDATED TABS STRUCTURE -->
                 <div class="tabs">
                     <div class="tab active" data-tab-target="#recommendations">Recommendations</div>
                     <div class="tab" data-tab-target="#matrix">Availability Matrix</div>
                     <div class="tab" data-tab-target="#accepted">Accepted Upgrades</div>
-                    <div class="tab" data-tab-target="#completed-upgrades">Completed Upgrades</div>
-                    <div class="tab" data-tab-target="#demand-insights">Demand Insights</div>
+                    <div class="tab" data-tab-target="#analytics">Analytics</div>
                 </div>
 
                 <div id="recommendations" class="tab-content active"><div id="recommendations-container"></div></div>
                 <div id="matrix" class="tab-content"><div id="matrix-container"></div></div>
                 <div id="accepted" class="tab-content"><div id="accepted-container"><p>No upgrades have been accepted yet.</p></div></div>
-                
-                <!-- NEW: COMPLETED UPGRADES TAB -->
-                <div id="completed-upgrades" class="tab-content">
+                <div id="analytics" class="tab-content">
                     <div class="analytics-header">
                         <label for="sort-date-dropdown">Filter by Date Completed</label>
                         <select id="sort-date-dropdown">
@@ -237,14 +232,6 @@
                     </div>
                     <div id="completed-container"><p>No upgrades have been marked as completed yet.</p></div>
                 </div>
-
-                <!-- NEW: DEMAND INSIGHTS TAB -->
-                <div id="demand-insights" class="tab-content">
-                    <div id="insights-container">
-                        <p class="placeholder-text">Generate suggestions to see demand insights.</p>
-                    </div>
-                </div>
-
             </div>
         </div>
     </div>
@@ -254,7 +241,7 @@
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
 
 <script src="Config.js"></script> 
-<script src="Room.js"></script>
+<script src="script.js"></script>
 
 </body>
 </html>
