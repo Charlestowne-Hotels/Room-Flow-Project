@@ -4,70 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Hotel Upgrade Assistant</title>
-    <link rel="icon" href="Hotel_Upgrade_Favicon.ico" type="image/x-icon">
     <link rel="stylesheet" href="style.css">
-    
-    <style>
-        .ooo-stack {
-            display: flex;
-            flex-direction: column;
-            gap: 15px; /* Space between each stacked item */
-            background: #f8f9fa; 
-            padding: 20px; 
-            border-radius: 6px; 
-            border: 1px solid #e9ecef;
-        }
-
-        .input-group {
-            display: flex;
-            flex-direction: column;
-            width: 100%; /* Ensure full width */
-        }
-
-        .input-group label {
-            font-size: 11px;
-            font-weight: bold;
-            margin-bottom: 6px;
-            color: #495057;
-        }
-
-        /* Enforce uniform height and width behavior */
-        .ooo-input-field {
-            width: 100%;
-            height: 42px; /* Fixed height for uniformity */
-            padding: 8px;
-            border: 1px solid #ced4da;
-            border-radius: 4px;
-            box-sizing: border-box; /* Ensures padding doesn't affect width */
-            font-family: inherit;
-        }
-
-        .ooo-btn-container {
-            width: 100%;
-            height: 42px;
-            margin-top: 10px; /* Slight extra space before button */
-        }
-
-        #add-ooo-btn {
-            width: 100%;
-            height: 100%;
-            border-radius: 4px;
-            border: none;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: bold;
-            padding: 0; 
-            background-color: #4361ee; 
-            color: white;
-            font-size: 14px;
-        }
-
-        #add-ooo-btn:hover {
-            background-color: #3f37c9;
-        }
-    </style>
+    <div id="toast-container"></div>
 </head>
 <body>
 
@@ -142,7 +80,7 @@
                     <div id="ooo-container">
                         <h3 style="margin-bottom: 5px;">Manage Out of Order (OOO) Inventory</h3>
                         <p style="font-size: 12px; color: #666; margin-bottom: 15px;">
-                            Add a record for out of order rooms.
+                            Add a record for out of order rooms. Expired records are hidden automatically.
                         </p>
                         
                         <div class="ooo-stack">
@@ -174,12 +112,12 @@
                             </div>
 
                         </div>
-                        <h4 style="margin-bottom: 8px; margin-top: 15px;">Current OOO List</h4>
+                        <h4 style="margin-bottom: 8px; margin-top: 15px;">Current OOO List (Active)</h4>
                         <div id="ooo-list" style="max-height: 150px; overflow-y: auto; border: 1px solid #eee; padding: 10px; background: #f9f9f9; border-radius: 4px;">
-                            <p style="color: #888; font-size: 13px;">No rooms currently out of order.</p>
+                            <p style="color: #888; font-size: 13px;">Loading...</p>
                         </div>
                     </div>
-                    </div>
+                </div>
 
                 <div class="modal-footer">
                     <span id="save-status"></span>
