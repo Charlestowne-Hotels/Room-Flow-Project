@@ -563,6 +563,7 @@ async function loadCompletedUpgrades(userId) {
         });
         console.log(`Loaded ${completedUpgrades.length} completed upgrades from Firestore.`);
         displayCompletedUpgrades();
+        displayDemandInsights(); // Also refresh insights
     } catch (error) {
         console.error("Error loading completed upgrades: ", error);
     }
@@ -720,6 +721,7 @@ document.addEventListener('DOMContentLoaded', function() {
         updateRulesForm(event.target.value);
         resetAppState();
         displayCompletedUpgrades();
+        displayDemandInsights(); // Update insights on profile change
         loadOooRecords(); // <--- RELOAD OOO ON PROFILE CHANGE
     });
     updateRulesForm('fqi'); 
@@ -750,8 +752,13 @@ document.addEventListener('DOMContentLoaded', function() {
     futureDate.setDate(futureDate.getDate() + 3);
     document.getElementById('selected-date').value = futureDate.toISOString().slice(0, 10);
     
-    document.getElementById('sort-date-dropdown').addEventListener('change', displayCompletedUpgrades);
+    // Listen for date changes on Analytics tab to refresh both sub-views
+    document.getElementById('sort-date-dropdown').addEventListener('change', () => {
+        displayCompletedUpgrades();
+        displayDemandInsights();
+    });
     
+    // --- MAIN TABS ---
     const tabs = document.querySelectorAll('[data-tab-target]');
     const tabContents = document.querySelectorAll('.tab-content');
     tabs.forEach(tab => {
@@ -761,6 +768,43 @@ document.addEventListener('DOMContentLoaded', function() {
             tabs.forEach(t => t.classList.remove('active'));
             tab.classList.add('active');
             target.classList.add('active');
+        });
+    });
+
+    // --- NEW: ANALYTICS SUB-TABS LOGIC ---
+    // Looks for elements with data-sub-tab-target (make sure your HTML buttons have this attribute)
+    const subTabs = document.querySelectorAll('[data-sub-tab-target]');
+    
+    // If you name your view containers properly in HTML, this generic logic will work
+    subTabs.forEach(tab => {
+        tab.addEventListener('click', () => {
+            const targetSelector = tab.dataset.subTabTarget;
+            const target = document.querySelector(targetSelector);
+            
+            // 1. Deactivate all sub-tabs
+            subTabs.forEach(t => t.classList.remove('active'));
+            // 2. Hide all analytics views (we assume they share a class, or we hide specific ones)
+            const completedView = document.querySelector('#completed-container')?.parentElement;
+            const demandView = document.querySelector('#demand-insights-container')?.parentElement;
+            
+            // Ideally, your HTML structure wraps these containers in "tab-view" divs.
+            // If strictly using the provided containers as targets:
+            if(document.querySelector('#completed-container')) document.querySelector('#completed-container').style.display = 'none';
+            if(document.querySelector('#demand-insights-container')) document.querySelector('#demand-insights-container').style.display = 'none';
+
+            // 3. Activate clicked tab
+            tab.classList.add('active');
+            
+            // 4. Show target
+            if(target) {
+                target.style.display = 'block';
+                // Trigger refresh based on which tab was clicked
+                if (target.id === 'demand-insights-container') {
+                    displayDemandInsights();
+                } else if (target.id === 'completed-container') {
+                    displayCompletedUpgrades();
+                }
+            }
         });
     });
 });
@@ -868,7 +912,8 @@ function handlePmsUpdateClick(event) {
                 console.log(`Upgrade saved to Firestore with ID: ${docRef.id} under profile: ${upgradeToComplete.profile}`);
                 // Update local object with new ID
                 upgradeToComplete.firestoreId = docRef.id;
-                displayCompletedUpgrades(); // Re-render to ensure ID is attached to undo button
+                displayCompletedUpgrades(); // Re-render list
+                displayDemandInsights(); // Re-render insights
             })
             .catch((error) => {
                 console.error("Error saving upgrade: ", error);
@@ -920,6 +965,7 @@ async function handleUndoCompletedClick(event) {
 
         // 5. Update UI
         displayCompletedUpgrades(); // Refresh Analytics tab
+        displayDemandInsights();    // Refresh Insights tab
         displayAcceptedUpgrades();  // Refresh Accepted tab
         
         // 6. Recalculate matrix if needed (if a CSV is loaded)
@@ -1065,6 +1111,97 @@ function displayAcceptedUpgrades() {
     } else {
         container.innerHTML = '<p>No upgrades have been accepted yet.</p>';
     }
+}
+
+// --- NEW FUNCTION: DISPLAY DEMAND INSIGHTS ---
+function displayDemandInsights() {
+    const container = document.getElementById('demand-insights-container');
+    const profileDropdown = document.getElementById('profile-dropdown');
+    
+    if (!container || !profileDropdown) return;
+    
+    const currentProfile = profileDropdown.value;
+    const profileUpgrades = completedUpgrades.filter(rec => rec.profile === currentProfile);
+    
+    container.innerHTML = '';
+    
+    if (profileUpgrades.length === 0) {
+        container.innerHTML = '<p style="text-align:center; color:#888;">No completed upgrade data available for Demand Insights.</p>';
+        return;
+    }
+
+    // 1. Calculate Statistics
+    const roomTypeCounts = {};
+    let totalRevenue = 0;
+    
+    profileUpgrades.forEach(rec => {
+        // Count upgrades to specific room types
+        const type = rec.upgradeTo;
+        roomTypeCounts[type] = (roomTypeCounts[type] || 0) + 1;
+        
+        // Sum revenue
+        const val = parseFloat(rec.revenue.replace(/[$,]/g, '')) || 0;
+        totalRevenue += val;
+    });
+
+    const sortedRooms = Object.entries(roomTypeCounts)
+        .sort((a, b) => b[1] - a[1]); // Sort by count descending
+
+    const avgRevenue = profileUpgrades.length > 0 ? (totalRevenue / profileUpgrades.length) : 0;
+
+    // 2. Build HTML
+    let html = `
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 25px;">
+            <div style="background: #f0f7ff; padding: 15px; border-radius: 8px; text-align: center;">
+                <h4 style="margin:0; color:#555;">Total Completed Upgrades</h4>
+                <div style="font-size: 24px; font-weight: bold; color: #4343FF;">${profileUpgrades.length}</div>
+            </div>
+            <div style="background: #f0fff4; padding: 15px; border-radius: 8px; text-align: center;">
+                <h4 style="margin:0; color:#555;">Total Revenue Value</h4>
+                <div style="font-size: 24px; font-weight: bold; color: #28a745;">${totalRevenue.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</div>
+            </div>
+            <div style="background: #fff8f0; padding: 15px; border-radius: 8px; text-align: center;">
+                <h4 style="margin:0; color:#555;">Avg. Upgrade Value</h4>
+                <div style="font-size: 24px; font-weight: bold; color: #fd7e14;">${avgRevenue.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</div>
+            </div>
+        </div>
+        
+        <h3>Top Performing Upgrade Rooms</h3>
+        <table style="width: 100%; border-collapse: collapse; margin-top: 10px;">
+            <thead>
+                <tr style="background: #f8f9fa; text-align: left;">
+                    <th style="padding: 10px; border-bottom: 2px solid #ddd;">Room Type</th>
+                    <th style="padding: 10px; border-bottom: 2px solid #ddd;">Upgrade Count</th>
+                    <th style="padding: 10px; border-bottom: 2px solid #ddd;">% of Total</th>
+                </tr>
+            </thead>
+            <tbody>
+    `;
+
+    sortedRooms.forEach(([room, count]) => {
+        const percentage = ((count / profileUpgrades.length) * 100).toFixed(1);
+        html += `
+            <tr>
+                <td style="padding: 10px; border-bottom: 1px solid #eee;"><strong>${room}</strong></td>
+                <td style="padding: 10px; border-bottom: 1px solid #eee;">${count}</td>
+                <td style="padding: 10px; border-bottom: 1px solid #eee;">
+                    <div style="display: flex; align-items: center;">
+                        <span style="width: 40px;">${percentage}%</span>
+                        <div style="flex-grow: 1; height: 6px; background: #eee; border-radius: 3px; margin-left: 10px;">
+                            <div style="width: ${percentage}%; height: 100%; background: #4343FF; border-radius: 3px;"></div>
+                        </div>
+                    </div>
+                </td>
+            </tr>
+        `;
+    });
+
+    html += `
+            </tbody>
+        </table>
+    `;
+
+    container.innerHTML = html;
 }
 
 function displayCompletedUpgrades() {
