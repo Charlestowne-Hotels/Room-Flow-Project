@@ -11,7 +11,7 @@
         .ooo-stack {
             display: flex;
             flex-direction: column;
-            gap: 15px; /* Space between each stacked item */
+            gap: 15px;
             background: #f8f9fa; 
             padding: 20px; 
             border-radius: 6px; 
@@ -21,7 +21,7 @@
         .input-group {
             display: flex;
             flex-direction: column;
-            width: 100%; /* Ensure full width */
+            width: 100%;
         }
 
         .input-group label {
@@ -31,21 +31,20 @@
             color: #495057;
         }
 
-        /* Enforce uniform height and width behavior */
         .ooo-input-field {
             width: 100%;
-            height: 42px; /* Fixed height for uniformity */
+            height: 42px;
             padding: 8px;
             border: 1px solid #ced4da;
             border-radius: 4px;
-            box-sizing: border-box; /* Ensures padding doesn't affect width */
+            box-sizing: border-box;
             font-family: inherit;
         }
 
         .ooo-btn-container {
             width: 100%;
             height: 42px;
-            margin-top: 10px; /* Slight extra space before button */
+            margin-top: 10px;
         }
 
         #add-ooo-btn {
@@ -68,7 +67,7 @@
             background-color: #3f37c9;
         }
 
-        /* --- NEW STYLES FOR ANALYTICS SUB-TABS --- */
+        /* --- SUB-TABS STYLING --- */
         .sub-tabs-nav {
             display: flex;
             border-bottom: 1px solid #dee2e6;
@@ -98,7 +97,50 @@
             font-weight: bold;
         }
 
-        /* Hide the insights container by default */
+        /* --- ANALYTICS TOOLBAR STYLING --- */
+        .analytics-toolbar {
+            display: flex;
+            justify-content: space-between; /* Pushes Dropdown left, Button right */
+            align-items: center;
+            width: 100%;
+            margin-bottom: 25px;
+            padding-bottom: 15px;
+        }
+
+        .analytics-filter-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        /* Match Height and Width Logic */
+        #sort-date-dropdown, #clear-analytics-btn {
+            height: 40px; /* Identical Height */
+            min-width: 180px; /* Identical Width baseline */
+            box-sizing: border-box;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
+        #sort-date-dropdown {
+            padding: 5px 10px;
+            border: 1px solid #ced4da;
+        }
+
+        #clear-analytics-btn {
+            background-color: #dc3545; /* Red Background */
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background-color 0.2s;
+        }
+
+        #clear-analytics-btn:hover {
+            background-color: #c82333; /* Darker Red on Hover */
+        }
+
+        /* Initially hide demand insights */
         #demand-insights-container {
             display: none;
         }
@@ -259,21 +301,21 @@
                 <div id="accepted" class="tab-content"><div id="accepted-container"><p>No upgrades have been accepted yet.</p></div></div>
                 
                 <div id="analytics" class="tab-content">
-                    <div class="analytics-header" style="margin-bottom: 20px;">
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-                            <div>
-                                <label for="sort-date-dropdown" style="font-weight: bold; margin-right: 10px;">Filter by Date:</label>
-                                <select id="sort-date-dropdown">
-                                    <option value="all">All Dates</option>
-                                </select>
-                            </div>
-                            <button id="clear-analytics-btn" class="admin-only-btn hidden">Clear Profile Data</button>
+                    
+                    <div class="analytics-toolbar">
+                        <div class="analytics-filter-group">
+                            <label for="sort-date-dropdown" style="font-weight: bold; margin-right: 10px;">Filter by Date:</label>
+                            <select id="sort-date-dropdown">
+                                <option value="all">All Dates</option>
+                            </select>
                         </div>
                         
-                        <div class="sub-tabs-nav">
-                            <button class="sub-tab-btn active" data-sub-tab-target="#completed-container">Completed Upgrades</button>
-                            <button class="sub-tab-btn" data-sub-tab-target="#demand-insights-container">Demand Insights</button>
-                        </div>
+                        <button id="clear-analytics-btn" class="admin-only-btn hidden">Clear Profile Data</button>
+                    </div>
+                    
+                    <div class="sub-tabs-nav">
+                        <button class="sub-tab-btn active" data-sub-tab-target="#completed-container">Completed Upgrades</button>
+                        <button class="sub-tab-btn" data-sub-tab-target="#demand-insights-container">Demand Insights</button>
                     </div>
 
                     <div id="completed-container" style="display: block;">
