@@ -951,9 +951,6 @@ function displayResults(data) {
     messageEl.innerHTML = data.message || '';
     displayInventory(data.inventory);
     displayMatrix(data.matrixData);
-    
-    // Call the new Insights function
-    displayDemandInsights(data.matrixData);
 }
 
 function displayInventory(inventory) {
@@ -1071,7 +1068,6 @@ function displayAcceptedUpgrades() {
 }
 
 function displayCompletedUpgrades() {
-    // UPDATED selector for new layout logic
     const container = document.getElementById('completed-container');
     const dateDropdown = document.getElementById('sort-date-dropdown');
     const profileDropdown = document.getElementById('profile-dropdown');
@@ -1140,70 +1136,6 @@ function displayCompletedUpgrades() {
 
     } else {
         container.innerHTML = '<p>No upgrades have been marked as completed for this profile and date.</p>';
-    }
-}
-
-// --- NEW FUNCTION: DISPLAY DEMAND INSIGHTS ---
-function displayDemandInsights(matrix) {
-    const container = document.getElementById('insights-container');
-    if (!container) return;
-
-    if (!matrix || !matrix.headers || !matrix.rows) {
-        container.innerHTML = '<p class="placeholder-text">Insufficient data to generate insights.</p>';
-        return;
-    }
-
-    let highDemandAlerts = [];
-    
-    // We skip the first "Room Type" header
-    const dates = matrix.headers.slice(1).map(h => h.replace('<br>', ' '));
-
-    // Iterate through dates (columns)
-    for (let i = 0; i < dates.length; i++) {
-        const dateStr = dates[i];
-        let lowStockRooms = [];
-
-        // Check each room (row) for this date
-        matrix.rows.forEach(row => {
-            const availability = row.availability[i];
-            // If availability is negative or 0, it's critical
-            if (availability <= 0) {
-                lowStockRooms.push(`${row.roomCode} (${availability})`);
-            }
-        });
-
-        if (lowStockRooms.length > 0) {
-            highDemandAlerts.push({
-                date: dateStr,
-                rooms: lowStockRooms
-            });
-        }
-    }
-
-    if (highDemandAlerts.length === 0) {
-        container.innerHTML = `
-            <div class="insight-card">
-                <h4>Status: Healthy Inventory</h4>
-                <p style="color: green;">No negative inventory detected for the next 14 days.</p>
-            </div>
-        `;
-    } else {
-        let html = `<div class="insight-card high-alert">
-            <h4>⚠️ High Demand Alerts (Negative Inventory)</h4>
-            <p style="font-size: 13px; color: #666; margin-bottom: 10px;">The following dates have room types with 0 or negative availability:</p>
-        `;
-        
-        highDemandAlerts.forEach(alert => {
-            html += `
-                <div class="alert-item">
-                    <strong>${alert.date}</strong>
-                    <span>${alert.rooms.join(', ')}</span>
-                </div>
-            `;
-        });
-        
-        html += `</div>`;
-        container.innerHTML = html;
     }
 }
 
@@ -1505,7 +1437,7 @@ function getBedType(roomCode) {
     if (roomCode === 'DQ') return 'QQ';
     if (roomCode === 'DD') return 'QQ';
     if (roomCode === 'RD') return 'K'; 
-    if (roomCode.startsWith('RDCY')) return 'K';
+    if (roomCode === 'RDCY') return 'K';
     if (roomCode === 'HHK') return 'K'; // Added HHK mapping
 
     // --- NEW LOGIC FOR INDJH BED TYPES ---
