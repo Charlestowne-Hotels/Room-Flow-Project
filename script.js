@@ -270,6 +270,7 @@ const MASTER_INVENTORIES = {
 
 
 let currentCsvContent = null;
+let currentFileName = null; // Stored to check against SNT format
 let currentRules = null;
 let currentRecommendations = [];
 let acceptedUpgrades = [];
@@ -280,6 +281,7 @@ let oooRecords = []; // <--- NEW OOO STATE
 
 function resetAppState() {
     currentCsvContent = null;
+    currentFileName = null;
     currentRules = null;
     currentRecommendations = [];
     acceptedUpgrades = [];
@@ -856,6 +858,9 @@ function handleGenerateClick() {
         return;
     }
     
+    // CAPTURE FILE NAME
+    currentFileName = fileInput.files[0].name;
+
     acceptedUpgrades = [];
     displayAcceptedUpgrades();
 
@@ -875,7 +880,8 @@ function handleGenerateClick() {
         showLoader(true, 'Generating...');
         setTimeout(() => {
             try {
-                const results = processUpgradeData(currentCsvContent, currentRules);
+                // Pass fileName to processing
+                const results = processUpgradeData(currentCsvContent, currentRules, currentFileName);
                 displayResults(results);
             } catch (err) {
                 showError(err);
@@ -902,7 +908,7 @@ function handleAcceptClick(event) {
 
     setTimeout(() => {
         try {
-            const results = applyUpgradesAndRecalculate(acceptedUpgrades, currentCsvContent, currentRules);
+            const results = applyUpgradesAndRecalculate(acceptedUpgrades, currentCsvContent, currentRules, currentFileName);
             displayResults(results);
         } catch (err) {
             showError(err);
@@ -923,7 +929,7 @@ function handleUndoClick(event) {
 
     setTimeout(() => {
         try {
-            const results = applyUpgradesAndRecalculate(acceptedUpgrades, currentCsvContent, currentRules);
+            const results = applyUpgradesAndRecalculate(acceptedUpgrades, currentCsvContent, currentRules, currentFileName);
             displayResults(results);
         } catch (err) {
             showError(err);
@@ -1009,7 +1015,7 @@ async function handleUndoCompletedClick(event) {
         
         // 6. Recalculate matrix if needed (if a CSV is loaded)
         if (currentCsvContent && currentRules) {
-             const results = applyUpgradesAndRecalculate(acceptedUpgrades, currentCsvContent, currentRules);
+             const results = applyUpgradesAndRecalculate(acceptedUpgrades, currentCsvContent, currentRules, currentFileName);
              displayResults(results);
         }
 
@@ -1403,9 +1409,10 @@ function parseCsv(csvContent) {
     return { data, header };
 }
 
-function applyUpgradesAndRecalculate(currentAcceptedList, csvContent, rules) {
+function applyUpgradesAndRecalculate(currentAcceptedList, csvContent, rules, fileName) {
     const { data, header } = parseCsv(csvContent);
-    const allReservations = parseAllReservations(data, header);
+    // PASS FILE NAME HERE
+    const allReservations = parseAllReservations(data, header, fileName);
 
     currentAcceptedList.forEach(rec => {
         const reservationToUpdate = allReservations.find(res => res.resId === rec.resId);
@@ -1419,17 +1426,31 @@ function applyUpgradesAndRecalculate(currentAcceptedList, csvContent, rules) {
     return results;
 }
 
-function processUpgradeData(csvContent, rules) {
+function processUpgradeData(csvContent, rules, fileName) {
     const { data, header } = parseCsv(csvContent);
     if (!data || data.length === 0) {
         throw new Error('CSV file is empty or could not be parsed.');
     }
-    const requiredHeaders = ['Guest Name', 'Res ID', 'Room Type', 'Rate Name', 'Rate', 'Arrival Date', 'Departure Date', 'Status'];
+    
+    // Check required headers based on file type
+    const isSnt = fileName && fileName.startsWith('SNT');
+    let requiredHeaders = [];
+    
+    if (isSnt) {
+        // SNT Specific Headers
+        requiredHeaders = ['Arrival Date', 'Departure Date', 'First Name', 'Last Name', 'Arrival Rate Code', 'Adr', 'Reservation Id', 'Arrival Room Type', 'Reservation Status'];
+    } else {
+        // Standard Headers
+        requiredHeaders = ['Guest Name', 'Res ID', 'Room Type', 'Rate Name', 'Rate', 'Arrival Date', 'Departure Date', 'Status'];
+    }
+
     const missingHeaders = requiredHeaders.filter(h => !header.includes(h));
     if (missingHeaders.length > 0) {
-        throw new Error(`The uploaded PMS export is missing required columns. Could not find: '${missingHeaders.join(', ')}'`);
+        throw new Error(`The uploaded PMS export is missing required columns for ${isSnt ? 'SNT' : 'Standard'} format. Could not find: '${missingHeaders.join(', ')}'`);
     }
-    const allReservations = parseAllReservations(data, header);
+    
+    // PASS FILE NAME HERE
+    const allReservations = parseAllReservations(data, header, fileName);
     return generateRecommendationsFromData(allReservations, rules);
 }
 
@@ -1448,6 +1469,9 @@ function generateRecommendationsFromData(allReservations, rules) {
             .filter(up => up.profile === currentProfile)
             .map(up => up.resId)
     );
+
+    // FILTER FOR RESERVATIONS
+    const arrivalsForThisDay = allReservations.filter(r => r.status === 'RESERVATION');
 
     if (allReservations.length === 0) {
         return {
@@ -1503,13 +1527,14 @@ function generateRecommendationsFromData(allReservations, rules) {
         currentDate.setUTCDate(currentDate.getUTCDate() + dayOffset);
         const currentTimestamp = currentDate.getTime();
         
-        const arrivalsForThisDay = allReservations.filter(r => r.arrival && r.arrival.getTime() === currentTimestamp && r.status === 'RESERVATION');
+        // Use the pre-filtered reservation list
+        const dailyArrivals = arrivalsForThisDay.filter(r => r.arrival && r.arrival.getTime() === currentTimestamp);
         
         let processingQueue = useDefaultLogic ? [...roomHierarchy] : [...originalTargetRooms];
 
         if (!useDefaultLogic) {
             originalTargetRooms.forEach(targetRoom => {
-                if (!arrivalsForThisDay.some(res => res.roomType === targetRoom)) {
+                if (!dailyArrivals.some(res => res.roomType === targetRoom)) {
                     const hierarchyIndex = roomHierarchy.indexOf(targetRoom);
                     if (hierarchyIndex > -1 && hierarchyIndex < roomHierarchy.length - 1) {
                         for (let i = hierarchyIndex + 1; i < roomHierarchy.length; i++) {
@@ -1525,7 +1550,7 @@ function generateRecommendationsFromData(allReservations, rules) {
         }
 
         processingQueue.forEach((roomToEvaluate) => {
-            const eligibleReservations = arrivalsForThisDay.filter(res => 
+            const eligibleReservations = dailyArrivals.filter(res => 
                 res.roomType === roomToEvaluate && 
                 !otaRates.some(ota => res.rate.toLowerCase().includes(ota)) && 
                 !completedResIdsForProfile.has(res.resId) && 
@@ -1637,38 +1662,81 @@ function getBedType(roomCode) {
     return 'OTHER';
 }
 
-function parseAllReservations(data, header) {
-    const nameIndex = header.indexOf('Guest Name');
-    const resIdIndex = header.indexOf('Res ID');
-    const roomTypeIndex = header.indexOf('Room Type');
-    const rateNameIndex = header.indexOf('Rate Name');
-    const arrivalIndex = header.indexOf('Arrival Date');
-    const departureIndex = header.indexOf('Departure Date');
-    const statusIndex = header.indexOf('Status');
-    const rateIndex = header.indexOf('Rate');
-    if (nameIndex === -1 || resIdIndex === -1 || roomTypeIndex === -1) {
-        throw new Error("One or more critical columns were not found in the CSV header.");
+function parseAllReservations(data, header, fileName) {
+    const isSnt = fileName && fileName.startsWith('SNT');
+    let nameIndex, resIdIndex, roomTypeIndex, rateNameIndex, arrivalIndex, departureIndex, statusIndex, rateIndex, firstNameIndex, lastNameIndex;
+
+    if (isSnt) {
+        // --- SNT MAPPING ---
+        firstNameIndex = header.indexOf('First Name');
+        lastNameIndex = header.indexOf('Last Name');
+        resIdIndex = header.indexOf('Reservation Id');
+        roomTypeIndex = header.indexOf('Arrival Room Type');
+        rateNameIndex = header.indexOf('Arrival Rate Code');
+        arrivalIndex = header.indexOf('Arrival Date');
+        departureIndex = header.indexOf('Departure Date');
+        statusIndex = header.indexOf('Reservation Status');
+        rateIndex = header.indexOf('Adr');
+
+        if (firstNameIndex === -1 || resIdIndex === -1 || roomTypeIndex === -1) {
+            throw new Error("One or more critical columns were not found in the SNT CSV header.");
+        }
+    } else {
+        // --- STANDARD MAPPING ---
+        nameIndex = header.indexOf('Guest Name');
+        resIdIndex = header.indexOf('Res ID');
+        roomTypeIndex = header.indexOf('Room Type');
+        rateNameIndex = header.indexOf('Rate Name');
+        arrivalIndex = header.indexOf('Arrival Date');
+        departureIndex = header.indexOf('Departure Date');
+        statusIndex = header.indexOf('Status');
+        rateIndex = header.indexOf('Rate');
+
+        if (nameIndex === -1 || resIdIndex === -1 || roomTypeIndex === -1) {
+            throw new Error("One or more critical columns were not found in the CSV header.");
+        }
     }
+
     return data.map(values => {
         if (values.length < header.length) return null;
+        
         const arrival = values[arrivalIndex] ? parseDate(values[arrivalIndex]) : null;
         const departure = values[departureIndex] ? parseDate(values[departureIndex]) : null;
+        
         let nights = 0;
         if (arrival && departure) {
             const diffTime = departure - arrival;
             nights = Math.max(1, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
         }
+        
         const dailyRate = parseFloat(values[rateIndex]) || 0;
         const totalRevenue = dailyRate * nights;
+
+        // Name Logic
+        let fullName = "";
+        if (isSnt) {
+            const first = values[firstNameIndex] ? values[firstNameIndex].trim() : "";
+            const last = values[lastNameIndex] ? values[lastNameIndex].trim() : "";
+            fullName = `${first} ${last}`.trim();
+        } else {
+            fullName = values[nameIndex];
+        }
+
+        // Status Normalization
+        let status = values[statusIndex] ? values[statusIndex].trim().toUpperCase() : '';
+        if (isSnt && status === 'RESERVED') {
+            status = 'RESERVATION'; // Normalize SNT 'RESERVED' to 'RESERVATION'
+        }
+
         return {
-            name: values[nameIndex],
+            name: fullName,
             resId: values[resIdIndex] ? values[resIdIndex].trim() : '',
             roomType: values[roomTypeIndex] ? values[roomTypeIndex].trim().toUpperCase() : '',
             rate: values[rateNameIndex] ? values[rateNameIndex].trim() : '',
             nights: nights,
             arrival: arrival,
             departure: departure,
-            status: values[statusIndex] ? values[statusIndex].trim().toUpperCase() : '',
+            status: status,
             revenue: totalRevenue.toLocaleString('en-US', { style: 'currency', currency: 'USD' })
         };
     }).filter(r => r && r.roomType && r.arrival && r.departure && r.nights > 0);
