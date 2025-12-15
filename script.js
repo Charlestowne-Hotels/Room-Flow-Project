@@ -1378,11 +1378,34 @@ function showLoader(show, text = 'Loading...') {
     }
 }
 
+// --- UPDATED PARSE CSV FUNCTION ---
+// Now detects header row dynamically instead of assuming first line
 function parseCsv(csvContent) {
     const lines = csvContent.trim().split('\n');
-    const headerLine = lines.shift();
+    let headerLine = '';
+    let headerIndex = 0;
+    
+    // Scan first 20 lines for a known header
+    for (let i = 0; i < Math.min(lines.length, 20); i++) {
+        if (lines[i].includes('Guest Name') || (lines[i].includes('First Name') && lines[i].includes('Last Name'))) {
+            headerLine = lines[i];
+            headerIndex = i;
+            break;
+        }
+    }
+    
+    // Fallback if not found
+    if (!headerLine) {
+        headerLine = lines[0];
+        headerIndex = 0;
+    }
+
     const header = headerLine.split(',').map(h => h.trim().replace(/"/g, ''));
-    const data = lines.map(line => {
+    
+    // Data starts after the detected header row
+    const dataLines = lines.slice(headerIndex + 1);
+    
+    const data = dataLines.map(line => {
         const row = [];
         let currentField = '';
         let inQuotes = false;
@@ -1424,11 +1447,10 @@ function processUpgradeData(csvContent, rules) {
     if (!data || data.length === 0) {
         throw new Error('CSV file is empty or could not be parsed.');
     }
-    const requiredHeaders = ['Guest Name', 'Res ID', 'Room Type', 'Rate Name', 'Rate', 'Arrival Date', 'Departure Date', 'Status'];
-    const missingHeaders = requiredHeaders.filter(h => !header.includes(h));
-    if (missingHeaders.length > 0) {
-        throw new Error(`The uploaded PMS export is missing required columns. Could not find: '${missingHeaders.join(', ')}'`);
-    }
+    
+    // We do basic validation inside parseAllReservations now, so we can skip strict header checks here 
+    // or just check if we parsed anything useful.
+    
     const allReservations = parseAllReservations(data, header);
     return generateRecommendationsFromData(allReservations, rules);
 }
@@ -1637,31 +1659,72 @@ function getBedType(roomCode) {
     return 'OTHER';
 }
 
+// --- UPDATED RESERVATION PARSING ---
+// Now supports mapping columns dynamically for standard AND STS formats
 function parseAllReservations(data, header) {
-    const nameIndex = header.indexOf('Guest Name');
-    const resIdIndex = header.indexOf('Res ID');
-    const roomTypeIndex = header.indexOf('Room Type');
-    const rateNameIndex = header.indexOf('Rate Name');
-    const arrivalIndex = header.indexOf('Arrival Date');
-    const departureIndex = header.indexOf('Departure Date');
-    const statusIndex = header.indexOf('Status');
-    const rateIndex = header.indexOf('Rate');
-    if (nameIndex === -1 || resIdIndex === -1 || roomTypeIndex === -1) {
-        throw new Error("One or more critical columns were not found in the CSV header.");
+    // 1. Identify "Guest Name"
+    let nameIndex = header.indexOf('Guest Name');
+    const firstNameIndex = header.indexOf('First Name');
+    const lastNameIndex = header.indexOf('Last Name');
+    
+    // 2. Identify "Res ID"
+    let resIdIndex = header.indexOf('Res ID');
+    if (resIdIndex === -1) resIdIndex = header.indexOf('Reservation Id');
+    
+    // 3. Identify "Room Type"
+    let roomTypeIndex = header.indexOf('Room Type');
+    if (roomTypeIndex === -1) roomTypeIndex = header.indexOf('Arrival Room Type');
+    
+    // 4. Identify "Rate Name"
+    let rateNameIndex = header.indexOf('Rate Name');
+    if (rateNameIndex === -1) rateNameIndex = header.indexOf('Arrival Rate Code');
+    
+    // 5. Identify "Rate" (Price)
+    let rateIndex = header.indexOf('Rate');
+    if (rateIndex === -1) rateIndex = header.indexOf('Adr');
+    
+    // 6. Identify "Arrival"
+    let arrivalIndex = header.indexOf('Arrival Date');
+    
+    // 7. Identify "Departure"
+    let departureIndex = header.indexOf('Departure Date');
+    
+    // 8. Identify "Status"
+    let statusIndex = header.indexOf('Status');
+    if (statusIndex === -1) statusIndex = header.indexOf('Reservation Status');
+
+    // Validation: Ensure critical columns exist
+    if ((nameIndex === -1 && (firstNameIndex === -1 || lastNameIndex === -1)) || 
+        resIdIndex === -1 || 
+        roomTypeIndex === -1) {
+        throw new Error("Critical columns missing. Could not map fields.");
     }
+
     return data.map(values => {
         if (values.length < header.length) return null;
+        
         const arrival = values[arrivalIndex] ? parseDate(values[arrivalIndex]) : null;
         const departure = values[departureIndex] ? parseDate(values[departureIndex]) : null;
+        
         let nights = 0;
         if (arrival && departure) {
             const diffTime = departure - arrival;
             nights = Math.max(1, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
         }
+        
         const dailyRate = parseFloat(values[rateIndex]) || 0;
         const totalRevenue = dailyRate * nights;
+        
+        // Handle Name: Standard vs Split
+        let name = '';
+        if (nameIndex !== -1) {
+            name = values[nameIndex];
+        } else if (firstNameIndex !== -1 && lastNameIndex !== -1) {
+            name = `${values[firstNameIndex]} ${values[lastNameIndex]}`;
+        }
+        
         return {
-            name: values[nameIndex],
+            name: name,
             resId: values[resIdIndex] ? values[resIdIndex].trim() : '',
             roomType: values[roomTypeIndex] ? values[roomTypeIndex].trim().toUpperCase() : '',
             rate: values[rateNameIndex] ? values[rateNameIndex].trim() : '',
