@@ -1472,6 +1472,16 @@ function generateRecommendationsFromData(allReservations, rules) {
 
     // FILTER FOR RESERVATIONS
     const arrivalsForThisDay = allReservations.filter(r => r.status === 'RESERVATION');
+    
+    // --- UPDATED LOGIC HERE ---
+    // Filter effectively active reservations for inventory calculation
+    // EXCLUDE CANCELED RECORDS from the Matrix / Inventory calculation
+    const activeReservations = allReservations.filter(res => 
+        res.status !== 'CANCELED' && 
+        res.status !== 'CANCELLED' && 
+        res.status !== 'NO SHOW'
+    );
+    // --------------------------
 
     if (allReservations.length === 0) {
         return {
@@ -1483,7 +1493,8 @@ function generateRecommendationsFromData(allReservations, rules) {
     }
 
     const startDate = parseDate(rules.selectedDate);
-    const reservationsByDate = buildReservationsByDate(allReservations);
+    // Use 'activeReservations' instead of 'allReservations'
+    const reservationsByDate = buildReservationsByDate(activeReservations);
     const todayInventory = getInventoryForDate(masterInventory, reservationsByDate, startDate);
     const roomHierarchy = rules.hierarchy.toUpperCase().split(',').map(r => r.trim()).filter(Boolean);
     const matrixData = generateMatrixData(masterInventory, reservationsByDate, startDate, roomHierarchy);
