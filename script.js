@@ -1723,7 +1723,7 @@ function getBedType(roomCode) {
 
 function parseAllReservations(data, header, fileName) {
     // Update isSnt to include LTRL
-    const isSnt = fileName && (fileName.startsWith('SNT') || fileName.startsWith('LTRL'));
+    const isSnt = fileName && (fileName.startsWith('SNT') || fileName.startsWith('LTRL') || fileName.startsWith('VERD'));
     let nameIndex, resIdIndex, roomTypeIndex, rateNameIndex, arrivalIndex, departureIndex, statusIndex, rateIndex, firstNameIndex, lastNameIndex, marketCodeIndex;
 
     if (isSnt) {
@@ -1952,4 +1952,5 @@ function downloadAcceptedUpgradesCsv() {
     link.click();
     document.body.removeChild(link);
 }
+
 
