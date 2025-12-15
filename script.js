@@ -1470,7 +1470,7 @@ function processUpgradeData(csvContent, rules, fileName) {
     }
     
     // Update isSnt to include LTRL
-    const isSnt = fileName && (fileName.startsWith('SNT') || fileName.startsWith('LTRL'));
+    const isSnt = fileName && (fileName.startsWith('SNT') || fileName.startsWith('LTRL') || fileName.startsWith('VERD'));
     let requiredHeaders = [];
     
     if (isSnt) {
@@ -1952,3 +1952,4 @@ function downloadAcceptedUpgradesCsv() {
     link.click();
     document.body.removeChild(link);
 }
+
