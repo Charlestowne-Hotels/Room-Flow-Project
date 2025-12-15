@@ -105,6 +105,13 @@ const profiles = {
         prioritizedRates: 'Best Available, BAR, Rack',
         otaRates: 'Expedia, Booking.com, Priceline, GDS',
         ineligibleUpgrades: ''
+    },
+    dar: {
+        hierarchy: 'RQR, RKR, RQQ, SKR, AKS, EXE, DAR',
+        targetRooms: '',
+        prioritizedRates: 'Best Available, BAR, Rack',
+        otaRates: 'Expedia, Booking.com, Priceline, GDS',
+        ineligibleUpgrades: ''
     }
 };
 
@@ -366,6 +373,25 @@ const MASTER_INVENTORIES = {
         { roomNumber: '302', code: 'LEAC' },
         // GPST (1 Room)
         { roomNumber: '707', code: 'GPST' }
+    ],
+    dar: [
+        // RQR (4 Rooms)
+        { roomNumber: '101', code: 'RQR' }, { roomNumber: '102', code: 'RQR' }, { roomNumber: '103', code: 'RQR' }, { roomNumber: '104', code: 'RQR' },
+        // RKR (17 Rooms)
+        { roomNumber: '205', code: 'RKR' }, { roomNumber: '206', code: 'RKR' }, { roomNumber: '207', code: 'RKR' }, { roomNumber: '208', code: 'RKR' }, { roomNumber: '209', code: 'RKR' },
+        { roomNumber: '210', code: 'RKR' }, { roomNumber: '213', code: 'RKR' }, { roomNumber: '314', code: 'RKR' }, { roomNumber: '315', code: 'RKR' }, { roomNumber: '316', code: 'RKR' },
+        { roomNumber: '318', code: 'RKR' }, { roomNumber: '319', code: 'RKR' }, { roomNumber: '320', code: 'RKR' }, { roomNumber: '321', code: 'RKR' }, { roomNumber: '324', code: 'RKR' },
+        { roomNumber: '425', code: 'RKR' }, { roomNumber: '432', code: 'RKR' },
+        // RQQ (1 Room)
+        { roomNumber: '431', code: 'RQQ' },
+        // SKR (6 Rooms)
+        { roomNumber: '211', code: 'SKR' }, { roomNumber: '212', code: 'SKR' }, { roomNumber: '317', code: 'SKR' }, { roomNumber: '323', code: 'SKR' }, { roomNumber: '426', code: 'SKR' }, { roomNumber: '427', code: 'SKR' },
+        // AKS (2 Rooms)
+        { roomNumber: '322', code: 'AKS' }, { roomNumber: '428', code: 'AKS' },
+        // EXE (1 Room)
+        { roomNumber: '430', code: 'EXE' },
+        // DAR (1 Room)
+        { roomNumber: '429', code: 'DAR' }
     ]
 };
 
@@ -1790,6 +1816,10 @@ function getBedType(roomCode) {
     if (['PQNN', 'STQQ', 'SQAC'].includes(roomCode)) return 'QQ';
     if (['PKNG', 'SKNG', 'SKAC', 'HERT', 'AMER', 'LEST', 'LEAC', 'GPST'].includes(roomCode)) return 'K';
 
+    // --- NEW LOGIC FOR DAR BED TYPES ---
+    if (['RKR', 'SKR', 'AKS', 'EXE', 'DAR'].includes(roomCode)) return 'K';
+    if (['RQR', 'RQQ'].includes(roomCode)) return 'QQ';
+
     return 'OTHER';
 }
 
@@ -2024,4 +2054,3 @@ function downloadAcceptedUpgradesCsv() {
     link.click();
     document.body.removeChild(link);
 }
-
