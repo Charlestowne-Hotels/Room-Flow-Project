@@ -91,6 +91,13 @@ const profiles = {
         prioritizedRates: 'Best Available, BAR, Rack',
         otaRates: 'Expedia, Booking.com, Priceline, GDS',
         ineligibleUpgrades: 'KINGADA, ADADQ, ADALV'
+    },
+    cby: {
+        hierarchy: 'KNR, KND, QQNR, KAR, QQAR, K1S, K1AS',
+        targetRooms: '',
+        prioritizedRates: 'Best Available, BAR, Rack',
+        otaRates: 'Expedia, Booking.com, Priceline, GDS',
+        ineligibleUpgrades: ''
     }
 };
 
@@ -302,6 +309,26 @@ const MASTER_INVENTORIES = {
         { roomNumber: '311', code: 'LVJRSTE' }, { roomNumber: '411', code: 'LVJRSTE' },
         // PRES (1 Room)
         { roomNumber: '421', code: 'PRES' }
+    ],
+    cby: [
+        // KNR (16 Rooms)
+        { roomNumber: '205', code: 'KNR' }, { roomNumber: '207', code: 'KNR' }, { roomNumber: '209', code: 'KNR' }, { roomNumber: '214', code: 'KNR' }, { roomNumber: '216', code: 'KNR' },
+        { roomNumber: '305', code: 'KNR' }, { roomNumber: '307', code: 'KNR' }, { roomNumber: '309', code: 'KNR' }, { roomNumber: '314', code: 'KNR' }, { roomNumber: '316', code: 'KNR' },
+        { roomNumber: '405', code: 'KNR' }, { roomNumber: '407', code: 'KNR' }, { roomNumber: '409', code: 'KNR' }, { roomNumber: '411', code: 'KNR' }, { roomNumber: '414', code: 'KNR' }, { roomNumber: '416', code: 'KNR' },
+        // KND (6 Rooms)
+        { roomNumber: '201', code: 'KND' }, { roomNumber: '202', code: 'KND' }, { roomNumber: '301', code: 'KND' }, { roomNumber: '302', code: 'KND' }, { roomNumber: '401', code: 'KND' }, { roomNumber: '402', code: 'KND' },
+        // QQNR (25 Rooms)
+        { roomNumber: '203', code: 'QQNR' }, { roomNumber: '204', code: 'QQNR' }, { roomNumber: '206', code: 'QQNR' }, { roomNumber: '211', code: 'QQNR' }, { roomNumber: '215', code: 'QQNR' }, { roomNumber: '217', code: 'QQNR' }, { roomNumber: '219', code: 'QQNR' }, { roomNumber: '221', code: 'QQNR' },
+        { roomNumber: '303', code: 'QQNR' }, { roomNumber: '304', code: 'QQNR' }, { roomNumber: '306', code: 'QQNR' }, { roomNumber: '311', code: 'QQNR' }, { roomNumber: '312', code: 'QQNR' }, { roomNumber: '315', code: 'QQNR' }, { roomNumber: '317', code: 'QQNR' }, { roomNumber: '319', code: 'QQNR' }, { roomNumber: '321', code: 'QQNR' },
+        { roomNumber: '403', code: 'QQNR' }, { roomNumber: '404', code: 'QQNR' }, { roomNumber: '406', code: 'QQNR' }, { roomNumber: '412', code: 'QQNR' }, { roomNumber: '415', code: 'QQNR' }, { roomNumber: '417', code: 'QQNR' }, { roomNumber: '419', code: 'QQNR' }, { roomNumber: '421', code: 'QQNR' },
+        // KAR (2 Rooms)
+        { roomNumber: '213', code: 'KAR' }, { roomNumber: '313', code: 'KAR' },
+        // QQAR (1 Room)
+        { roomNumber: '413', code: 'QQAR' },
+        // K1S (2 Rooms)
+        { roomNumber: '308', code: 'K1S' }, { roomNumber: '408', code: 'K1S' },
+        // K1AS (1 Room)
+        { roomNumber: '208', code: 'K1AS' }
     ]
 };
 
@@ -1718,6 +1745,10 @@ function getBedType(roomCode) {
     if (roomCode === 'DQUEEN' || roomCode === 'ADADQ') return 'QQ';
     if (roomCode === 'JRSTE' || roomCode === 'LVJRSTE' || roomCode === 'PRES') return 'K';
 
+    // --- NEW LOGIC FOR CBY BED TYPES ---
+    if (roomCode === 'KNR' || roomCode === 'KND' || roomCode === 'KAR' || roomCode === 'K1S' || roomCode === 'K1AS') return 'K';
+    if (roomCode === 'QQNR' || roomCode === 'QQAR') return 'QQ';
+
     return 'OTHER';
 }
 
@@ -1952,6 +1983,3 @@ function downloadAcceptedUpgradesCsv() {
     link.click();
     document.body.removeChild(link);
 }
-
-
-
