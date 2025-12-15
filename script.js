@@ -1432,8 +1432,8 @@ function processUpgradeData(csvContent, rules, fileName) {
         throw new Error('CSV file is empty or could not be parsed.');
     }
     
-    // Check required headers based on file type
-    const isSnt = fileName && fileName.startsWith('SNT');
+    // Update isSnt to include LTRL
+    const isSnt = fileName && (fileName.startsWith('SNT') || fileName.startsWith('LTRL'));
     let requiredHeaders = [];
     
     if (isSnt) {
@@ -1550,12 +1550,18 @@ function generateRecommendationsFromData(allReservations, rules) {
         }
 
         processingQueue.forEach((roomToEvaluate) => {
-            const eligibleReservations = dailyArrivals.filter(res => 
-                res.roomType === roomToEvaluate && 
-                !otaRates.some(ota => res.rate.toLowerCase().includes(ota)) && 
-                !completedResIdsForProfile.has(res.resId) && 
-                !ineligibleUpgrades.includes(res.roomType)
-            );
+            const eligibleReservations = dailyArrivals.filter(res => {
+                
+                // New Market Code Check for STS Profile
+                if (rules.profile === 'sts' && res.marketCode === 'Internet Merchant Model') {
+                    return false;
+                }
+
+                return res.roomType === roomToEvaluate && 
+                    !otaRates.some(ota => res.rate.toLowerCase().includes(ota)) && 
+                    !completedResIdsForProfile.has(res.resId) && 
+                    !ineligibleUpgrades.includes(res.roomType);
+            });
 
             eligibleReservations.forEach(res => {
                 const currentRoomIndex = roomHierarchy.indexOf(res.roomType);
@@ -1663,8 +1669,9 @@ function getBedType(roomCode) {
 }
 
 function parseAllReservations(data, header, fileName) {
-    const isSnt = fileName && fileName.startsWith('SNT');
-    let nameIndex, resIdIndex, roomTypeIndex, rateNameIndex, arrivalIndex, departureIndex, statusIndex, rateIndex, firstNameIndex, lastNameIndex;
+    // Update isSnt to include LTRL
+    const isSnt = fileName && (fileName.startsWith('SNT') || fileName.startsWith('LTRL'));
+    let nameIndex, resIdIndex, roomTypeIndex, rateNameIndex, arrivalIndex, departureIndex, statusIndex, rateIndex, firstNameIndex, lastNameIndex, marketCodeIndex;
 
     if (isSnt) {
         // --- SNT MAPPING ---
@@ -1677,6 +1684,8 @@ function parseAllReservations(data, header, fileName) {
         departureIndex = header.indexOf('Departure Date');
         statusIndex = header.indexOf('Reservation Status');
         rateIndex = header.indexOf('Adr');
+        // Extract Market Code (might be -1 if missing, which is handled)
+        marketCodeIndex = header.indexOf('Market Code');
 
         if (firstNameIndex === -1 || resIdIndex === -1 || roomTypeIndex === -1) {
             throw new Error("One or more critical columns were not found in the SNT CSV header.");
@@ -1728,6 +1737,12 @@ function parseAllReservations(data, header, fileName) {
             status = 'RESERVATION'; // Normalize SNT 'RESERVED' to 'RESERVATION'
         }
 
+        // Market Code Extraction
+        let marketCode = "";
+        if (isSnt && marketCodeIndex > -1 && values[marketCodeIndex]) {
+            marketCode = values[marketCodeIndex].trim();
+        }
+
         return {
             name: fullName,
             resId: values[resIdIndex] ? values[resIdIndex].trim() : '',
@@ -1737,7 +1752,8 @@ function parseAllReservations(data, header, fileName) {
             arrival: arrival,
             departure: departure,
             status: status,
-            revenue: totalRevenue.toLocaleString('en-US', { style: 'currency', currency: 'USD' })
+            revenue: totalRevenue.toLocaleString('en-US', { style: 'currency', currency: 'USD' }),
+            marketCode: marketCode 
         };
     }).filter(r => r && r.roomType && r.arrival && r.departure && r.nights > 0);
 }
