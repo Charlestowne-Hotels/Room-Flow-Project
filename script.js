@@ -98,6 +98,13 @@ const profiles = {
         prioritizedRates: 'Best Available, BAR, Rack',
         otaRates: 'Expedia, Booking.com, Priceline, GDS',
         ineligibleUpgrades: ''
+    },
+    bri: {
+        hierarchy: 'PQNN, PKNG, STQQ, SQAC, SKNG, SKAC, HERT, AMER, LEST, LEAC, GPST',
+        targetRooms: '',
+        prioritizedRates: 'Best Available, BAR, Rack',
+        otaRates: 'Expedia, Booking.com, Priceline, GDS',
+        ineligibleUpgrades: ''
     }
 };
 
@@ -329,6 +336,36 @@ const MASTER_INVENTORIES = {
         { roomNumber: '308', code: 'K1S' }, { roomNumber: '408', code: 'K1S' },
         // K1AS (1 Room)
         { roomNumber: '208', code: 'K1AS' }
+    ],
+    bri: [
+        // PQNN (5 Rooms)
+        { roomNumber: '210', code: 'PQNN' }, { roomNumber: '310', code: 'PQNN' }, { roomNumber: '409', code: 'PQNN' }, { roomNumber: '509', code: 'PQNN' }, { roomNumber: '609', code: 'PQNN' },
+        // PKNG (5 Rooms)
+        { roomNumber: '209', code: 'PKNG' }, { roomNumber: '309', code: 'PKNG' }, { roomNumber: '408', code: 'PKNG' }, { roomNumber: '508', code: 'PKNG' }, { roomNumber: '608', code: 'PKNG' },
+        // STQQ (21 Rooms)
+        { roomNumber: '205', code: 'STQQ' }, { roomNumber: '206', code: 'STQQ' }, { roomNumber: '211', code: 'STQQ' }, { roomNumber: '305', code: 'STQQ' }, { roomNumber: '306', code: 'STQQ' }, { roomNumber: '311', code: 'STQQ' },
+        { roomNumber: '402', code: 'STQQ' }, { roomNumber: '404', code: 'STQQ' }, { roomNumber: '405', code: 'STQQ' }, { roomNumber: '410', code: 'STQQ' }, { roomNumber: '502', code: 'STQQ' }, { roomNumber: '505', code: 'STQQ' },
+        { roomNumber: '510', code: 'STQQ' }, { roomNumber: '602', code: 'STQQ' }, { roomNumber: '604', code: 'STQQ' }, { roomNumber: '605', code: 'STQQ' }, { roomNumber: '610', code: 'STQQ' }, { roomNumber: '702', code: 'STQQ' },
+        { roomNumber: '704', code: 'STQQ' }, { roomNumber: '705', code: 'STQQ' }, { roomNumber: '708', code: 'STQQ' },
+        // SQAC (1 Room)
+        { roomNumber: '504', code: 'SQAC' },
+        // SKNG (20 Rooms)
+        { roomNumber: '204', code: 'SKNG' }, { roomNumber: '208', code: 'SKNG' }, { roomNumber: '212', code: 'SKNG' }, { roomNumber: '301', code: 'SKNG' }, { roomNumber: '308', code: 'SKNG' }, { roomNumber: '312', code: 'SKNG' },
+        { roomNumber: '401', code: 'SKNG' }, { roomNumber: '403', code: 'SKNG' }, { roomNumber: '406', code: 'SKNG' }, { roomNumber: '411', code: 'SKNG' }, { roomNumber: '501', code: 'SKNG' }, { roomNumber: '503', code: 'SKNG' },
+        { roomNumber: '506', code: 'SKNG' }, { roomNumber: '511', code: 'SKNG' }, { roomNumber: '601', code: 'SKNG' }, { roomNumber: '603', code: 'SKNG' }, { roomNumber: '606', code: 'SKNG' }, { roomNumber: '611', code: 'SKNG' },
+        { roomNumber: '701', code: 'SKNG' }, { roomNumber: '709', code: 'SKNG' },
+        // SKAC (2 Rooms)
+        { roomNumber: '304', code: 'SKAC' }, { roomNumber: '703', code: 'SKAC' },
+        // HERT (6 Rooms)
+        { roomNumber: '207', code: 'HERT' }, { roomNumber: '307', code: 'HERT' }, { roomNumber: '407', code: 'HERT' }, { roomNumber: '507', code: 'HERT' }, { roomNumber: '607', code: 'HERT' }, { roomNumber: '706', code: 'HERT' },
+        // AMER (2 Rooms)
+        { roomNumber: '203', code: 'AMER' }, { roomNumber: '303', code: 'AMER' },
+        // LEST (1 Room)
+        { roomNumber: '202', code: 'LEST' },
+        // LEAC (1 Room)
+        { roomNumber: '302', code: 'LEAC' },
+        // GPST (1 Room)
+        { roomNumber: '707', code: 'GPST' }
     ]
 };
 
@@ -1749,6 +1786,10 @@ function getBedType(roomCode) {
     if (roomCode === 'KNR' || roomCode === 'KND' || roomCode === 'KAR' || roomCode === 'K1S' || roomCode === 'K1AS') return 'K';
     if (roomCode === 'QQNR' || roomCode === 'QQAR') return 'QQ';
 
+    // --- NEW LOGIC FOR BRI BED TYPES ---
+    if (['PQNN', 'STQQ', 'SQAC'].includes(roomCode)) return 'QQ';
+    if (['PKNG', 'SKNG', 'SKAC', 'HERT', 'AMER', 'LEST', 'LEAC', 'GPST'].includes(roomCode)) return 'K';
+
     return 'OTHER';
 }
 
@@ -1983,4 +2024,3 @@ function downloadAcceptedUpgradesCsv() {
     link.click();
     document.body.removeChild(link);
 }
-
