@@ -77,6 +77,13 @@ const profiles = {
         prioritizedRates: 'Best Available, BAR, Rack',
         otaRates: 'Expedia, Booking.com, Priceline, GDS', 
         ineligibleUpgrades: 'MHF-Q'
+    },
+    sts: {
+        hierarchy: 'PKR, TKR, QQR, LKR, CKR, KS, PKS, AKR, AQQ',
+        targetRooms: '',
+        prioritizedRates: 'Best Available, BAR, Rack',
+        otaRates: 'Expedia, Booking.com, Priceline, GDS',
+        ineligibleUpgrades: ''
     }
 };
 
@@ -226,6 +233,38 @@ const MASTER_INVENTORIES = {
         { roomNumber: 'I208', code: 'QQAV' }, { roomNumber: 'I209', code: 'QQAV' }, { roomNumber: 'I210', code: 'QQAV' }, 
         { roomNumber: 'I303', code: 'QQAV' }, { roomNumber: 'I304', code: 'QQAV' }, { roomNumber: 'I305', code: 'QQAV' }, 
         { roomNumber: 'I308', code: 'QQAV' }, { roomNumber: 'I310', code: 'QQAV' }
+    ],
+    sts: [
+        // PKR (1 Room)
+        { roomNumber: '215', code: 'PKR' },
+        // TKR (23 Rooms)
+        { roomNumber: '203', code: 'TKR' }, { roomNumber: '204', code: 'TKR' }, { roomNumber: '206', code: 'TKR' },
+        { roomNumber: '207', code: 'TKR' }, { roomNumber: '208', code: 'TKR' }, { roomNumber: '209', code: 'TKR' },
+        { roomNumber: '211', code: 'TKR' }, { roomNumber: '212', code: 'TKR' }, { roomNumber: '213', code: 'TKR' },
+        { roomNumber: '214', code: 'TKR' }, { roomNumber: '303', code: 'TKR' }, { roomNumber: '304', code: 'TKR' },
+        { roomNumber: '307', code: 'TKR' }, { roomNumber: '308', code: 'TKR' }, { roomNumber: '309', code: 'TKR' },
+        { roomNumber: '311', code: 'TKR' }, { roomNumber: '312', code: 'TKR' }, { roomNumber: '314', code: 'TKR' },
+        { roomNumber: '319', code: 'TKR' }, { roomNumber: '402', code: 'TKR' }, { roomNumber: '403', code: 'TKR' },
+        { roomNumber: '406', code: 'TKR' }, { roomNumber: '407', code: 'TKR' },
+        // QQR (11 Rooms)
+        { roomNumber: '202', code: 'QQR' }, { roomNumber: '210', code: 'QQR' }, { roomNumber: '218', code: 'QQR' },
+        { roomNumber: '220', code: 'QQR' }, { roomNumber: '302', code: 'QQR' }, { roomNumber: '306', code: 'QQR' },
+        { roomNumber: '310', code: 'QQR' }, { roomNumber: '317', code: 'QQR' }, { roomNumber: '401', code: 'QQR' },
+        { roomNumber: '405', code: 'QQR' }, { roomNumber: '408', code: 'QQR' },
+        // LKR (4 Rooms)
+        { roomNumber: '201', code: 'LKR' }, { roomNumber: '221', code: 'LKR' }, { roomNumber: '301', code: 'LKR' },
+        { roomNumber: '316', code: 'LKR' },
+        // CKR (3 Rooms)
+        { roomNumber: '205', code: 'CKR' }, { roomNumber: '305', code: 'CKR' }, { roomNumber: '404', code: 'CKR' },
+        // KS (5 Rooms)
+        { roomNumber: '217', code: 'KS' }, { roomNumber: '219', code: 'KS' }, { roomNumber: '313', code: 'KS' },
+        { roomNumber: '315', code: 'KS' }, { roomNumber: '318', code: 'KS' },
+        // PKS (1 Room)
+        { roomNumber: '409', code: 'PKS' },
+        // AKR (1 Room)
+        { roomNumber: '216', code: 'AKR' },
+        // AQQ (1 Room)
+        { roomNumber: '320', code: 'AQQ' }
     ]
 };
 
@@ -1584,6 +1623,17 @@ function getBedType(roomCode) {
     if (roomCode === 'QQAV') return 'QQ';
     if (roomCode === 'CHQ') return 'Q';
     
+    // --- NEW LOGIC FOR STS BED TYPES ---
+    if (roomCode === 'PKR') return 'K';
+    if (roomCode === 'TKR') return 'K';
+    if (roomCode === 'QQR') return 'QQ';
+    if (roomCode === 'LKR') return 'K';
+    if (roomCode === 'CKR') return 'K';
+    if (roomCode === 'KS') return 'K';
+    if (roomCode === 'PKS') return 'K';
+    if (roomCode === 'AKR') return 'K';
+    if (roomCode === 'AQQ') return 'QQ';
+
     return 'OTHER';
 }
 
