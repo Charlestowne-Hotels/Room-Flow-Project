@@ -147,6 +147,13 @@ const profiles = {
         prioritizedRates: 'Best Available, BAR, Rack',
         otaRates: 'Expedia, Booking.com, Priceline, GDS',
         ineligibleUpgrades: ''
+    },
+    cgt: {
+        hierarchy: 'PDBL-D, QUEEN-Q, QUEENADA-Q, KING-K, EKING-K, QNQN-QQ, KSTE-K, KSTWN-K/T, KSTSB-K/POC, KSS-K',
+        targetRooms: '',
+        prioritizedRates: 'Best Available, BAR, Rack',
+        otaRates: 'Expedia, Booking.com, Priceline, GDS',
+        ineligibleUpgrades: ''
     }
 };
 
@@ -539,6 +546,30 @@ const MASTER_INVENTORIES = {
         { roomNumber: '402', code: 'KS' }, { roomNumber: '414', code: 'KS' }, { roomNumber: '424', code: 'KS' },
         // EX (1 Room)
         { roomNumber: '416', code: 'EX' }
+    ],
+    cgt: [
+        // PDBL-D (2 Rooms)
+        { roomNumber: '15', code: 'PDBL-D' }, { roomNumber: '35', code: 'PDBL-D' },
+        // QUEEN-Q (11 Rooms)
+        { roomNumber: '02', code: 'QUEEN-Q' }, { roomNumber: '05', code: 'QUEEN-Q' }, { roomNumber: '09', code: 'QUEEN-Q' }, { roomNumber: '10', code: 'QUEEN-Q' }, { roomNumber: '11', code: 'QUEEN-Q' }, { roomNumber: '12', code: 'QUEEN-Q' },
+        { roomNumber: '25', code: 'QUEEN-Q' }, { roomNumber: '29', code: 'QUEEN-Q' }, { roomNumber: '30', code: 'QUEEN-Q' }, { roomNumber: '31', code: 'QUEEN-Q' }, { roomNumber: '32', code: 'QUEEN-Q' },
+        // QUEENADA-Q (2 Rooms)
+        { roomNumber: '07', code: 'QUEENADA-Q' }, { roomNumber: '27', code: 'QUEENADA-Q' },
+        // KING-K (10 Rooms)
+        { roomNumber: '01', code: 'KING-K' }, { roomNumber: '03', code: 'KING-K' }, { roomNumber: '06', code: 'KING-K' }, { roomNumber: '08', code: 'KING-K' }, { roomNumber: '14', code: 'KING-K' },
+        { roomNumber: '17', code: 'KING-K' }, { roomNumber: '23', code: 'KING-K' }, { roomNumber: '26', code: 'KING-K' }, { roomNumber: '34', code: 'KING-K' }, { roomNumber: '37', code: 'KING-K' },
+        // EKING-K (4 Rooms)
+        { roomNumber: '16', code: 'EKING-K' }, { roomNumber: '21', code: 'EKING-K' }, { roomNumber: '22', code: 'EKING-K' }, { roomNumber: '36', code: 'EKING-K' },
+        // QNQN-QQ (1 Room)
+        { roomNumber: '28', code: 'QNQN-QQ' },
+        // KSTE-K (2 Rooms)
+        { roomNumber: '19', code: 'KSTE-K' }, { roomNumber: '39', code: 'KSTE-K' },
+        // KSTWN-K/T (2 Rooms)
+        { roomNumber: '13', code: 'KSTWN-K/T' }, { roomNumber: '33', code: 'KSTWN-K/T' },
+        // KSTSB-K/POC (2 Rooms)
+        { roomNumber: '20', code: 'KSTSB-K/POC' }, { roomNumber: '40', code: 'KSTSB-K/POC' },
+        // KSS-K (4 Rooms)
+        { roomNumber: '04', code: 'KSS-K' }, { roomNumber: '18', code: 'KSS-K' }, { roomNumber: '24', code: 'KSS-K' }, { roomNumber: '38', code: 'KSS-K' }
     ]
 };
 
