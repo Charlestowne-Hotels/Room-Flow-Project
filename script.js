@@ -2208,12 +2208,6 @@ function getBedType(roomCode) {
     if (['KING', 'ADAKING', 'KSUITE', 'EXEC'].includes(roomCode)) return 'K';
     if (['QQ'].includes(roomCode)) return 'QQ';
 
-    // ... existing logic ...
-
-    // --- NEW LOGIC FOR SEA BED TYPES ---
-    if (['KING', 'ADAKING', 'KSUITE', 'EXEC'].includes(roomCode)) return 'K';
-    if (['QQ'].includes(roomCode)) return 'QQ';
-
     return 'OTHER';
 }
 
@@ -2448,6 +2442,7 @@ function downloadAcceptedUpgradesCsv() {
     link.click();
     document.body.removeChild(link);
 }
+
 
 
 
