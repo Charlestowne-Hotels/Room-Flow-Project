@@ -133,6 +133,13 @@ const profiles = {
         prioritizedRates: 'Best Available, BAR, Rack',
         otaRates: 'Expedia, Booking.com, Priceline, GDS',
         ineligibleUpgrades: ''
+    },
+    palms: {
+        hierarchy: 'TRAK-K, TRAQQ-QQ, TRAKH-K, CBREEQQ-QQ, COASK-K, COASQQ-QQ, ISLAND-K, OFKN-K, OFQQ-QQ',
+        targetRooms: '',
+        prioritizedRates: 'Best Available, BAR, Rack',
+        otaRates: 'Expedia, Booking.com, Priceline, GDS',
+        ineligibleUpgrades: ''
     }
 };
 
@@ -487,6 +494,26 @@ const MASTER_INVENTORIES = {
         { roomNumber: '15', code: 'KNN-K' }, { roomNumber: '16', code: 'KNN-K' }, { roomNumber: '17', code: 'KNN-K' }, { roomNumber: '18', code: 'KNN-K' }, { roomNumber: '19', code: 'KNN-K' },
         { roomNumber: '20', code: 'KNN-K' }, { roomNumber: '22', code: 'KNN-K' }, { roomNumber: '24', code: 'KNN-K' }, { roomNumber: '26', code: 'KNN-K' }, { roomNumber: '27', code: 'KNN-K' },
         { roomNumber: '28', code: 'KNN-K' }, { roomNumber: '29', code: 'KNN-K' }, { roomNumber: '30', code: 'KNN-K' }, { roomNumber: '35', code: 'KNN-K' }, { roomNumber: '36', code: 'KNN-K' }
+    ],
+    palms: [
+        // TRAK-K (7 Rooms)
+        { roomNumber: '112', code: 'TRAK-K' }, { roomNumber: '120', code: 'TRAK-K' }, { roomNumber: '205', code: 'TRAK-K' }, { roomNumber: '212', code: 'TRAK-K' }, { roomNumber: '220', code: 'TRAK-K' }, { roomNumber: '305', code: 'TRAK-K' }, { roomNumber: '312', code: 'TRAK-K' }, { roomNumber: '320', code: 'TRAK-K' },
+        // TRAQQ-QQ (18 Rooms)
+        { roomNumber: '114', code: 'TRAQQ-QQ' }, { roomNumber: '116', code: 'TRAQQ-QQ' }, { roomNumber: '118', code: 'TRAQQ-QQ' }, { roomNumber: '122', code: 'TRAQQ-QQ' }, { roomNumber: '203', code: 'TRAQQ-QQ' }, { roomNumber: '207', code: 'TRAQQ-QQ' }, { roomNumber: '209', code: 'TRAQQ-QQ' }, { roomNumber: '214', code: 'TRAQQ-QQ' }, { roomNumber: '216', code: 'TRAQQ-QQ' }, { roomNumber: '218', code: 'TRAQQ-QQ' }, { roomNumber: '222', code: 'TRAQQ-QQ' }, { roomNumber: '303', code: 'TRAQQ-QQ' }, { roomNumber: '307', code: 'TRAQQ-QQ' }, { roomNumber: '309', code: 'TRAQQ-QQ' }, { roomNumber: '314', code: 'TRAQQ-QQ' }, { roomNumber: '316', code: 'TRAQQ-QQ' }, { roomNumber: '318', code: 'TRAQQ-QQ' }, { roomNumber: '322', code: 'TRAQQ-QQ' },
+        // TRAKH-K (1 Room)
+        { roomNumber: '109', code: 'TRAKH-K' },
+        // CBREEQQ-QQ (3 Rooms)
+        { roomNumber: '111', code: 'CBREEQQ-QQ' }, { roomNumber: '113', code: 'CBREEQQ-QQ' }, { roomNumber: '115', code: 'CBREEQQ-QQ' },
+        // COASK-K (9 Rooms)
+        { roomNumber: '117', code: 'COASK-K' }, { roomNumber: '119', code: 'COASK-K' }, { roomNumber: '121', code: 'COASK-K' }, { roomNumber: '217', code: 'COASK-K' }, { roomNumber: '219', code: 'COASK-K' }, { roomNumber: '221', code: 'COASK-K' }, { roomNumber: '317', code: 'COASK-K' }, { roomNumber: '319', code: 'COASK-K' }, { roomNumber: '321', code: 'COASK-K' },
+        // COASQQ-QQ (9 Rooms)
+        { roomNumber: '123', code: 'COASQQ-QQ' }, { roomNumber: '211', code: 'COASQQ-QQ' }, { roomNumber: '213', code: 'COASQQ-QQ' }, { roomNumber: '215', code: 'COASQQ-QQ' }, { roomNumber: '223', code: 'COASQQ-QQ' }, { roomNumber: '311', code: 'COASQQ-QQ' }, { roomNumber: '313', code: 'COASQQ-QQ' }, { roomNumber: '315', code: 'COASQQ-QQ' }, { roomNumber: '323', code: 'COASQQ-QQ' },
+        // ISLAND-K (2 Rooms)
+        { roomNumber: '201', code: 'ISLAND-K' }, { roomNumber: '301', code: 'ISLAND-K' },
+        // OFKN-K (9 Rooms)
+        { roomNumber: '124', code: 'OFKN-K' }, { roomNumber: '126', code: 'OFKN-K' }, { roomNumber: '129', code: 'OFKN-K' }, { roomNumber: '224', code: 'OFKN-K' }, { roomNumber: '226', code: 'OFKN-K' }, { roomNumber: '229', code: 'OFKN-K' }, { roomNumber: '324', code: 'OFKN-K' }, { roomNumber: '326', code: 'OFKN-K' }, { roomNumber: '329', code: 'OFKN-K' },
+        // OFQQ-QQ (9 Rooms)
+        { roomNumber: '125', code: 'OFQQ-QQ' }, { roomNumber: '127', code: 'OFQQ-QQ' }, { roomNumber: '128', code: 'OFQQ-QQ' }, { roomNumber: '225', code: 'OFQQ-QQ' }, { roomNumber: '227', code: 'OFQQ-QQ' }, { roomNumber: '228', code: 'OFQQ-QQ' }, { roomNumber: '325', code: 'OFQQ-QQ' }, { roomNumber: '327', code: 'OFQQ-QQ' }, { roomNumber: '328', code: 'OFQQ-QQ' }
     ]
 };
 
