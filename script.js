@@ -182,6 +182,13 @@ const profiles = {
         prioritizedRates: 'Best Available, BAR, Rack',
         otaRates: 'Expedia, Booking.com, Priceline, GDS',
         ineligibleUpgrades: ''
+    },
+    mcs: {
+        hierarchy: 'KING, ADAKING, QQ, KSUITE, EXEC',
+        targetRooms: '',
+        prioritizedRates: 'Best Available, BAR, Rack',
+        otaRates: 'Expedia, Booking.com, Priceline, GDS',
+        ineligibleUpgrades: ''
     }
 };
 
@@ -725,6 +732,33 @@ const MASTER_INVENTORIES = {
         { roomNumber: '404', code: 'SQ' },
         // SS (6 Rooms)
         { roomNumber: '101', code: 'SS' }, { roomNumber: '122', code: 'SS' }, { roomNumber: '201', code: 'SS' }, { roomNumber: '222', code: 'SS' }, { roomNumber: '301', code: 'SS' }, { roomNumber: '322', code: 'SS' }
+    ],
+    mcs: [
+        // ADAKING (3 Rooms)
+        { roomNumber: '119', code: 'ADAKING' }, { roomNumber: '219', code: 'ADAKING' }, { roomNumber: '319', code: 'ADAKING' },
+        
+        // EXEC (2 Rooms)
+        { roomNumber: '200', code: 'EXEC' }, { roomNumber: '222', code: 'EXEC' },
+
+        // KING (37 Rooms)
+        { roomNumber: '104', code: 'KING' }, { roomNumber: '105', code: 'KING' }, { roomNumber: '106', code: 'KING' }, { roomNumber: '107', code: 'KING' }, { roomNumber: '108', code: 'KING' }, { roomNumber: '109', code: 'KING' }, 
+        { roomNumber: '111', code: 'KING' }, { roomNumber: '121', code: 'KING' }, { roomNumber: '123', code: 'KING' }, { roomNumber: '125', code: 'KING' }, { roomNumber: '204', code: 'KING' }, { roomNumber: '205', code: 'KING' }, 
+        { roomNumber: '206', code: 'KING' }, { roomNumber: '207', code: 'KING' }, { roomNumber: '208', code: 'KING' }, { roomNumber: '209', code: 'KING' }, { roomNumber: '210', code: 'KING' }, { roomNumber: '211', code: 'KING' }, 
+        { roomNumber: '221', code: 'KING' }, { roomNumber: '223', code: 'KING' }, { roomNumber: '224', code: 'KING' }, { roomNumber: '225', code: 'KING' }, { roomNumber: '226', code: 'KING' }, { roomNumber: '304', code: 'KING' }, 
+        { roomNumber: '305', code: 'KING' }, { roomNumber: '306', code: 'KING' }, { roomNumber: '307', code: 'KING' }, { roomNumber: '308', code: 'KING' }, { roomNumber: '309', code: 'KING' }, { roomNumber: '310', code: 'KING' }, 
+        { roomNumber: '311', code: 'KING' }, { roomNumber: '321', code: 'KING' }, { roomNumber: '322', code: 'KING' }, { roomNumber: '323', code: 'KING' }, { roomNumber: '324', code: 'KING' }, { roomNumber: '325', code: 'KING' }, 
+        { roomNumber: '326', code: 'KING' },
+
+        // KSUITE (3 Rooms)
+        { roomNumber: '215', code: 'KSUITE' }, { roomNumber: '314', code: 'KSUITE' }, { roomNumber: '315', code: 'KSUITE' },
+
+        // QQ (30 Rooms)
+        { roomNumber: '100', code: 'QQ' }, { roomNumber: '101', code: 'QQ' }, { roomNumber: '102', code: 'QQ' }, { roomNumber: '103', code: 'QQ' }, { roomNumber: '113', code: 'QQ' }, { roomNumber: '127', code: 'QQ' }, 
+        { roomNumber: '128', code: 'QQ' }, { roomNumber: '129', code: 'QQ' }, { roomNumber: '130', code: 'QQ' }, { roomNumber: '201', code: 'QQ' }, { roomNumber: '202', code: 'QQ' }, { roomNumber: '203', code: 'QQ' }, 
+        { roomNumber: '212', code: 'QQ' }, { roomNumber: '213', code: 'QQ' }, { roomNumber: '217', code: 'QQ' }, { roomNumber: '227', code: 'QQ' }, { roomNumber: '228', code: 'QQ' }, { roomNumber: '229', code: 'QQ' }, 
+        { roomNumber: '230', code: 'QQ' }, { roomNumber: '300', code: 'QQ' }, { roomNumber: '301', code: 'QQ' }, { roomNumber: '302', code: 'QQ' }, { roomNumber: '303', code: 'QQ' }, { roomNumber: '312', code: 'QQ' }, 
+        { roomNumber: '313', code: 'QQ' }, { roomNumber: '316', code: 'QQ' }, { roomNumber: '317', code: 'QQ' }, { roomNumber: '327', code: 'QQ' }, { roomNumber: '328', code: 'QQ' }, { roomNumber: '329', code: 'QQ' }, 
+        { roomNumber: '330', code: 'QQ' }
     ]
 };
 
@@ -2170,6 +2204,10 @@ function getBedType(roomCode) {
     if (['QS'].includes(roomCode)) return 'Q';
     if (['SS', 'EX'].includes(roomCode)) return 'K';
 
+    // --- NEW LOGIC FOR MCS BED TYPES ---
+    if (['KING', 'ADAKING', 'KSUITE', 'EXEC'].includes(roomCode)) return 'K';
+    if (['QQ'].includes(roomCode)) return 'QQ';
+
     return 'OTHER';
 }
 
@@ -2404,3 +2442,4 @@ function downloadAcceptedUpgradesCsv() {
     link.click();
     document.body.removeChild(link);
 }
+
