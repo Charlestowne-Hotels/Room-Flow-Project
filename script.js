@@ -1940,14 +1940,35 @@ function displayMatrix(matrix) {
         container.innerHTML = '<p>Could not generate the availability matrix.</p>';
         return;
     }
+
+    // 1. Initialize an array to hold the totals for each column (date)
+    // We subtract 1 from headers length because the first header is "Room Type"
+    const numDateColumns = matrix.headers.length - 1;
+    const columnTotals = new Array(numDateColumns).fill(0);
+
     let html = '<table><thead><tr>' + matrix.headers.map(h => `<th>${h}</th>`).join('') + '</tr></thead><tbody>';
+
+    // 2. Loop through rows to build the table AND calculate totals
     matrix.rows.forEach(row => {
         html += `<tr><td><strong>${row.roomCode}</strong></td>`;
-        row.availability.forEach(avail => {
+        row.availability.forEach((avail, index) => {
             html += `<td>${avail}</td>`;
+            
+            // Add the current cell's value to the running total for this column
+            // Ensure we handle potential non-numbers gracefully, though avail should be a number
+            columnTotals[index] += (typeof avail === 'number' ? avail : 0);
         });
         html += '</tr>';
     });
+
+    // 3. Create the "Totals" row
+    html += '<tr style="background-color: #f8f9fa; border-top: 2px solid #ccc;">';
+    html += '<td><strong>TOTAL AVAILABLE</strong></td>';
+    columnTotals.forEach(total => {
+        html += `<td><strong>${total}</strong></td>`;
+    });
+    html += '</tr>';
+
     html += '</tbody></table>';
     container.innerHTML = html;
 
@@ -2576,6 +2597,7 @@ function downloadAcceptedUpgradesCsv() {
     link.click();
     document.body.removeChild(link);
 }
+
 
 
 
