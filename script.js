@@ -210,6 +210,13 @@ const profiles = {
         prioritizedRates: 'Best Available, BAR, Rack',
         otaRates: 'Expedia, Booking.com, Priceline, GDS',
         ineligibleUpgrades: ''
+    },
+    abr: {
+        hierarchy: 'KING-K, KINGADA-K, KINGFULL, PREMIUM-K, DABO-K',
+        targetRooms: '',
+        prioritizedRates: 'Best Available, BAR, Rack',
+        otaRates: 'Expedia, Booking.com, Priceline, GDS',
+        ineligibleUpgrades: ''
     }
 };
 
@@ -878,6 +885,25 @@ const MASTER_INVENTORIES = {
 
         // 9-King-PV-Bal-K (5 Rooms)
         { roomNumber: '723', code: '9-King-PV-Bal-K' }, { roomNumber: '727', code: '9-King-PV-Bal-K' }, { roomNumber: '807', code: '9-King-PV-Bal-K' }, { roomNumber: '823', code: '9-King-PV-Bal-K' }, { roomNumber: '827', code: '9-King-PV-Bal-K' }
+    ],
+    abr: [
+        // KING-K (28 Rooms)
+        { roomNumber: '103', code: 'KING-K' }, { roomNumber: '202', code: 'KING-K' }, { roomNumber: '203', code: 'KING-K' }, { roomNumber: '204', code: 'KING-K' }, { roomNumber: '205', code: 'KING-K' }, { roomNumber: '206', code: 'KING-K' }, { roomNumber: '207', code: 'KING-K' }, { roomNumber: '208', code: 'KING-K' }, { roomNumber: '209', code: 'KING-K' },
+        { roomNumber: '302', code: 'KING-K' }, { roomNumber: '303', code: 'KING-K' }, { roomNumber: '304', code: 'KING-K' }, { roomNumber: '305', code: 'KING-K' }, { roomNumber: '306', code: 'KING-K' }, { roomNumber: '307', code: 'KING-K' }, { roomNumber: '308', code: 'KING-K' }, { roomNumber: '309', code: 'KING-K' },
+        { roomNumber: '402', code: 'KING-K' }, { roomNumber: '403', code: 'KING-K' }, { roomNumber: '404', code: 'KING-K' }, { roomNumber: '405', code: 'KING-K' }, { roomNumber: '406', code: 'KING-K' }, { roomNumber: '407', code: 'KING-K' }, { roomNumber: '408', code: 'KING-K' }, { roomNumber: '409', code: 'KING-K' }, { roomNumber: '410', code: 'KING-K' }, { roomNumber: '411', code: 'KING-K' }, { roomNumber: '412', code: 'KING-K' },
+
+        // KINGADA-K (2 Rooms)
+        { roomNumber: '101', code: 'KINGADA-K' }, { roomNumber: '102', code: 'KINGADA-K' },
+
+        // KINGFULL (8 Rooms)
+        { roomNumber: '104', code: 'KINGFULL' }, { roomNumber: '105', code: 'KINGFULL' }, { roomNumber: '210', code: 'KINGFULL' }, { roomNumber: '211', code: 'KINGFULL' }, { roomNumber: '212', code: 'KINGFULL' },
+        { roomNumber: '310', code: 'KINGFULL' }, { roomNumber: '311', code: 'KINGFULL' }, { roomNumber: '312', code: 'KINGFULL' },
+
+        // PREMIUM-K (2 Rooms)
+        { roomNumber: '201', code: 'PREMIUM-K' }, { roomNumber: '301', code: 'PREMIUM-K' },
+
+        // DABO-K (1 Room)
+        { roomNumber: '401', code: 'DABO-K' }
     ]
 };
 
@@ -2363,6 +2389,9 @@ function getBedType(roomCode) {
     if (['1-2Q-NB-Stan-QQ', '6-2Q-PV-Bal-QQ', '7-2Q-PV-Bal-QQ', '8-JrSuite-QQ'].includes(roomCode)) return 'QQ';
     if (['4-ADAQueenRS-Q', '5-ADAQueen-Q'].includes(roomCode)) return 'Q';
 
+    // --- NEW LOGIC FOR ABR BED TYPES ---
+    if (roomCode === 'KINGFULL') return 'K';
+
     return 'OTHER';
 }
 
@@ -2597,6 +2626,7 @@ function downloadAcceptedUpgradesCsv() {
     link.click();
     document.body.removeChild(link);
 }
+
 
 
 
