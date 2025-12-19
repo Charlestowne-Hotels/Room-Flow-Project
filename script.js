@@ -947,6 +947,151 @@ function updateRulesForm(profileName) {
     populateOooDropdown(); // Re-populate OOO dropdown based on hierarchy
 }
 
+// --- NEW: PARSE INVENTORY TEXT ---
+// Converts "101 102 KING-K, 201 202 QUEEN-Q" into the object array format
+function parseInventoryInput(inputText) {
+    const inventoryList = [];
+    if (!inputText) return inventoryList;
+
+    // Split by comma to get groups (e.g., "101 102 KING-K")
+    const groups = inputText.split(',');
+
+    groups.forEach(group => {
+        const parts = group.trim().split(/\s+/); // Split by spaces
+        if (parts.length < 2) return; // Need at least one room and a code
+
+        // The LAST part is the Room Code
+        const code = parts.pop(); 
+
+        // All remaining parts are room numbers
+        parts.forEach(roomNum => {
+            if (roomNum) {
+                inventoryList.push({
+                    roomNumber: roomNum,
+                    code: code
+                });
+            }
+        });
+    });
+
+    return inventoryList;
+}
+
+// --- NEW: SAVE PROPERTY TO FIREBASE ---
+async function handleSaveNewProperty() {
+    const codeInput = document.getElementById('new-prop-code');
+    const hierarchyInput = document.getElementById('new-prop-hierarchy');
+    const inventoryInput = document.getElementById('new-prop-inventory');
+    const btn = document.getElementById('save-new-prop-btn');
+
+    const code = codeInput.value.trim().toLowerCase();
+    if (!code || !hierarchyInput.value || !inventoryInput.value) {
+        alert("Please fill in Code, Hierarchy, and Inventory.");
+        return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = "Parsing & Saving...";
+
+    try {
+        // 1. Parse Inventory
+        const parsedInventory = parseInventoryInput(inventoryInput.value);
+        if (parsedInventory.length === 0) throw new Error("Could not parse inventory data.");
+
+        // 2. Build Data Object
+        const newPropertyData = {
+            code: code,
+            hierarchy: hierarchyInput.value,
+            inventory: parsedInventory,
+            rules: {
+                hierarchy: hierarchyInput.value,
+                targetRooms: document.getElementById('new-prop-target').value,
+                prioritizedRates: document.getElementById('new-prop-rates').value,
+                otaRates: 'Expedia, Booking.com, Priceline, GDS',
+                ineligibleUpgrades: ''
+            }
+        };
+
+        // 3. Save to a new collection 'custom_properties'
+        await db.collection('custom_properties').doc(code).set(newPropertyData);
+
+        // 4. Update Local State Immediately
+        profiles[code] = newPropertyData.rules;
+        MASTER_INVENTORIES[code] = parsedInventory;
+
+        // 5. Update Dropdown
+        rebuildProfileDropdown();
+        
+        // 6. Select the new profile
+        document.getElementById('profile-dropdown').value = code;
+        updateRulesForm(code);
+
+        alert(`Property ${code.toUpperCase()} saved successfully!`);
+        document.getElementById('add-property-modal').classList.add('hidden');
+        
+        // Clear inputs
+        codeInput.value = '';
+        hierarchyInput.value = '';
+        inventoryInput.value = '';
+
+    } catch (error) {
+        console.error("Error saving property:", error);
+        alert("Error saving: " + error.message);
+    } finally {
+        btn.disabled = false;
+        btn.textContent = "Save Property to Cloud";
+    }
+}
+
+// --- NEW: LOAD CUSTOM PROPERTIES ---
+async function loadCustomProperties() {
+    try {
+        const snapshot = await db.collection('custom_properties').get();
+        snapshot.forEach(doc => {
+            const data = doc.data();
+            const code = doc.id;
+
+            // Merge into global objects
+            if (data.rules) profiles[code] = data.rules;
+            if (data.inventory) MASTER_INVENTORIES[code] = data.inventory;
+        });
+
+        // Rebuild dropdown to include new options
+        rebuildProfileDropdown();
+        console.log("Custom properties loaded.");
+
+    } catch (error) {
+        console.error("Error loading custom properties:", error);
+    }
+}
+
+// --- NEW: REBUILD DROPDOWN ---
+function rebuildProfileDropdown() {
+    const dropdown = document.getElementById('profile-dropdown');
+    const currentVal = dropdown.value;
+    
+    // Clear existing
+    dropdown.innerHTML = '';
+
+    // Get all keys from profiles object (Hardcoded + Custom)
+    const allKeys = Object.keys(profiles).sort();
+
+    allKeys.forEach(key => {
+        const option = document.createElement('option');
+        option.value = key;
+        option.textContent = key.toUpperCase();
+        dropdown.appendChild(option);
+    });
+
+    // Restore selection if it still exists, otherwise default to first
+    if (profiles[currentVal]) {
+        dropdown.value = currentVal;
+    } else if (allKeys.length > 0) {
+        dropdown.value = allKeys[0];
+        updateRulesForm(allKeys[0]);
+    }
+}
+
 // --- OOO MANAGEMENT FUNCTIONS ---
 
 // Load OOO records from Firebase for the current profile
@@ -1326,6 +1471,33 @@ document.addEventListener('DOMContentLoaded', function() {
     const closeSettingsBtn = document.getElementById('close-settings-btn');
     const generateBtn = document.getElementById('generate-btn');
 
+    // --- NEW: MODAL LISTENERS ---
+    const addPropBtn = document.getElementById('add-property-btn');
+    const addPropModal = document.getElementById('add-property-modal');
+    const closeAddPropBtn = document.getElementById('close-add-prop-btn');
+    const saveNewPropBtn = document.getElementById('save-new-prop-btn');
+
+    if (addPropBtn) {
+        addPropBtn.addEventListener('click', () => {
+            addPropModal.classList.remove('hidden');
+        });
+    }
+    if (closeAddPropBtn) {
+        closeAddPropBtn.addEventListener('click', () => {
+            addPropModal.classList.add('hidden');
+        });
+    }
+    if (saveNewPropBtn) {
+        saveNewPropBtn.addEventListener('click', handleSaveNewProperty);
+    }
+
+    // Close modal if clicking outside
+    window.addEventListener('click', (e) => {
+        if (e.target === addPropModal) {
+            addPropModal.classList.add('hidden');
+        }
+    });
+
     // --- 2. AUTH LISTENER ---
     auth.onAuthStateChanged(async user => {
         const adminButton = document.getElementById('clear-analytics-btn');
@@ -1336,6 +1508,7 @@ document.addEventListener('DOMContentLoaded', function() {
             if (loginContainer) loginContainer.classList.add('hidden');
             if (appContainer) appContainer.classList.remove('hidden');
 
+            await loadCustomProperties();
             await loadRemoteProfiles(); 
             await loadOooRecords(); // <--- LOAD OOO HERE
 
@@ -1347,11 +1520,13 @@ document.addEventListener('DOMContentLoaded', function() {
                 if(saveBtn) saveBtn.classList.remove('hidden');
                 // SHOW SETTINGS ICON FOR ADMIN
                 if(settingsTriggerBtn) settingsTriggerBtn.classList.remove('hidden');
+                if(addPropBtn) addPropBtn.classList.remove('hidden'); // SHOW BUTTON
             } else {
                 if(saveBtn) saveBtn.classList.add('hidden');
                 if(adminButton) adminButton.classList.add('hidden');
                 // HIDE SETTINGS ICON FOR NON-ADMIN
                 if(settingsTriggerBtn) settingsTriggerBtn.classList.add('hidden');
+                if(addPropBtn) addPropBtn.classList.add('hidden'); // HIDE BUTTON
             }
 
             setAdminControls(isUserAdmin);
@@ -2626,13 +2801,3 @@ function downloadAcceptedUpgradesCsv() {
     link.click();
     document.body.removeChild(link);
 }
-
-
-
-
-
-
-
-
-
-
