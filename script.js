@@ -919,21 +919,43 @@ let oooRecords = []; // <--- NEW OOO STATE
 // --- FUNCTIONS ---
 
 function resetAppState() {
+    // Reset session-specific variables
     currentCsvContent = null;
     currentFileName = null;
     currentRules = null;
     currentRecommendations = [];
     acceptedUpgrades = [];
     document.getElementById('csv-file').value = '';
+
+    // --- CRITICAL CHANGE ---
+    // Instead of hiding the whole output (which hides tabs), we ensure it is VISIBLE.
     const outputEl = document.getElementById('output');
     if (outputEl) {
-        outputEl.style.display = 'none';
+        outputEl.style.display = 'block'; 
     }
-    if (document.getElementById('recommendations-container')) document.getElementById('recommendations-container').innerHTML = '';
-    if (document.getElementById('matrix-container')) document.getElementById('matrix-container').innerHTML = '';
-    if (document.getElementById('inventory')) document.getElementById('inventory').innerHTML = '';
-    if (document.getElementById('message')) document.getElementById('message').innerHTML = '';
+
+    // Define a placeholder message for empty states
+    const placeholderMsg = '<p style="padding: 20px; text-align: center; color: #666; font-style: italic;">Please upload and generate a PMS file to view data.</p>';
+
+    // Clear Generation-Dependent Containers and show placeholder
+    const recContainer = document.getElementById('recommendations-container');
+    if (recContainer) recContainer.innerHTML = placeholderMsg;
+
+    const matrixContainer = document.getElementById('matrix-container');
+    if (matrixContainer) matrixContainer.innerHTML = placeholderMsg;
+
+    const inventoryContainer = document.getElementById('inventory');
+    if (inventoryContainer) inventoryContainer.innerHTML = ''; // Inventory usually looks better just empty until generated
+
+    const messageEl = document.getElementById('message');
+    if (messageEl) messageEl.innerHTML = '';
+
+    // Clear "Accepted Upgrades" (Current Session)
+    // This will render the "No upgrades have been accepted yet" message defined in that function
     displayAcceptedUpgrades();
+
+    // NOTE: We do NOT clear 'completed-container' or 'demand-insights-container' here.
+    // Those rely on the 'completedUpgrades' array, which persists as long as the profile is loaded.
 }
 
 function updateRulesForm(profileName) {
@@ -1540,6 +1562,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
             setAdminControls(isUserAdmin);
             loadCompletedUpgrades(user.uid);
+            
+            resetAppState();
         } else {
             console.log("User is signed out.");
             if (loginContainer) loginContainer.classList.remove('hidden');
@@ -2221,6 +2245,10 @@ function showLoader(show, text = 'Loading...') {
 
     if (loader) loader.style.display = show ? 'block' : 'none';
     if (loader) loader.innerHTML = `<div class="spinner"></div>${text}`;
+    
+    // Optional: You can choose NOT to hide the output during loading if you want 
+    // analytics to stay visible even while generating a new file.
+    // For now, hiding it briefly during generation gives a visual cue that "work is happening".
     if (output) output.style.display = show ? 'none' : 'block';
 
     if (genBtn) {
@@ -2810,4 +2838,5 @@ function downloadAcceptedUpgradesCsv() {
     link.click();
     document.body.removeChild(link);
 }
+
 
