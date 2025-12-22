@@ -978,13 +978,19 @@ function parseInventoryInput(inputText) {
 }
 
 // --- NEW: SAVE PROPERTY TO FIREBASE ---
+// --- NEW: SAVE PROPERTY TO FIREBASE (UPDATED) ---
 async function handleSaveNewProperty() {
     const codeInput = document.getElementById('new-prop-code');
     const hierarchyInput = document.getElementById('new-prop-hierarchy');
     const inventoryInput = document.getElementById('new-prop-inventory');
+    // 1. Get reference to the new input
+    const ineligibleInput = document.getElementById('new-prop-ineligible'); 
+    
     const btn = document.getElementById('save-new-prop-btn');
 
     const code = codeInput.value.trim().toLowerCase();
+    
+    // Basic validation
     if (!code || !hierarchyInput.value || !inventoryInput.value) {
         alert("Please fill in Code, Hierarchy, and Inventory.");
         return;
@@ -1007,8 +1013,9 @@ async function handleSaveNewProperty() {
                 hierarchy: hierarchyInput.value,
                 targetRooms: document.getElementById('new-prop-target').value,
                 prioritizedRates: document.getElementById('new-prop-rates').value,
-                otaRates: 'Expedia, Booking.com, Priceline, GDS',
-                ineligibleUpgrades: ''
+                otaRates: 'Expedia, Booking.com, Priceline, GDS', // Default OTA rates
+                // 3. Capture the value from the input, or default to empty string
+                ineligibleUpgrades: ineligibleInput ? ineligibleInput.value : '' 
             }
         };
 
@@ -1033,6 +1040,8 @@ async function handleSaveNewProperty() {
         codeInput.value = '';
         hierarchyInput.value = '';
         inventoryInput.value = '';
+        // 4. Clear the new input field
+        if(ineligibleInput) ineligibleInput.value = '';
 
     } catch (error) {
         console.error("Error saving property:", error);
@@ -2801,3 +2810,4 @@ function downloadAcceptedUpgradesCsv() {
     link.click();
     document.body.removeChild(link);
 }
+
