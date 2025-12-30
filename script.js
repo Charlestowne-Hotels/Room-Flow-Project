@@ -4,6 +4,7 @@ firebase.initializeApp(firebaseConfig);
 // Initialize Firebase services ONCE at the top
 const auth = firebase.auth();
 const db = firebase.firestore();
+const storage = firebase.storage();
 
 // --- ADMIN UIDS ---
 const ADMIN_UIDS = [
@@ -1602,6 +1603,10 @@ document.addEventListener('DOMContentLoaded', function() {
         generateBtn.addEventListener('click', handleGenerateClick);
     }
 
+    const autoLoadBtn = document.getElementById('auto-load-btn');
+    if (autoLoadBtn) {
+        autoLoadBtn.addEventListener('click', handleAutoLoad);
+    }
 
     // --- 4. OTHER LISTENERS ---
     const profileDropdown = document.getElementById('profile-dropdown');
@@ -1696,6 +1701,72 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 });
+
+// --- NEW: AUTO-LOAD FROM CLOUD ---
+async function handleAutoLoad() {
+    const btn = document.getElementById('auto-load-btn');
+    const originalText = btn.textContent;
+    
+    // 1. UI Feedback
+    btn.disabled = true;
+    btn.textContent = "Checking Cloud...";
+    showLoader(true, 'Fetching auto-scheduled report...');
+
+    // 2. Reference the specific file path in your bucket
+    // We assume the automation tool overwrites "latest_report.csv"
+    const storageRef = storage.ref('reports/latest_report.csv');
+
+    try {
+        // 3. Get the Download URL
+        const url = await storageRef.getDownloadURL();
+
+        // 4. Fetch the raw text content via HTTP
+        const response = await fetch(url);
+        if (!response.ok) throw new Error("Could not download file.");
+        const csvText = await response.text();
+
+        // 5. Update Global State
+        currentCsvContent = csvText;
+        currentFileName = "latest_report.csv"; // Set default name for logic checks
+        
+        // 6. Build the Rules Object (Same as manual upload)
+        currentRules = {
+            hierarchy: document.getElementById('hierarchy').value,
+            targetRooms: document.getElementById('target-rooms').value,
+            prioritizedRates: document.getElementById('prioritized-rates').value,
+            otaRates: document.getElementById('ota-rates').value,
+            ineligibleUpgrades: document.getElementById('ineligible-upgrades').value,
+            selectedDate: document.getElementById('selected-date').value,
+            profile: document.getElementById('profile-dropdown').value 
+        };
+
+        // 7. Process Data
+        setTimeout(() => {
+            try {
+                const results = processUpgradeData(currentCsvContent, currentRules, currentFileName);
+                displayResults(results);
+                alert("Successfully loaded the latest report from the cloud!");
+            } catch (err) {
+                showError(err);
+            } finally {
+                btn.disabled = false;
+                btn.textContent = originalText;
+            }
+        }, 50);
+
+    } catch (error) {
+        console.error("Auto-load error:", error);
+        showLoader(false);
+        btn.disabled = false;
+        btn.textContent = originalText;
+
+        if (error.code === 'storage/object-not-found') {
+            alert("No report found in the cloud yet. Please wait for the schedule or upload manually.");
+        } else {
+            alert("Error fetching report: " + error.message);
+        }
+    }
+}
 
 function handleGenerateClick() {
     const fileInput = document.getElementById('csv-file');
@@ -2838,5 +2909,6 @@ function downloadAcceptedUpgradesCsv() {
     link.click();
     document.body.removeChild(link);
 }
+
 
 
