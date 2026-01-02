@@ -1703,31 +1703,39 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 // --- NEW: AUTO-LOAD FROM CLOUD ---
+// --- NEW: AUTO-LOAD FROM FIRESTORE DATABASE ---
 async function handleAutoLoad() {
     const btn = document.getElementById('auto-load-btn');
     const originalText = btn.textContent;
     
     // 1. UI Feedback
     btn.disabled = true;
-    btn.textContent = "Checking Cloud...";
-    showLoader(true, 'Fetching auto-scheduled report...');
-
-    // 2. Reference the specific file path in your bucket
-    // We assume the automation tool overwrites "latest_report.csv"
-    const storageRef = storage.ref('reports/latest_report.csv');
+    btn.textContent = "Checking Database...";
+    showLoader(true, 'Fetching latest report from database...');
 
     try {
-        // 3. Get the Download URL
-        const url = await storageRef.getDownloadURL();
+        // 2. REFERENCE FIRESTORE (Not Storage)
+        // We look for the collection 'SNTData' and the specific document 'latest_report'
+        const docRef = db.collection('SNTData').doc('latest_report'); 
 
-        // 4. Fetch the raw text content via HTTP
-        const response = await fetch(url);
-        if (!response.ok) throw new Error("Could not download file.");
-        const csvText = await response.text();
+        // 3. GET THE DOCUMENT
+        const doc = await docRef.get();
+
+        if (!doc.exists) {
+             throw new Error("No report found. Please check if Make has run successfully.");
+        }
+
+        // 4. GET THE DATA FIELD
+        // We grab the string from the field 'csv_content' we set up in Make
+        const csvText = doc.data().csv_content;
+
+        if (!csvText) {
+            throw new Error("Document exists, but 'csv_content' field is empty.");
+        }
 
         // 5. Update Global State
         currentCsvContent = csvText;
-        currentFileName = "latest_report.csv"; // Set default name for logic checks
+        currentFileName = "latest_report_db.csv"; // specific name to trigger SNT logic
         
         // 6. Build the Rules Object (Same as manual upload)
         currentRules = {
@@ -1743,9 +1751,10 @@ async function handleAutoLoad() {
         // 7. Process Data
         setTimeout(() => {
             try {
+                // Pass the text string directly to your processor
                 const results = processUpgradeData(currentCsvContent, currentRules, currentFileName);
                 displayResults(results);
-                alert("Successfully loaded the latest report from the cloud!");
+                alert("Successfully loaded the latest report from Firestore!");
             } catch (err) {
                 showError(err);
             } finally {
@@ -1759,12 +1768,7 @@ async function handleAutoLoad() {
         showLoader(false);
         btn.disabled = false;
         btn.textContent = originalText;
-
-        if (error.code === 'storage/object-not-found') {
-            alert("No report found in the cloud yet. Please wait for the schedule or upload manually.");
-        } else {
-            alert("Error fetching report: " + error.message);
-        }
+        alert("Error fetching report: " + error.message);
     }
 }
 
@@ -2909,6 +2913,7 @@ function downloadAcceptedUpgradesCsv() {
     link.click();
     document.body.removeChild(link);
 }
+
 
 
 
