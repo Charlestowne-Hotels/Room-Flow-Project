@@ -21,6 +21,15 @@ const ADMIN_UIDS = [
     "YgGvmU25eZbNfByPhIwy8IZvRBK2"        //nknott@charlestownwhotels.com  
 ];
 
+// --- SNT FILE MAPPING ---
+// Maps the Profile ID (dropdown value) to the required File Prefix (from Firestore)
+const SNT_PROPERTY_MAP = {
+    'sts': 'LTRL',     // STS requires file starting with LTRL
+    'rcn': 'VERD',     // RCN requires file starting with VERD
+    'cby': 'LCKWD',    // CBY requires file starting with LCKWD
+    'bri': 'TBH',      // BRI requires file starting with TBH
+    'dar': 'DARLING'   // DAR requires file starting with DARLING
+};
 
 // --- DOM ELEMENT REFERENCES ---
 let loginContainer, appContainer, signinBtn, signoutBtn, emailInput, passwordInput, errorMessage, clearAnalyticsBtn;
@@ -1608,16 +1617,38 @@ document.addEventListener('DOMContentLoaded', function() {
         autoLoadBtn.addEventListener('click', handleAutoLoad);
     }
 
-    // --- 4. OTHER LISTENERS ---
+  // --- 4. OTHER LISTENERS ---
     const profileDropdown = document.getElementById('profile-dropdown');
+    
+    // Helper function to toggle the Auto-Load button visibility
+    const updateAutoLoadButtonVisibility = () => {
+        const currentProfile = profileDropdown.value;
+        const autoLoadBtn = document.getElementById('auto-load-btn');
+        
+        if (autoLoadBtn) {
+            // If the selected profile exists in our map, SHOW the button.
+            if (SNT_PROPERTY_MAP[currentProfile]) {
+                autoLoadBtn.style.display = 'inline-block'; 
+            } else {
+                // Otherwise, HIDE it to prevent errors.
+                autoLoadBtn.style.display = 'none'; 
+            }
+        }
+    };
+
     profileDropdown.addEventListener('change', (event) => {
         updateRulesForm(event.target.value);
         resetAppState();
         displayCompletedUpgrades();
-        displayDemandInsights(); // Update insights on profile change
-        loadOooRecords(); // <--- RELOAD OOO ON PROFILE CHANGE
+        displayDemandInsights(); 
+        loadOooRecords(); 
+        
+        updateAutoLoadButtonVisibility(); // <--- This checks the map every time you change properties
     });
+
+    // Run once on load to set initial state
     updateRulesForm('fqi'); 
+    updateAutoLoadButtonVisibility();
 
     if(saveRulesBtn) {
         saveRulesBtn.addEventListener('click', handleSaveRules);
@@ -1704,40 +1735,55 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // --- NEW: AUTO-LOAD FROM CLOUD ---
 // --- NEW: AUTO-LOAD FROM FIRESTORE DATABASE ---
+// --- NEW: AUTO-LOAD WITH PROPERTY VALIDATION ---
 async function handleAutoLoad() {
     const btn = document.getElementById('auto-load-btn');
     const originalText = btn.textContent;
+    const currentProfile = document.getElementById('profile-dropdown').value;
     
-    // 1. UI Feedback
+    // 1. Get the required prefix for this profile
+    const requiredPrefix = SNT_PROPERTY_MAP[currentProfile];
+
+    // Safety Check: This shouldn't happen if the button is hidden, but good for security
+    if (!requiredPrefix) {
+        alert("This property is not configured for Auto-Load.");
+        return;
+    }
+
+    // 2. UI Feedback
     btn.disabled = true;
-    btn.textContent = "Checking Database...";
-    showLoader(true, 'Fetching latest report from database...');
+    btn.textContent = "Verifying Data...";
+    showLoader(true, 'Fetching and verifying report...');
 
     try {
-        // 2. REFERENCE FIRESTORE (Not Storage)
-        // We look for the collection 'SNTData' and the specific document 'latest_report'
+        // 3. Reference Firestore
         const docRef = db.collection('SNTData').doc('latest_report'); 
-
-        // 3. GET THE DOCUMENT
         const doc = await docRef.get();
 
         if (!doc.exists) {
-             throw new Error("No report found. Please check if Make has run successfully.");
+             throw new Error("No report found in the database.");
         }
 
-        // 4. GET THE DATA FIELD
-        // We grab the string from the field 'csv_content' we set up in Make
-        const csvText = doc.data().csv_content;
+        const data = doc.data();
+        const csvText = data.csv_content;
+        // Grab the real filename sent from Make
+        const realFileName = data.filename || "Unknown_File.csv"; 
 
         if (!csvText) {
-            throw new Error("Document exists, but 'csv_content' field is empty.");
+            throw new Error("Report exists, but is empty.");
+        }
+
+        // --- 4. CRITICAL VALIDATION STEP ---
+        // Check if the file in the DB starts with the prefix required for this property
+        if (!realFileName.toUpperCase().startsWith(requiredPrefix.toUpperCase())) {
+            throw new Error(`MISMATCH: You are on the '${currentProfile.toUpperCase()}' profile, but the latest file in the cloud is '${realFileName}'. This file belongs to a different property.`);
         }
 
         // 5. Update Global State
         currentCsvContent = csvText;
-        currentFileName = "SNT_Auto_Report.csv"; // Must start with 'SNT' to trigger the correct column mapping
+        currentFileName = realFileName; // This allows the parser to see the SNT headers
         
-        // 6. Build the Rules Object (Same as manual upload)
+        // 6. Build the Rules Object
         currentRules = {
             hierarchy: document.getElementById('hierarchy').value,
             targetRooms: document.getElementById('target-rooms').value,
@@ -1745,16 +1791,15 @@ async function handleAutoLoad() {
             otaRates: document.getElementById('ota-rates').value,
             ineligibleUpgrades: document.getElementById('ineligible-upgrades').value,
             selectedDate: document.getElementById('selected-date').value,
-            profile: document.getElementById('profile-dropdown').value 
+            profile: currentProfile 
         };
 
         // 7. Process Data
         setTimeout(() => {
             try {
-                // Pass the text string directly to your processor
                 const results = processUpgradeData(currentCsvContent, currentRules, currentFileName);
                 displayResults(results);
-                alert("Successfully loaded the latest report from Firestore!");
+                alert(`Success! Loaded ${realFileName} for ${currentProfile.toUpperCase()}`);
             } catch (err) {
                 showError(err);
             } finally {
@@ -1768,7 +1813,7 @@ async function handleAutoLoad() {
         showLoader(false);
         btn.disabled = false;
         btn.textContent = originalText;
-        alert("Error fetching report: " + error.message);
+        alert(error.message); // Show the specific mismatch error
     }
 }
 
@@ -2913,6 +2958,7 @@ function downloadAcceptedUpgradesCsv() {
     link.click();
     document.body.removeChild(link);
 }
+
 
 
 
