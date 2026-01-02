@@ -1735,7 +1735,7 @@ async function handleAutoLoad() {
 
         // 5. Update Global State
         currentCsvContent = csvText;
-        currentFileName = "latest_report_db.csv"; // specific name to trigger SNT logic
+        currentFileName = "SNT_Auto_Report.csv"; // Must start with 'SNT' to trigger the correct column mapping
         
         // 6. Build the Rules Object (Same as manual upload)
         currentRules = {
@@ -2913,6 +2913,7 @@ function downloadAcceptedUpgradesCsv() {
     link.click();
     document.body.removeChild(link);
 }
+
 
 
 
