@@ -1736,6 +1736,7 @@ document.addEventListener('DOMContentLoaded', function() {
 // --- NEW: AUTO-LOAD FROM CLOUD ---
 // --- NEW: AUTO-LOAD FROM FIRESTORE DATABASE ---
 // --- NEW: AUTO-LOAD WITH PROPERTY VALIDATION ---
+// --- NEW: AUTO-LOAD WITH DYNAMIC PROPERTY FETCHING ---
 async function handleAutoLoad() {
     const btn = document.getElementById('auto-load-btn');
     const originalText = btn.textContent;
@@ -1744,46 +1745,47 @@ async function handleAutoLoad() {
     // 1. Get the required prefix for this profile
     const requiredPrefix = SNT_PROPERTY_MAP[currentProfile];
 
-    // Safety Check: This shouldn't happen if the button is hidden, but good for security
     if (!requiredPrefix) {
         alert("This property is not configured for Auto-Load.");
         return;
     }
 
-    // 2. UI Feedback
+    // 2. Construct the exact Document ID to look for
+    // Example: if prefix is 'LTRL', we look for 'LTRL_latest'
+    const targetDocId = `${requiredPrefix}_latest`;
+
     btn.disabled = true;
-    btn.textContent = "Verifying Data...";
-    showLoader(true, 'Fetching and verifying report...');
+    btn.textContent = `Looking for ${targetDocId}...`;
+    showLoader(true, `Fetching ${targetDocId} from database...`);
 
     try {
-        // 3. Reference Firestore
-        const docRef = db.collection('SNTData').doc('latest_report'); 
+        // 3. Reference the SPECIFIC document for this property
+        const docRef = db.collection('SNTData').doc(targetDocId); 
         const doc = await docRef.get();
 
         if (!doc.exists) {
-             throw new Error("No report found in the database.");
+             throw new Error(`No report found for ${currentProfile.toUpperCase()}. Expected document: '${targetDocId}'`);
         }
 
         const data = doc.data();
         const csvText = data.csv_content;
-        // Grab the real filename sent from Make
         const realFileName = data.filename || "Unknown_File.csv"; 
 
         if (!csvText) {
             throw new Error("Report exists, but is empty.");
         }
 
-        // --- 4. CRITICAL VALIDATION STEP ---
-        // Check if the file in the DB starts with the prefix required for this property
+        // --- 4. SAFETY CHECK ---
+        // Double check that the file inside actually matches the prefix
         if (!realFileName.toUpperCase().startsWith(requiredPrefix.toUpperCase())) {
-            throw new Error(`MISMATCH: You are on the '${currentProfile.toUpperCase()}' profile, but the latest file in the cloud is '${realFileName}'. This file belongs to a different property.`);
+            throw new Error(`CRITICAL MISMATCH: The file saved in '${targetDocId}' is actually '${realFileName}'. This shouldn't happen.`);
         }
 
         // 5. Update Global State
         currentCsvContent = csvText;
-        currentFileName = realFileName; // This allows the parser to see the SNT headers
+        currentFileName = realFileName;
         
-        // 6. Build the Rules Object
+        // 6. Build Rules
         currentRules = {
             hierarchy: document.getElementById('hierarchy').value,
             targetRooms: document.getElementById('target-rooms').value,
@@ -1794,7 +1796,7 @@ async function handleAutoLoad() {
             profile: currentProfile 
         };
 
-        // 7. Process Data
+        // 7. Process
         setTimeout(() => {
             try {
                 const results = processUpgradeData(currentCsvContent, currentRules, currentFileName);
@@ -1813,7 +1815,7 @@ async function handleAutoLoad() {
         showLoader(false);
         btn.disabled = false;
         btn.textContent = originalText;
-        alert(error.message); // Show the specific mismatch error
+        alert(error.message);
     }
 }
 
@@ -2958,6 +2960,7 @@ function downloadAcceptedUpgradesCsv() {
     link.click();
     document.body.removeChild(link);
 }
+
 
 
 
