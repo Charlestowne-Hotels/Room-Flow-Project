@@ -1734,15 +1734,13 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 // --- NEW: AUTO-LOAD FROM CLOUD ---
-// --- NEW: AUTO-LOAD FROM FIRESTORE DATABASE ---
-// --- NEW: AUTO-LOAD WITH PROPERTY VALIDATION ---
-// --- NEW: AUTO-LOAD WITH DYNAMIC PROPERTY FETCHING ---
+// --- NEW: AUTO-LOAD WITH "STARTS WITH" SEARCH ---
 async function handleAutoLoad() {
     const btn = document.getElementById('auto-load-btn');
     const originalText = btn.textContent;
     const currentProfile = document.getElementById('profile-dropdown').value;
     
-    // 1. Get the required prefix for this profile
+    // 1. Get the prefix we are looking for (e.g., "DARLING", "LTRL")
     const requiredPrefix = SNT_PROPERTY_MAP[currentProfile];
 
     if (!requiredPrefix) {
@@ -1750,40 +1748,52 @@ async function handleAutoLoad() {
         return;
     }
 
-    // 2. Construct the exact Document ID to look for
-    // Example: if prefix is 'LTRL', we look for 'LTRL_latest'
-    const targetDocId = `${requiredPrefix}_latest`;
-
     btn.disabled = true;
-    btn.textContent = `Looking for ${targetDocId}...`;
-    showLoader(true, `Fetching ${targetDocId} from database...`);
+    btn.textContent = `Searching for ${requiredPrefix}...`;
+    showLoader(true, `Searching database for latest ${requiredPrefix} report...`);
 
     try {
-        // 3. Reference the SPECIFIC document for this property
-        const docRef = db.collection('SNTData').doc(targetDocId); 
-        const doc = await docRef.get();
+        // 2. QUERY THE DATABASE
+        // Instead of asking for one specific file, we look at the collection
+        const collectionRef = db.collection('SNTData');
+        const snapshot = await collectionRef.get();
 
-        if (!doc.exists) {
-             throw new Error(`No report found for ${currentProfile.toUpperCase()}. Expected document: '${targetDocId}'`);
+        if (snapshot.empty) {
+            throw new Error("No reports found in the database.");
         }
 
-        const data = doc.data();
-        const csvText = data.csv_content;
-        const realFileName = data.filename || "Unknown_File.csv"; 
+        // 3. FILTER: Find documents that start with our prefix
+        // We look at the Document ID (the file name in the database)
+        const matchingDocs = [];
+        snapshot.forEach(doc => {
+            const docId = doc.id.toUpperCase();
+            // CHECK: Does "DARLING_ROOMFLOW_..." start with "DARLING"?
+            if (docId.startsWith(requiredPrefix.toUpperCase())) {
+                matchingDocs.push({
+                    id: doc.id,
+                    data: doc.data()
+                });
+            }
+        });
+
+        if (matchingDocs.length === 0) {
+            throw new Error(`No reports found starting with '${requiredPrefix}'. Please check Make.`);
+        }
+
+        // 4. SORT: Pick the "best" match (usually the one created last, or simply the first one found)
+        // Since we add '_latest' to the end, they are unique. We'll take the first match.
+        const bestMatch = matchingDocs[0];
+        
+        const csvText = bestMatch.data.csv_content;
+        const realFileName = bestMatch.data.filename || bestMatch.id;
 
         if (!csvText) {
-            throw new Error("Report exists, but is empty.");
-        }
-
-        // --- 4. SAFETY CHECK ---
-        // Double check that the file inside actually matches the prefix
-        if (!realFileName.toUpperCase().startsWith(requiredPrefix.toUpperCase())) {
-            throw new Error(`CRITICAL MISMATCH: The file saved in '${targetDocId}' is actually '${realFileName}'. This shouldn't happen.`);
+            throw new Error(`Found file '${bestMatch.id}', but it is empty.`);
         }
 
         // 5. Update Global State
         currentCsvContent = csvText;
-        currentFileName = realFileName;
+        currentFileName = realFileName; 
         
         // 6. Build Rules
         currentRules = {
@@ -1796,12 +1806,12 @@ async function handleAutoLoad() {
             profile: currentProfile 
         };
 
-        // 7. Process
+        // 7. Process Data
         setTimeout(() => {
             try {
                 const results = processUpgradeData(currentCsvContent, currentRules, currentFileName);
                 displayResults(results);
-                alert(`Success! Loaded ${realFileName} for ${currentProfile.toUpperCase()}`);
+                alert(`Success! Found and loaded: ${bestMatch.id}`);
             } catch (err) {
                 showError(err);
             } finally {
@@ -2960,6 +2970,7 @@ function downloadAcceptedUpgradesCsv() {
     link.click();
     document.body.removeChild(link);
 }
+
 
 
 
