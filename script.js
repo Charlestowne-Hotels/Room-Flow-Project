@@ -1688,7 +1688,7 @@ function processUpgradeData(csvContent, rules, fileName) {
     return generateRecommendationsFromData(allReservations, rules);
 }
 
-// --- NEW: PARSER FOR SYNXIS ARRIVALS/DEPARTURES ---
+// --- UPDATED: PARSER FOR SYNXIS ARRIVALS/DEPARTURES (With Deduplication) ---
 function parseSynxisArrivals(data, header) {
     const nameIndex = header.indexOf('Guest_Nm');
     const resIdIndex = header.indexOf('CRS_Confirm_No');
@@ -1699,9 +1699,24 @@ function parseSynxisArrivals(data, header) {
     const statusIndex = header.indexOf('Rez_Status');
     const rateIndex = header.indexOf('Avg_Rate_Offshore');
 
+    // TRACK UNIQUE IDs TO HANDLE "ARRIVALS" AND "DEPARTURES" OVERLAP
+    const seenIds = new Set();
+
     return data.map(values => {
         if (values.length < header.length) return null;
 
+        // 1. Get the ID
+        const resId = values[resIdIndex] ? values[resIdIndex].trim() : '';
+        
+        // 2. DEDUPLICATION CHECK
+        // If we have already processed this ID (e.g. found in Arrivals, now seeing it in Departures), SKIP IT.
+        // This ensures we get the union of unique guests without double counting.
+        if (!resId || seenIds.has(resId)) {
+            return null; 
+        }
+        seenIds.add(resId);
+
+        // 3. Continue Processing...
         const arrival = values[arrivalIndex] ? parseDate(values[arrivalIndex]) : null;
         const departure = values[departureIndex] ? parseDate(values[departureIndex]) : null;
 
@@ -1727,10 +1742,12 @@ function parseSynxisArrivals(data, header) {
         let status = values[statusIndex] ? values[statusIndex].trim().toUpperCase() : '';
         if (status === 'CONFIRMED') status = 'RESERVATION';
         if (status === 'CANCELLED') status = 'CANCELED';
+        // Fallback: If status is missing but row exists in this report, assume it is active
+        if (!status) status = 'RESERVATION';
 
         return {
             name: fullName,
-            resId: values[resIdIndex] ? values[resIdIndex].trim() : '',
+            resId: resId,
             roomType: values[roomTypeIndex] ? values[roomTypeIndex].trim().toUpperCase() : '',
             rate: values[rateNameIndex] ? values[rateNameIndex].trim() : '',
             nights: nights,
@@ -1738,7 +1755,7 @@ function parseSynxisArrivals(data, header) {
             departure: departure,
             status: status,
             revenue: totalRevenue.toLocaleString('en-US', { style: 'currency', currency: 'USD' }),
-            marketCode: '' // Not strictly needed unless using specific STS logic
+            marketCode: '' 
         };
     }).filter(r => r && r.roomType && r.arrival && r.departure && r.nights > 0);
 }
@@ -2237,3 +2254,4 @@ function downloadAcceptedUpgradesCsv() {
     link.click();
     document.body.removeChild(link);
 }
+
