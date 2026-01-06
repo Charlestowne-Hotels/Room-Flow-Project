@@ -1612,14 +1612,13 @@ let oooRecords = [];
 let currentInventoryMap = null; 
 
 // --- FUNCTIONS ---
-
 function resetAppState() {
     currentCsvContent = null;
     currentFileName = null;
     currentRules = null;
     currentRecommendations = [];
     acceptedUpgrades = [];
-    currentInventoryMap = null; 
+    currentInventoryMap = null; // Reset inventory map
     
     document.getElementById('csv-file').value = '';
 
@@ -1674,6 +1673,7 @@ function parseInventoryInput(inputText) {
 }
 
 // --- NEW: PARSE SYNXIS INVENTORY CSV ---
+// Extracts Date and Room Availability from the specific report format
 function parseSynxisInventory(csvContent) {
     const lines = csvContent.trim().split('\n');
     const headers = lines[0].split(',').map(h => h.trim());
@@ -1690,7 +1690,7 @@ function parseSynxisInventory(csvContent) {
     const inventoryMap = {}; 
 
     for (let i = 1; i < lines.length; i++) {
-        const row = lines[i].split(','); 
+        const row = lines[i].split(','); // Simple split (adjust if CSV has quoted commas)
         if (row.length < headers.length) continue;
 
         const dateRaw = row[dateIndex]; 
@@ -1704,7 +1704,7 @@ function parseSynxisInventory(csvContent) {
         if (isNaN(dateObj)) continue;
         const dateKey = dateObj.toISOString().split('T')[0];
 
-        // Parse Room Code
+        // Parse Room Code: "King Suite (KS)" -> "KS"
         const codeMatch = roomRaw.match(/\(([^)]+)\)$/);
         const roomCode = codeMatch ? codeMatch[1].trim().toUpperCase() : roomRaw.trim().toUpperCase();
 
