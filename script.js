@@ -37,7 +37,6 @@ let loginContainer, appContainer, signinBtn, signoutBtn, emailInput, passwordInp
 let saveRulesBtn, saveStatus;
 
 // --- STATE MANAGEMENT & PROFILES ---
-// These serve as DEFAULTS. If Firebase has data, it will overwrite these.
 const profiles = {
     fqi: {
         hierarchy: 'TQ-QQ,TQHC-QQ,TK-K, DK-K, KJS-K/POC, QJS-QQ/POC, CTK-K, KBS-K/POC, PMVB-QQ, DMVT-QQ, GMVC-QQ, LKBS-K/POC, GMVB-QQ/POC, GMVT-QQ/POC',
@@ -252,7 +251,7 @@ let currentRecommendations = [];
 let acceptedUpgrades = [];
 let completedUpgrades = [];
 let oooRecords = [];
-let currentInventoryMap = null; // <--- NEW: Stores the parsed SynXis Inventory
+let currentInventoryMap = null; 
 
 // --- FUNCTIONS ---
 
@@ -262,7 +261,7 @@ function resetAppState() {
     currentRules = null;
     currentRecommendations = [];
     acceptedUpgrades = [];
-    currentInventoryMap = null; // Reset inventory map
+    currentInventoryMap = null; 
     
     document.getElementById('csv-file').value = '';
 
@@ -317,7 +316,6 @@ function parseInventoryInput(inputText) {
 }
 
 // --- NEW: PARSE SYNXIS INVENTORY CSV ---
-// Extracts Date and Room Availability from the specific report format
 function parseSynxisInventory(csvContent) {
     const lines = csvContent.trim().split('\n');
     const headers = lines[0].split(',').map(h => h.trim());
@@ -334,7 +332,7 @@ function parseSynxisInventory(csvContent) {
     const inventoryMap = {}; 
 
     for (let i = 1; i < lines.length; i++) {
-        const row = lines[i].split(','); // Simple split (adjust if CSV has quoted commas)
+        const row = lines[i].split(','); 
         if (row.length < headers.length) continue;
 
         const dateRaw = row[dateIndex]; 
@@ -348,7 +346,7 @@ function parseSynxisInventory(csvContent) {
         if (isNaN(dateObj)) continue;
         const dateKey = dateObj.toISOString().split('T')[0];
 
-        // Parse Room Code: "King Suite (KS)" -> "KS"
+        // Parse Room Code
         const codeMatch = roomRaw.match(/\(([^)]+)\)$/);
         const roomCode = codeMatch ? codeMatch[1].trim().toUpperCase() : roomRaw.trim().toUpperCase();
 
@@ -2159,14 +2157,22 @@ function getMasterInventory(profileName) {
     return totalInventory;
 }
 
+// --- UPDATED: PARSE DATE FUNCTION (Fixed logic) ---
 function parseDate(dateStr) {
     if (!dateStr) return null;
-    if (dateStr.includes(' ')) dateStr = dateStr.split(' ')[0];
+    
+    // Only split by space if it looks like timestamp "YYYY-MM-DD HH:mm:ss"
+    // NOT if it is "06 Jan 2026"
+    if (dateStr.includes(' ') && dateStr.includes(':')) {
+        dateStr = dateStr.split(' ')[0];
+    }
+    
     const parts = dateStr.split(/[-\/]/);
     if (parts.length === 3) {
         if (parts[0].length === 4) return new Date(Date.UTC(parts[0], parts[1] - 1, parts[2]));
         else return new Date(Date.UTC(parts[2], parts[0] - 1, parts[1]));
     }
+    
     const fallbackDate = new Date(dateStr);
     return new Date(Date.UTC(fallbackDate.getFullYear(), fallbackDate.getMonth(), fallbackDate.getDate()));
 }
@@ -2254,4 +2260,3 @@ function downloadAcceptedUpgradesCsv() {
     link.click();
     document.body.removeChild(link);
 }
-
