@@ -233,418 +233,1372 @@ const profiles = {
 // (Your existing Master Inventories are assumed here - kept short for brevity in this response, 
 // but in your file KEEP ALL THE MASTER INVENTORY DATA you had in the prompt)
 const MASTER_INVENTORIES = {
-fqi: [
+    fqi: [
+
         // TQ-QQ (11 Total)
+
         { roomNumber: '103', code: 'TQ-QQ' }, { roomNumber: '203', code: 'TQ-QQ' }, { roomNumber: '207', code: 'TQ-QQ' },
+
         { roomNumber: '210', code: 'TQ-QQ' }, { roomNumber: '215', code: 'TQ-QQ' }, { roomNumber: '216', code: 'TQ-QQ' },
+
         { roomNumber: '217', code: 'TQ-QQ' }, { roomNumber: '314', code: 'TQ-QQ' }, { roomNumber: '315', code: 'TQ-QQ' },
+
         { roomNumber: '316', code: 'TQ-QQ' }, { roomNumber: '317', code: 'TQ-QQ' },
+
         // TQHC-QQ (2 Total)
+
         { roomNumber: '206', code: 'TQHC-QQ' }, { roomNumber: '218', code: 'TQHC-QQ' },
+
         // TK-K (8 Total)
+
         { roomNumber: '108', code: 'TK-K' }, { roomNumber: '208', code: 'TK-K' }, { roomNumber: '209', code: 'TK-K' },
+
         { roomNumber: '211', code: 'TK-K' }, { roomNumber: '221', code: 'TK-K' }, { roomNumber: '307', code: 'TK-K' },
+
         { roomNumber: '308', code: 'TK-K' }, { roomNumber: '309', code: 'TK-K' },
+
         // DK-K (11 Total)
+
         { roomNumber: '102', code: 'DK-K' }, { roomNumber: '202', code: 'DK-K' }, { roomNumber: '204', code: 'DK-K' },
+
         { roomNumber: '205', code: 'DK-K' }, { roomNumber: '222', code: 'DK-K' }, { roomNumber: '302', code: 'DK-K' },
+
         { roomNumber: '303', code: 'DK-K' }, { roomNumber: '304', code: 'DK-K' }, { roomNumber: '305', code: 'DK-K' },
+
         { roomNumber: '306', code: 'DK-K' }, { roomNumber: '310', code: 'DK-K' },
+
         // KJS-K/POC (2 Total)
+
         { roomNumber: '219', code: 'KJS-K/POC' }, { roomNumber: '318', code: 'KJS-K/POC' },
+
         // QJS-QQ/POC (3 Total)
+
         { roomNumber: '105', code: 'QJS-QQ/POC' }, { roomNumber: '106', code: 'QJS-QQ/POC' }, { roomNumber: '107', code: 'QJS-QQ/POC' },
+
         // CTK-K (2 Total)
+
         { roomNumber: '301', code: 'CTK-K' }, { roomNumber: '320', code: 'CTK-K' },
+
         // KBS-K/POC (2 Total)
+
         { roomNumber: '220', code: 'KBS-K/POC' }, { roomNumber: '319', code: 'KBS-K/POC' },
+
         // PMVB-QQ (2 Total)
+
         { roomNumber: '312', code: 'PMVB-QQ' }, { roomNumber: '313', code: 'PMVB-QQ' },
+
         // DMVT-QQ (2 Total)
+
         { roomNumber: '213', code: 'DMVT-QQ' }, { roomNumber: '214', code: 'DMVT-QQ' },
+
         // GMVC-QQ (1 Total)
+
         { roomNumber: '104', code: 'GMVC-QQ' },
+
         // LKBS-K/POC (2 Total)
+
         { roomNumber: '101', code: 'LKBS-K/POC' }, { roomNumber: '201', code: 'LKBS-K/POC' },
+
         // GMVB-QQ/POC (1 Total)
+
         { roomNumber: '311', code: 'GMVB-QQ/POC' },
+
         // GMVT-QQ/POC (1 Total)
+
         { roomNumber: '212', code: 'GMVT-QQ/POC' }
+
     ],
+
     hvi: [
+
         { roomNumber: '301', code: '1QST-Q' },
+
         { roomNumber: '302', code: 'KGD-K' }, { roomNumber: '303', code: 'KGD-K' }, { roomNumber: '304', code: 'KGD-K' }, { roomNumber: '305', code: 'KGD-K' }, { roomNumber: '309', code: 'KGD-K' },
+
         { roomNumber: '107', code: 'KGDB-K' }, { roomNumber: '108', code: 'KGDB-K' }, { roomNumber: '112', code: 'KGDB-K' }, { roomNumber: '201', code: 'KGDB-K' }, { roomNumber: '202', code: 'KGDB-K' }, { roomNumber: '203', code: 'KGDB-K' }, { roomNumber: '208', code: 'KGDB-K' },
+
         { roomNumber: '105', code: 'KGHI-K' }, { roomNumber: '106', code: 'KGHI-K' },
+
         { roomNumber: '113', code: 'KGST-K' }, { roomNumber: '209', code: 'KGST-K' }, { roomNumber: '314', code: 'KGST-K' }, { roomNumber: '406', code: 'KGST-K' }, { roomNumber: '407', code: 'KGST-K' }, { roomNumber: '408', code: 'KGST-K' }, { roomNumber: '409', code: 'KGST-K' },
+
         { roomNumber: '116', code: 'KHAN-K' }, { roomNumber: '213', code: 'KHAN-K' },
+
         { roomNumber: '401', code: 'PKB-K' }, { roomNumber: '402', code: 'PKB-K' }, { roomNumber: '403', code: 'PKB-K' }, { roomNumber: '404', code: 'PKB-K' },
+
         { roomNumber: '306', code: 'QQD-QQ' }, { roomNumber: '307', code: 'QQD-QQ' }, { roomNumber: '308', code: 'QQD-QQ' },
+
         { roomNumber: '109', code: 'QQDB-QQ' }, { roomNumber: '110', code: 'QQDB-QQ' }, { roomNumber: '111', code: 'QQDB-QQ' }, { roomNumber: '204', code: 'QQDB-QQ' }, { roomNumber: '205', code: 'QQDB-QQ' }, { roomNumber: '206', code: 'QQDB-QQ' }, { roomNumber: '207', code: 'QQDB-QQ' },
+
         { roomNumber: '101', code: 'QQHI-QQ' }, { roomNumber: '102', code: 'QQHI-QQ' }, { roomNumber: '103', code: 'QQHI-QQ' }, { roomNumber: '104', code: 'QQHI-QQ' },
+
         { roomNumber: '114', code: 'QQST-QQ' }, { roomNumber: '115', code: 'QQST-QQ' }, { roomNumber: '210', code: 'QQST-QQ' }, { roomNumber: '211', code: 'QQST-QQ' }, { roomNumber: '212', code: 'QQST-QQ' }, { roomNumber: '310', code: 'QQST-QQ' }, { roomNumber: '311', code: 'QQST-QQ' }, { roomNumber: '312', code: 'QQST-QQ' }, { roomNumber: '313', code: 'QQST-QQ' },
+
         { roomNumber: '405', code: 'SUITE-K' }
+
     ],
+
     spec: [
+
         { roomNumber: '203', code: 'DK' }, { roomNumber: '303', code: 'DK' },
+
         { roomNumber: '305', code: 'DKB' }, { roomNumber: '306', code: 'DKB' }, { roomNumber: '309', code: 'DKB' }, { roomNumber: '310', code: 'DKB' }, { roomNumber: '311', code: 'DKB' },
+
         { roomNumber: '101', code: 'DKC' }, { roomNumber: '102', code: 'DKC' }, { roomNumber: '103', code: 'DKC' },
+
         { roomNumber: '201', code: 'DKS' }, { roomNumber: '301', code: 'DKS' },
+
         { roomNumber: '104', code: 'GKS' }, { roomNumber: '204', code: 'GKS' },
+
         { roomNumber: '107', code: 'PKSB' }, { roomNumber: '207', code: 'PKSB' }, { roomNumber: '307', code: 'PKSB' },
+
         { roomNumber: '105', code: 'TK' }, { roomNumber: '106', code: 'TK' }, { roomNumber: '109', code: 'TK' }, { roomNumber: '110', code: 'TK' }, { roomNumber: '111', code: 'TK' }, { roomNumber: '202', code: 'TK' }, { roomNumber: '205', code: 'TK' }, { roomNumber: '206', code: 'TK' }, { roomNumber: '209', code: 'TK' }, { roomNumber: '210', code: 'TK' }, { roomNumber: '211', code: 'TK' }, { roomNumber: '214', code: 'TK' }, { roomNumber: '302', code: 'TK' }, { roomNumber: '314', code: 'TK' },
+
         { roomNumber: '114', code: 'TKHC' },
+
         { roomNumber: '108', code: 'TQ' }, { roomNumber: '112', code: 'TQ' }, { roomNumber: '208', code: 'TQ' }, { roomNumber: '212', code: 'TQ' }, { roomNumber: '213', code: 'TQ' }, { roomNumber: '308', code: 'TQ' }, { roomNumber: '312', code: 'TQ' }, { roomNumber: '313', code: 'TQ' },
+
         { roomNumber: '113', code: 'TQHC' }
+
     ],
+
     col: [
+
         { roomNumber: 'W101', code: '2BRDM-K/Q/POC' },
+
         { roomNumber: 'S101', code: 'ADA-Q' }, { roomNumber: 'S102', code: 'ADA-Q' },
+
         { roomNumber: 'C203', code: 'KGST-K' }, { roomNumber: 'D102', code: 'KGST-K' }, { roomNumber: 'H204', code: 'KGST-K' }, { roomNumber: 'R205', code: 'KGST-K' }, { roomNumber: 'S103', code: 'KGST-K' },
+
         { roomNumber: 'R203', code: 'KGSTV-K' }, { roomNumber: 'S205', code: 'KGSTV-K' },
+
         { roomNumber: 'C102', code: 'KSTE-K/POC' }, { roomNumber: 'C204', code: 'KSTE-K/POC' }, { roomNumber: 'D203', code: 'KSTE-K/POC' }, { roomNumber: 'H102', code: 'KSTE-K/POC' }, { roomNumber: 'H203', code: 'KSTE-K/POC' }, { roomNumber: 'M101', code: 'KSTE-K/POC' }, { roomNumber: 'M103', code: 'KSTE-K/POC' }, { roomNumber: 'M204', code: 'KSTE-K/POC' },
+
         { roomNumber: 'D101', code: 'KSTEV-K/POC' }, { roomNumber: 'H101', code: 'KSTEV-K/POC' }, { roomNumber: 'R101', code: 'KSTEV-K/POC' }, { roomNumber: 'R102', code: 'KSTEV-K/POC' }, { roomNumber: 'S207', code: 'KSTEV-K/POC' }, { roomNumber: 'W202', code: 'KSTEV-K/POC' }, { roomNumber: 'W203', code: 'KSTEV-K/POC' },
+
         { roomNumber: 'C101', code: 'QGST-Q' }, { roomNumber: 'R204', code: 'QGST-Q' }, { roomNumber: 'S206', code: 'QGST-Q' },
+
         { roomNumber: 'M102', code: 'QSTE-Q/POC' }, { roomNumber: 'S104', code: 'QSTE-Q/POC' }
+
     ],
+
     ivy: [
+
         { roomNumber: '1401', code: 'CKS' }, { roomNumber: '1402', code: 'CKS' }, { roomNumber: '1404', code: 'CKS' }, { roomNumber: '1405', code: 'CKS' },
+
         { roomNumber: '1403', code: 'CSQ' },
+
         { roomNumber: '201', code: 'DQS' }, { roomNumber: '205', code: 'DQS' }, { roomNumber: '301', code: 'DQS' }, { roomNumber: '305', code: 'DQS' }, { roomNumber: '401', code: 'DQS' },
+
         { roomNumber: '405', code: 'DQSA' },
+
         { roomNumber: '1001', code: 'KS' }, { roomNumber: '1002', code: 'KS' }, { roomNumber: '1101', code: 'KS' }, { roomNumber: '1102', code: 'KS' }, { roomNumber: '1202', code: 'KS' }, { roomNumber: '1301', code: 'KS' }, { roomNumber: '1302', code: 'KS' },
+
         { roomNumber: '202', code: 'KS' }, { roomNumber: '302', code: 'KS' }, { roomNumber: '402', code: 'KS' }, { roomNumber: '501', code: 'KS' }, { roomNumber: '601', code: 'KS' }, { roomNumber: '602', code: 'KS' },
+
         { roomNumber: '701', code: 'KS' }, { roomNumber: '702', code: 'KS' }, { roomNumber: '801', code: 'KS' }, { roomNumber: '802', code: 'KS' }, { roomNumber: '901', code: 'KS' }, { roomNumber: '902', code: 'KS' },
+
         { roomNumber: '1201', code: 'KSA' }, { roomNumber: '502', code: 'KSA' },
+
         { roomNumber: '1004', code: 'KSO' }, { roomNumber: '1005', code: 'KSO' }, { roomNumber: '1104', code: 'KSO' }, { roomNumber: '1105', code: 'KSO' }, { roomNumber: '1204', code: 'KSO' }, { roomNumber: '1205', code: 'KSO' }, { roomNumber: '1304', code: 'KSO' }, { roomNumber: '1305', code: 'KSO' },
+
         { roomNumber: '204', code: 'KSO' }, { roomNumber: '304', code: 'KSO' }, { roomNumber: '404', code: 'KSO' }, { roomNumber: '504', code: 'KSO' }, { roomNumber: '505', code: 'KSO' }, { roomNumber: '604', code: 'KSO' }, { roomNumber: '605', code: 'KSO' },
+
         { roomNumber: '704', code: 'KSO' }, { roomNumber: '705', code: 'KSO' }, { roomNumber: '804', code: 'KSO' }, { roomNumber: '805', code: 'KSO' }, { roomNumber: '904', code: 'KSO' }, { roomNumber: '905', code: 'KSO' },
+
         { roomNumber: '1003', code: 'SQ' }, { roomNumber: '1103', code: 'SQ' }, { roomNumber: '1203', code: 'SQ' }, { roomNumber: '1303', code: 'SQ' }, { roomNumber: '403', code: 'SQ' }, { roomNumber: '503', code: 'SQ' }, { roomNumber: '603', code: 'SQ' }, { roomNumber: '703', code: 'SQ' }, { roomNumber: '903', code: 'SQ' },
+
         { roomNumber: '803', code: 'SQA' }
+
     ],
+
     msi: [
+
         // Q Rooms (27 Total)
+
         { roomNumber: '211', code: 'Q' }, { roomNumber: '212', code: 'Q' }, { roomNumber: '213', code: 'Q' }, { roomNumber: '214', code: 'Q' }, { roomNumber: '215', code: 'Q' },
+
         { roomNumber: '305', code: 'Q' }, { roomNumber: '306', code: 'Q' }, { roomNumber: '307', code: 'Q' }, { roomNumber: '308', code: 'Q' }, { roomNumber: '309', code: 'Q' },
+
         { roomNumber: '310', code: 'Q' }, { roomNumber: '311', code: 'Q' }, { roomNumber: '312', code: 'Q' }, { roomNumber: '313', code: 'Q' }, { roomNumber: '314', code: 'Q' }, { roomNumber: '315', code: 'Q' },
+
         { roomNumber: '402', code: 'Q' }, { roomNumber: '403', code: 'Q' }, { roomNumber: '404', code: 'Q' }, { roomNumber: '405', code: 'Q' }, { roomNumber: '406', code: 'Q' },
+
         { roomNumber: '407', code: 'Q' }, { roomNumber: '408', code: 'Q' }, { roomNumber: '409', code: 'Q' }, { roomNumber: '410', code: 'Q' }, { roomNumber: '411', code: 'Q' }, { roomNumber: '412', code: 'Q' },
+
         // RD Rooms (8 Total)
+
         { roomNumber: '101', code: 'RD' }, { roomNumber: '110', code: 'RD' }, { roomNumber: '205', code: 'RD' }, 
+
         { roomNumber: '206', code: 'RD' }, { roomNumber: '207', code: 'RD' }, { roomNumber: '208', code: 'RD' }, 
+
         { roomNumber: '209', code: 'RD' }, { roomNumber: '210', code: 'RD' },
+
         // RDCY Rooms (8 Total)
+
         { roomNumber: '102', code: 'RDCY' }, { roomNumber: '103', code: 'RDCY' }, { roomNumber: '104', code: 'RDCY' }, 
+
         { roomNumber: '105', code: 'RDCY' }, { roomNumber: '106', code: 'RDCY' }, { roomNumber: '107', code: 'RDCY' }, 
+
         { roomNumber: '108', code: 'RDCY' }, { roomNumber: '109', code: 'RDCY' },
+
         // DQ Rooms (2 Total)
+
         { roomNumber: '204', code: 'DQ' }, { roomNumber: '216', code: 'DQ' },
+
         // DD Rooms (4 Total)
+
         { roomNumber: '304', code: 'DD' }, { roomNumber: '316', code: 'DD' }, { roomNumber: '401', code: 'DD' }, { roomNumber: '413', code: 'DD' },
+
         // HHK Rooms (6 Total)
+
         { roomNumber: '201', code: 'HHK' }, { roomNumber: '202', code: 'HHK' }, { roomNumber: '203', code: 'HHK' },
+
         { roomNumber: '301', code: 'HHK' }, { roomNumber: '302', code: 'HHK' }, { roomNumber: '303', code: 'HHK' },
+
         // TQACC Room (1 Total)
+
         { roomNumber: '111', code: 'TQACC' }
+
     ],
+
     indjh: [
+
         // CHQ Rooms (4 Total)
+
         { roomNumber: 'J1', code: 'CHQ' }, { roomNumber: 'J2', code: 'CHQ' }, { roomNumber: 'J3', code: 'CHQ' }, { roomNumber: 'J4', code: 'CHQ' },
+
         // DK Rooms (6 Total)
+
         { roomNumber: 'I101', code: 'DK' }, { roomNumber: 'I112', code: 'DK' }, { roomNumber: 'I201', code: 'DK' }, 
+
         { roomNumber: 'I212', code: 'DK' }, { roomNumber: 'I301', code: 'DK' }, { roomNumber: 'I312', code: 'DK' },
+
         // MHD-Q Rooms (4 Total)
+
         { roomNumber: 'J101E', code: 'MHD-Q' }, { roomNumber: 'J101W', code: 'MHD-Q' }, 
+
         { roomNumber: 'J201E', code: 'MHD-Q' }, { roomNumber: 'J201W', code: 'MHD-Q' },
+
         // MHF-Q Rooms (1 Total)
+
         { roomNumber: 'J3F', code: 'MHF-Q' },
+
         // MHS-Q Rooms (2 Total)
+
         { roomNumber: 'J102NW', code: 'MHS-Q' }, { roomNumber: 'J202NW', code: 'MHS-Q' },
+
         // QAV Rooms (10 Total)
+
         { roomNumber: 'I104', code: 'QAV' }, { roomNumber: 'I106', code: 'QAV' }, { roomNumber: 'I107', code: 'QAV' }, 
+
         { roomNumber: 'I109', code: 'QAV' }, { roomNumber: 'I205', code: 'QAV' }, { roomNumber: 'I206', code: 'QAV' }, 
+
         { roomNumber: 'I207', code: 'QAV' }, { roomNumber: 'I306', code: 'QAV' }, { roomNumber: 'I307', code: 'QAV' }, 
+
         { roomNumber: 'I309', code: 'QAV' },
+
         // QNV Rooms (4 Total)
+
         { roomNumber: 'I1200', code: 'QNV' }, { roomNumber: 'I214', code: 'QNV' }, { roomNumber: 'I300', code: 'QNV' }, 
+
         { roomNumber: 'I314', code: 'QNV' },
+
         // QQ Rooms (6 Total)
+
         { roomNumber: 'I102', code: 'QQ' }, { roomNumber: 'I111', code: 'QQ' }, { roomNumber: 'I202', code: 'QQ' }, 
+
         { roomNumber: 'I211', code: 'QQ' }, { roomNumber: 'I302', code: 'QQ' }, { roomNumber: 'I311', code: 'QQ' },
+
         // QQAV Rooms (14 Total)
+
         { roomNumber: 'I103', code: 'QQAV' }, { roomNumber: 'I105', code: 'QQAV' }, { roomNumber: 'I108', code: 'QQAV' }, 
+
         { roomNumber: 'I110', code: 'QQAV' }, { roomNumber: 'I203', code: 'QQAV' }, { roomNumber: 'I204', code: 'QQAV' }, 
+
         { roomNumber: 'I208', code: 'QQAV' }, { roomNumber: 'I209', code: 'QQAV' }, { roomNumber: 'I210', code: 'QQAV' }, 
+
         { roomNumber: 'I303', code: 'QQAV' }, { roomNumber: 'I304', code: 'QQAV' }, { roomNumber: 'I305', code: 'QQAV' }, 
+
         { roomNumber: 'I308', code: 'QQAV' }, { roomNumber: 'I310', code: 'QQAV' }
+
     ],
+
     sts: [
+
         // PKR (1 Room)
+
         { roomNumber: '215', code: 'PKR' },
+
         // TKR (23 Rooms)
+
         { roomNumber: '203', code: 'TKR' }, { roomNumber: '204', code: 'TKR' }, { roomNumber: '206', code: 'TKR' },
+
         { roomNumber: '207', code: 'TKR' }, { roomNumber: '208', code: 'TKR' }, { roomNumber: '209', code: 'TKR' },
+
         { roomNumber: '211', code: 'TKR' }, { roomNumber: '212', code: 'TKR' }, { roomNumber: '213', code: 'TKR' },
+
         { roomNumber: '214', code: 'TKR' }, { roomNumber: '303', code: 'TKR' }, { roomNumber: '304', code: 'TKR' },
+
         { roomNumber: '307', code: 'TKR' }, { roomNumber: '308', code: 'TKR' }, { roomNumber: '309', code: 'TKR' },
+
         { roomNumber: '311', code: 'TKR' }, { roomNumber: '312', code: 'TKR' }, { roomNumber: '314', code: 'TKR' },
+
         { roomNumber: '319', code: 'TKR' }, { roomNumber: '402', code: 'TKR' }, { roomNumber: '403', code: 'TKR' },
+
         { roomNumber: '406', code: 'TKR' }, { roomNumber: '407', code: 'TKR' },
+
         // QQR (11 Rooms)
+
         { roomNumber: '202', code: 'QQR' }, { roomNumber: '210', code: 'QQR' }, { roomNumber: '218', code: 'QQR' },
+
         { roomNumber: '220', code: 'QQR' }, { roomNumber: '302', code: 'QQR' }, { roomNumber: '306', code: 'QQR' },
+
         { roomNumber: '310', code: 'QQR' }, { roomNumber: '317', code: 'QQR' }, { roomNumber: '401', code: 'QQR' },
+
         { roomNumber: '405', code: 'QQR' }, { roomNumber: '408', code: 'QQR' },
+
         // LKR (4 Rooms)
+
         { roomNumber: '201', code: 'LKR' }, { roomNumber: '221', code: 'LKR' }, { roomNumber: '301', code: 'LKR' },
+
         { roomNumber: '316', code: 'LKR' },
+
         // CKR (3 Rooms)
+
         { roomNumber: '205', code: 'CKR' }, { roomNumber: '305', code: 'CKR' }, { roomNumber: '404', code: 'CKR' },
+
         // KS (5 Rooms)
+
         { roomNumber: '217', code: 'KS' }, { roomNumber: '219', code: 'KS' }, { roomNumber: '313', code: 'KS' },
+
         { roomNumber: '315', code: 'KS' }, { roomNumber: '318', code: 'KS' },
+
         // PKS (1 Room)
+
         { roomNumber: '409', code: 'PKS' },
+
         // AKR (1 Room)
+
         { roomNumber: '216', code: 'AKR' },
+
         // AQQ (1 Room)
+
         { roomNumber: '320', code: 'AQQ' }
+
     ],
+
     rcn: [
+
         // KING (34 Rooms)
+
         { roomNumber: '429', code: 'KING' }, { roomNumber: '427', code: 'KING' }, { roomNumber: '426', code: 'KING' }, { roomNumber: '423', code: 'KING' }, { roomNumber: '422', code: 'KING' },
+
         { roomNumber: '419', code: 'KING' }, { roomNumber: '418', code: 'KING' }, { roomNumber: '417', code: 'KING' }, { roomNumber: '416', code: 'KING' }, { roomNumber: '403', code: 'KING' },
+
         { roomNumber: '402', code: 'KING' }, { roomNumber: '401', code: 'KING' }, { roomNumber: '330', code: 'KING' }, { roomNumber: '327', code: 'KING' }, { roomNumber: '326', code: 'KING' },
+
         { roomNumber: '323', code: 'KING' }, { roomNumber: '322', code: 'KING' }, { roomNumber: '320', code: 'KING' }, { roomNumber: '303', code: 'KING' }, { roomNumber: '302', code: 'KING' },
+
         { roomNumber: '301', code: 'KING' }, { roomNumber: '230', code: 'KING' }, { roomNumber: '229', code: 'KING' }, { roomNumber: '227', code: 'KING' }, { roomNumber: '226', code: 'KING' },
+
         { roomNumber: '223', code: 'KING' }, { roomNumber: '222', code: 'KING' }, { roomNumber: '219', code: 'KING' }, { roomNumber: '215', code: 'KING' }, { roomNumber: '214', code: 'KING' },
+
         { roomNumber: '212', code: 'KING' }, { roomNumber: '203', code: 'KING' }, { roomNumber: '202', code: 'KING' }, { roomNumber: '201', code: 'KING' },
+
         // KINGADA (4 Rooms)
+
         { roomNumber: '220', code: 'KINGADA' }, { roomNumber: '319', code: 'KINGADA' }, { roomNumber: '329', code: 'KINGADA' }, { roomNumber: '430', code: 'KINGADA' },
+
         // DQUEEN (28 Rooms)
+
         { roomNumber: '205', code: 'DQUEEN' }, { roomNumber: '206', code: 'DQUEEN' }, { roomNumber: '207', code: 'DQUEEN' }, { roomNumber: '208', code: 'DQUEEN' }, { roomNumber: '209', code: 'DQUEEN' },
+
         { roomNumber: '210', code: 'DQUEEN' }, { roomNumber: '221', code: 'DQUEEN' }, { roomNumber: '224', code: 'DQUEEN' }, { roomNumber: '228', code: 'DQUEEN' }, { roomNumber: '305', code: 'DQUEEN' },
+
         { roomNumber: '306', code: 'DQUEEN' }, { roomNumber: '307', code: 'DQUEEN' }, { roomNumber: '308', code: 'DQUEEN' }, { roomNumber: '309', code: 'DQUEEN' }, { roomNumber: '310', code: 'DQUEEN' },
+
         { roomNumber: '321', code: 'DQUEEN' }, { roomNumber: '324', code: 'DQUEEN' }, { roomNumber: '325', code: 'DQUEEN' }, { roomNumber: '328', code: 'DQUEEN' }, { roomNumber: '405', code: 'DQUEEN' },
+
         { roomNumber: '406', code: 'DQUEEN' }, { roomNumber: '407', code: 'DQUEEN' }, { roomNumber: '408', code: 'DQUEEN' }, { roomNumber: '409', code: 'DQUEEN' }, { roomNumber: '410', code: 'DQUEEN' },
+
         { roomNumber: '424', code: 'DQUEEN' }, { roomNumber: '425', code: 'DQUEEN' }, { roomNumber: '428', code: 'DQUEEN' },
+
         // ADADQ (1 Room)
+
         { roomNumber: '225', code: 'ADADQ' },
+
         // LVKING (6 Rooms)
+
         { roomNumber: '312', code: 'LVKING' }, { roomNumber: '314', code: 'LVKING' }, { roomNumber: '315', code: 'LVKING' },
+
         { roomNumber: '412', code: 'LVKING' }, { roomNumber: '414', code: 'LVKING' }, { roomNumber: '415', code: 'LVKING' },
+
         // JRSTE (4 Rooms)
+
         { roomNumber: '204', code: 'JRSTE' }, { roomNumber: '211', code: 'JRSTE' }, { roomNumber: '304', code: 'JRSTE' }, { roomNumber: '404', code: 'JRSTE' },
+
         // LVJRSTE (2 Rooms)
+
         { roomNumber: '311', code: 'LVJRSTE' }, { roomNumber: '411', code: 'LVJRSTE' },
+
         // PRES (1 Room)
+
         { roomNumber: '421', code: 'PRES' }
+
     ],
+
     cby: [
+
         // KNR (16 Rooms)
+
         { roomNumber: '205', code: 'KNR' }, { roomNumber: '207', code: 'KNR' }, { roomNumber: '209', code: 'KNR' }, { roomNumber: '214', code: 'KNR' }, { roomNumber: '216', code: 'KNR' },
+
         { roomNumber: '305', code: 'KNR' }, { roomNumber: '307', code: 'KNR' }, { roomNumber: '309', code: 'KNR' }, { roomNumber: '314', code: 'KNR' }, { roomNumber: '316', code: 'KNR' },
+
         { roomNumber: '405', code: 'KNR' }, { roomNumber: '407', code: 'KNR' }, { roomNumber: '409', code: 'KNR' }, { roomNumber: '411', code: 'KNR' }, { roomNumber: '414', code: 'KNR' }, { roomNumber: '416', code: 'KNR' },
+
         // KND (6 Rooms)
+
         { roomNumber: '201', code: 'KND' }, { roomNumber: '202', code: 'KND' }, { roomNumber: '301', code: 'KND' }, { roomNumber: '302', code: 'KND' }, { roomNumber: '401', code: 'KND' }, { roomNumber: '402', code: 'KND' },
+
         // QQNR (25 Rooms)
+
         { roomNumber: '203', code: 'QQNR' }, { roomNumber: '204', code: 'QQNR' }, { roomNumber: '206', code: 'QQNR' }, { roomNumber: '211', code: 'QQNR' }, { roomNumber: '215', code: 'QQNR' }, { roomNumber: '217', code: 'QQNR' }, { roomNumber: '219', code: 'QQNR' }, { roomNumber: '221', code: 'QQNR' },
+
         { roomNumber: '303', code: 'QQNR' }, { roomNumber: '304', code: 'QQNR' }, { roomNumber: '306', code: 'QQNR' }, { roomNumber: '311', code: 'QQNR' }, { roomNumber: '312', code: 'QQNR' }, { roomNumber: '315', code: 'QQNR' }, { roomNumber: '317', code: 'QQNR' }, { roomNumber: '319', code: 'QQNR' }, { roomNumber: '321', code: 'QQNR' },
+
         { roomNumber: '403', code: 'QQNR' }, { roomNumber: '404', code: 'QQNR' }, { roomNumber: '406', code: 'QQNR' }, { roomNumber: '412', code: 'QQNR' }, { roomNumber: '415', code: 'QQNR' }, { roomNumber: '417', code: 'QQNR' }, { roomNumber: '419', code: 'QQNR' }, { roomNumber: '421', code: 'QQNR' },
+
         // KAR (2 Rooms)
+
         { roomNumber: '213', code: 'KAR' }, { roomNumber: '313', code: 'KAR' },
+
         // QQAR (1 Room)
+
         { roomNumber: '413', code: 'QQAR' },
+
         // K1S (2 Rooms)
+
         { roomNumber: '308', code: 'K1S' }, { roomNumber: '408', code: 'K1S' },
+
         // K1AS (1 Room)
+
         { roomNumber: '208', code: 'K1AS' }
+
     ],
+
     bri: [
+
         // PQNN (5 Rooms)
+
         { roomNumber: '210', code: 'PQNN' }, { roomNumber: '310', code: 'PQNN' }, { roomNumber: '409', code: 'PQNN' }, { roomNumber: '509', code: 'PQNN' }, { roomNumber: '609', code: 'PQNN' },
+
         // PKNG (5 Rooms)
+
         { roomNumber: '209', code: 'PKNG' }, { roomNumber: '309', code: 'PKNG' }, { roomNumber: '408', code: 'PKNG' }, { roomNumber: '508', code: 'PKNG' }, { roomNumber: '608', code: 'PKNG' },
+
         // STQQ (21 Rooms)
+
         { roomNumber: '205', code: 'STQQ' }, { roomNumber: '206', code: 'STQQ' }, { roomNumber: '211', code: 'STQQ' }, { roomNumber: '305', code: 'STQQ' }, { roomNumber: '306', code: 'STQQ' }, { roomNumber: '311', code: 'STQQ' },
+
         { roomNumber: '402', code: 'STQQ' }, { roomNumber: '404', code: 'STQQ' }, { roomNumber: '405', code: 'STQQ' }, { roomNumber: '410', code: 'STQQ' }, { roomNumber: '502', code: 'STQQ' }, { roomNumber: '505', code: 'STQQ' },
+
         { roomNumber: '510', code: 'STQQ' }, { roomNumber: '602', code: 'STQQ' }, { roomNumber: '604', code: 'STQQ' }, { roomNumber: '605', code: 'STQQ' }, { roomNumber: '610', code: 'STQQ' }, { roomNumber: '702', code: 'STQQ' },
+
         { roomNumber: '704', code: 'STQQ' }, { roomNumber: '705', code: 'STQQ' }, { roomNumber: '708', code: 'STQQ' },
+
         // SQAC (1 Room)
+
         { roomNumber: '504', code: 'SQAC' },
+
         // SKNG (20 Rooms)
+
         { roomNumber: '204', code: 'SKNG' }, { roomNumber: '208', code: 'SKNG' }, { roomNumber: '212', code: 'SKNG' }, { roomNumber: '301', code: 'SKNG' }, { roomNumber: '308', code: 'SKNG' }, { roomNumber: '312', code: 'SKNG' },
+
         { roomNumber: '401', code: 'SKNG' }, { roomNumber: '403', code: 'SKNG' }, { roomNumber: '406', code: 'SKNG' }, { roomNumber: '411', code: 'SKNG' }, { roomNumber: '501', code: 'SKNG' }, { roomNumber: '503', code: 'SKNG' },
+
         { roomNumber: '506', code: 'SKNG' }, { roomNumber: '511', code: 'SKNG' }, { roomNumber: '601', code: 'SKNG' }, { roomNumber: '603', code: 'SKNG' }, { roomNumber: '606', code: 'SKNG' }, { roomNumber: '611', code: 'SKNG' },
+
         { roomNumber: '701', code: 'SKNG' }, { roomNumber: '709', code: 'SKNG' },
+
         // SKAC (2 Rooms)
+
         { roomNumber: '304', code: 'SKAC' }, { roomNumber: '703', code: 'SKAC' },
+
         // HERT (6 Rooms)
+
         { roomNumber: '207', code: 'HERT' }, { roomNumber: '307', code: 'HERT' }, { roomNumber: '407', code: 'HERT' }, { roomNumber: '507', code: 'HERT' }, { roomNumber: '607', code: 'HERT' }, { roomNumber: '706', code: 'HERT' },
+
         // AMER (2 Rooms)
+
         { roomNumber: '203', code: 'AMER' }, { roomNumber: '303', code: 'AMER' },
+
         // LEST (1 Room)
+
         { roomNumber: '202', code: 'LEST' },
+
         // LEAC (1 Room)
+
         { roomNumber: '302', code: 'LEAC' },
+
         // GPST (1 Room)
+
         { roomNumber: '707', code: 'GPST' }
+
     ],
+
     dar: [
+
         // RQR (4 Rooms)
+
         { roomNumber: '101', code: 'RQR' }, { roomNumber: '102', code: 'RQR' }, { roomNumber: '103', code: 'RQR' }, { roomNumber: '104', code: 'RQR' },
+
         // RKR (17 Rooms)
+
         { roomNumber: '205', code: 'RKR' }, { roomNumber: '206', code: 'RKR' }, { roomNumber: '207', code: 'RKR' }, { roomNumber: '208', code: 'RKR' }, { roomNumber: '209', code: 'RKR' },
+
         { roomNumber: '210', code: 'RKR' }, { roomNumber: '213', code: 'RKR' }, { roomNumber: '314', code: 'RKR' }, { roomNumber: '315', code: 'RKR' }, { roomNumber: '316', code: 'RKR' },
+
         { roomNumber: '318', code: 'RKR' }, { roomNumber: '319', code: 'RKR' }, { roomNumber: '320', code: 'RKR' }, { roomNumber: '321', code: 'RKR' }, { roomNumber: '324', code: 'RKR' },
+
         { roomNumber: '425', code: 'RKR' }, { roomNumber: '432', code: 'RKR' },
+
         // RQQ (1 Room)
+
         { roomNumber: '431', code: 'RQQ' },
+
         // SKR (6 Rooms)
+
         { roomNumber: '211', code: 'SKR' }, { roomNumber: '212', code: 'SKR' }, { roomNumber: '317', code: 'SKR' }, { roomNumber: '323', code: 'SKR' }, { roomNumber: '426', code: 'SKR' }, { roomNumber: '427', code: 'SKR' },
+
         // AKS (2 Rooms)
+
         { roomNumber: '322', code: 'AKS' }, { roomNumber: '428', code: 'AKS' },
+
         // EXE (1 Room)
+
         { roomNumber: '430', code: 'EXE' },
+
         // DAR (1 Room)
+
         { roomNumber: '429', code: 'DAR' }
+
     ],
+
     dpi: [
+
         // PKING-K (2 Rooms)
+
         { roomNumber: '325', code: 'PKING-K' }, { roomNumber: '328', code: 'PKING-K' },
+
         // PQUEEN-Q (1 Room)
+
         { roomNumber: '225', code: 'PQUEEN-Q' },
+
         // NKING-K (23 Rooms)
+
         { roomNumber: '101', code: 'NKING-K' }, { roomNumber: '102', code: 'NKING-K' }, { roomNumber: '103', code: 'NKING-K' }, { roomNumber: '105', code: 'NKING-K' }, { roomNumber: '201', code: 'NKING-K' },
+
         { roomNumber: '202', code: 'NKING-K' }, { roomNumber: '203', code: 'NKING-K' }, { roomNumber: '205', code: 'NKING-K' }, { roomNumber: '214', code: 'NKING-K' }, { roomNumber: '216', code: 'NKING-K' },
+
         { roomNumber: '218', code: 'NKING-K' }, { roomNumber: '220', code: 'NKING-K' }, { roomNumber: '228', code: 'NKING-K' }, { roomNumber: '232', code: 'NKING-K' }, { roomNumber: '234', code: 'NKING-K' },
+
         { roomNumber: '311', code: 'NKING-K' }, { roomNumber: '314', code: 'NKING-K' }, { roomNumber: '316', code: 'NKING-K' }, { roomNumber: '318', code: 'NKING-K' }, { roomNumber: '330', code: 'NKING-K' },
+
         { roomNumber: '332', code: 'NKING-K' }, { roomNumber: '334', code: 'NKING-K' }, { roomNumber: '336', code: 'NKING-K' },
+
         // NKINGACC-K (1 Room)
+
         { roomNumber: '236', code: 'NKINGACC-K' },
+
         // NQQ-QQ (7 Rooms)
+
         { roomNumber: '109', code: 'NQQ-QQ' }, { roomNumber: '111', code: 'NQQ-QQ' }, { roomNumber: '209', code: 'NQQ-QQ' }, { roomNumber: '211', code: 'NQQ-QQ' }, { roomNumber: '230', code: 'NQQ-QQ' },
+
         { roomNumber: '306', code: 'NQQ-QQ' }, { roomNumber: '323', code: 'NQQ-QQ' },
+
         // RKINGACC-K (1 Room)
+
         { roomNumber: '213', code: 'RKINGACC-K' },
+
         // RQQ-QQ (5 Rooms)
+
         { roomNumber: '104', code: 'RQQ-QQ' }, { roomNumber: '113', code: 'RQQ-QQ' }, { roomNumber: '204', code: 'RQQ-QQ' }, { roomNumber: '223', code: 'RQQ-QQ' }, { roomNumber: '310', code: 'RQQ-QQ' },
+
         // RQQACC-QQ (1 Room)
+
         { roomNumber: '313', code: 'RQQACC-QQ' },
+
         // MHQQ-QQ (1 Room)
+
         { roomNumber: '309', code: 'MHQQ-QQ' },
+
         // MHQSTE-Q (1 Room)
+
         { roomNumber: '337', code: 'MHQSTE-Q' },
+
         // MHSTE-K (5 Rooms)
+
         { roomNumber: '217', code: 'MHSTE-K' }, { roomNumber: '227', code: 'MHSTE-K' }, { roomNumber: '301', code: 'MHSTE-K' }, { roomNumber: '302', code: 'MHSTE-K' }, { roomNumber: '317', code: 'MHSTE-K' },
+
         // MHSTEKIT-K (2 Rooms)
+
         { roomNumber: '108', code: 'MHSTEKIT-K' }, { roomNumber: '208', code: 'MHSTEKIT-K' },
+
         // RSTE-K (5 Rooms)
+
         { roomNumber: '215', code: 'RSTE-K' }, { roomNumber: '221', code: 'RSTE-K' }, { roomNumber: '315', code: 'RSTE-K' }, { roomNumber: '321', code: 'RSTE-K' }, { roomNumber: '327', code: 'RSTE-K' },
+
         // BUCKSTE-K (1 Room)
+
         { roomNumber: '241', code: 'BUCKSTE-K' },
+
         // CORNSTE-K (1 Room)
+
         { roomNumber: '239', code: 'CORNSTE-K' }
+
     ],
+
     asu: [
+
         // 1K-K/SB (6 Rooms)
+
         { roomNumber: '101', code: '1K-K/SB' }, { roomNumber: '102', code: '1K-K/SB' }, { roomNumber: '201', code: '1K-K/SB' }, { roomNumber: '202', code: '1K-K/SB' }, { roomNumber: '209', code: '1K-K/SB' }, { roomNumber: '210', code: '1K-K/SB' },
+
         // 1KF-K (2 Rooms)
+
         { roomNumber: '109', code: '1KF-K' }, { roomNumber: '110', code: '1KF-K' },
+
         // 1KH-K (2 Rooms)
+
         { roomNumber: '119', code: '1KH-K' }, { roomNumber: '219', code: '1KH-K' },
+
         // 1KJ-K (1 Room)
+
         { roomNumber: '127', code: '1KJ-K' },
+
         // 1QQ-QQ (42 Rooms)
+
         { roomNumber: '105', code: '1QQ-QQ' }, { roomNumber: '106', code: '1QQ-QQ' }, { roomNumber: '107', code: '1QQ-QQ' }, { roomNumber: '108', code: '1QQ-QQ' }, { roomNumber: '111', code: '1QQ-QQ' }, { roomNumber: '112', code: '1QQ-QQ' },
+
         { roomNumber: '115', code: '1QQ-QQ' }, { roomNumber: '116', code: '1QQ-QQ' }, { roomNumber: '117', code: '1QQ-QQ' }, { roomNumber: '118', code: '1QQ-QQ' }, { roomNumber: '121', code: '1QQ-QQ' }, { roomNumber: '122', code: '1QQ-QQ' },
+
         { roomNumber: '123', code: '1QQ-QQ' }, { roomNumber: '124', code: '1QQ-QQ' }, { roomNumber: '205', code: '1QQ-QQ' }, { roomNumber: '206', code: '1QQ-QQ' }, { roomNumber: '208', code: '1QQ-QQ' }, { roomNumber: '211', code: '1QQ-QQ' },
+
         { roomNumber: '212', code: '1QQ-QQ' }, { roomNumber: '213', code: '1QQ-QQ' }, { roomNumber: '214', code: '1QQ-QQ' }, { roomNumber: '215', code: '1QQ-QQ' }, { roomNumber: '216', code: '1QQ-QQ' }, { roomNumber: '217', code: '1QQ-QQ' },
+
         { roomNumber: '218', code: '1QQ-QQ' }, { roomNumber: '221', code: '1QQ-QQ' }, { roomNumber: '223', code: '1QQ-QQ' }, { roomNumber: '224', code: '1QQ-QQ' },
+
         // 1QQD-QQ (2 Rooms)
+
         { roomNumber: '113', code: '1QQD-QQ' }, { roomNumber: '114', code: '1QQD-QQ' },
+
         // 1QQF-QQ (2 Rooms)
+
         { roomNumber: '207', code: '1QQF-QQ' }, { roomNumber: '222', code: '1QQF-QQ' },
+
         // 1QQH-Q (2 Rooms)
+
         { roomNumber: '120', code: '1QQH-Q' }, { roomNumber: '220', code: '1QQH-Q' },
+
         // 2KQQ-K/QQ (8 Rooms)
+
         { roomNumber: '103', code: '2KQQ-K/QQ' }, { roomNumber: '104', code: '2KQQ-K/QQ' }, { roomNumber: '125', code: '2KQQ-K/QQ' }, { roomNumber: '126', code: '2KQQ-K/QQ' }, { roomNumber: '203', code: '2KQQ-K/QQ' }, { roomNumber: '204', code: '2KQQ-K/QQ' },
+
         { roomNumber: '225', code: '2KQQ-K/QQ' }, { roomNumber: '226', code: '2KQQ-K/QQ' }
+
     ],
+
     ehi: [
+
         // TRADQUEEN-Q (2 Rooms)
+
         { roomNumber: '11', code: 'TRADQUEEN-Q' }, { roomNumber: '21', code: 'TRADQUEEN-Q' },
+
         // TRADKING-K (3 Rooms)
+
         { roomNumber: '10', code: 'TRADKING-K' }, { roomNumber: '31', code: 'TRADKING-K' }, { roomNumber: '32', code: 'TRADKING-K' },
+
         // QNN-Q (6 Rooms)
+
         { roomNumber: '12', code: 'QNN-Q' }, { roomNumber: '14', code: 'QNN-Q' }, { roomNumber: '23', code: 'QNN-Q' }, { roomNumber: '25', code: 'QNN-Q' }, { roomNumber: '33', code: 'QNN-Q' }, { roomNumber: '34', code: 'QNN-Q' },
+
         // KNN-K (15 Rooms)
+
         { roomNumber: '15', code: 'KNN-K' }, { roomNumber: '16', code: 'KNN-K' }, { roomNumber: '17', code: 'KNN-K' }, { roomNumber: '18', code: 'KNN-K' }, { roomNumber: '19', code: 'KNN-K' },
+
         { roomNumber: '20', code: 'KNN-K' }, { roomNumber: '22', code: 'KNN-K' }, { roomNumber: '24', code: 'KNN-K' }, { roomNumber: '26', code: 'KNN-K' }, { roomNumber: '27', code: 'KNN-K' },
+
         { roomNumber: '28', code: 'KNN-K' }, { roomNumber: '29', code: 'KNN-K' }, { roomNumber: '30', code: 'KNN-K' }, { roomNumber: '35', code: 'KNN-K' }, { roomNumber: '36', code: 'KNN-K' }
+
     ],
+
     palms: [
+
         // TRAK-K (7 Rooms)
+
         { roomNumber: '112', code: 'TRAK-K' }, { roomNumber: '120', code: 'TRAK-K' }, { roomNumber: '205', code: 'TRAK-K' }, { roomNumber: '212', code: 'TRAK-K' }, { roomNumber: '220', code: 'TRAK-K' }, { roomNumber: '305', code: 'TRAK-K' }, { roomNumber: '312', code: 'TRAK-K' }, { roomNumber: '320', code: 'TRAK-K' },
+
         // TRAQQ-QQ (18 Rooms)
+
         { roomNumber: '114', code: 'TRAQQ-QQ' }, { roomNumber: '116', code: 'TRAQQ-QQ' }, { roomNumber: '118', code: 'TRAQQ-QQ' }, { roomNumber: '122', code: 'TRAQQ-QQ' }, { roomNumber: '203', code: 'TRAQQ-QQ' }, { roomNumber: '207', code: 'TRAQQ-QQ' }, { roomNumber: '209', code: 'TRAQQ-QQ' }, { roomNumber: '214', code: 'TRAQQ-QQ' }, { roomNumber: '216', code: 'TRAQQ-QQ' }, { roomNumber: '218', code: 'TRAQQ-QQ' }, { roomNumber: '222', code: 'TRAQQ-QQ' }, { roomNumber: '303', code: 'TRAQQ-QQ' }, { roomNumber: '307', code: 'TRAQQ-QQ' }, { roomNumber: '309', code: 'TRAQQ-QQ' }, { roomNumber: '314', code: 'TRAQQ-QQ' }, { roomNumber: '316', code: 'TRAQQ-QQ' }, { roomNumber: '318', code: 'TRAQQ-QQ' }, { roomNumber: '322', code: 'TRAQQ-QQ' },
+
         // TRAKH-K (1 Room)
+
         { roomNumber: '109', code: 'TRAKH-K' },
+
         // CBREEQQ-QQ (3 Rooms)
+
         { roomNumber: '111', code: 'CBREEQQ-QQ' }, { roomNumber: '113', code: 'CBREEQQ-QQ' }, { roomNumber: '115', code: 'CBREEQQ-QQ' },
+
         // COASK-K (9 Rooms)
+
         { roomNumber: '117', code: 'COASK-K' }, { roomNumber: '119', code: 'COASK-K' }, { roomNumber: '121', code: 'COASK-K' }, { roomNumber: '217', code: 'COASK-K' }, { roomNumber: '219', code: 'COASK-K' }, { roomNumber: '221', code: 'COASK-K' }, { roomNumber: '317', code: 'COASK-K' }, { roomNumber: '319', code: 'COASK-K' }, { roomNumber: '321', code: 'COASK-K' },
+
         // COASQQ-QQ (9 Rooms)
+
         { roomNumber: '123', code: 'COASQQ-QQ' }, { roomNumber: '211', code: 'COASQQ-QQ' }, { roomNumber: '213', code: 'COASQQ-QQ' }, { roomNumber: '215', code: 'COASQQ-QQ' }, { roomNumber: '223', code: 'COASQQ-QQ' }, { roomNumber: '311', code: 'COASQQ-QQ' }, { roomNumber: '313', code: 'COASQQ-QQ' }, { roomNumber: '315', code: 'COASQQ-QQ' }, { roomNumber: '323', code: 'COASQQ-QQ' },
+
         // ISLAND-K (2 Rooms)
+
         { roomNumber: '201', code: 'ISLAND-K' }, { roomNumber: '301', code: 'ISLAND-K' },
+
         // OFKN-K (9 Rooms)
+
         { roomNumber: '124', code: 'OFKN-K' }, { roomNumber: '126', code: 'OFKN-K' }, { roomNumber: '129', code: 'OFKN-K' }, { roomNumber: '224', code: 'OFKN-K' }, { roomNumber: '226', code: 'OFKN-K' }, { roomNumber: '229', code: 'OFKN-K' }, { roomNumber: '324', code: 'OFKN-K' }, { roomNumber: '326', code: 'OFKN-K' }, { roomNumber: '329', code: 'OFKN-K' },
+
         // OFQQ-QQ (9 Rooms)
+
         { roomNumber: '125', code: 'OFQQ-QQ' }, { roomNumber: '127', code: 'OFQQ-QQ' }, { roomNumber: '128', code: 'OFQQ-QQ' }, { roomNumber: '225', code: 'OFQQ-QQ' }, { roomNumber: '227', code: 'OFQQ-QQ' }, { roomNumber: '228', code: 'OFQQ-QQ' }, { roomNumber: '325', code: 'OFQQ-QQ' }, { roomNumber: '327', code: 'OFQQ-QQ' }, { roomNumber: '328', code: 'OFQQ-QQ' }
+
     ],
+
     csh: [
+
         // SQ (15 Rooms)
+
         { roomNumber: '201', code: 'SQ' }, { roomNumber: '210', code: 'SQ' }, { roomNumber: '211', code: 'SQ' }, { roomNumber: '221', code: 'SQ' }, { roomNumber: '222', code: 'SQ' },
+
         { roomNumber: '301', code: 'SQ' }, { roomNumber: '310', code: 'SQ' }, { roomNumber: '311', code: 'SQ' }, { roomNumber: '321', code: 'SQ' }, { roomNumber: '322', code: 'SQ' },
+
         { roomNumber: '401', code: 'SQ' }, { roomNumber: '410', code: 'SQ' }, { roomNumber: '411', code: 'SQ' }, { roomNumber: '418', code: 'SQ' }, { roomNumber: '421', code: 'SQ' }, { roomNumber: '422', code: 'SQ' },
+
         // QQ (3 Rooms)
+
         { roomNumber: '226', code: 'QQ' }, { roomNumber: '326', code: 'QQ' }, { roomNumber: '426', code: 'QQ' },
+
         // DS (16 Rooms)
+
         { roomNumber: '204', code: 'DS' }, { roomNumber: '206', code: 'DS' }, { roomNumber: '208', code: 'DS' }, { roomNumber: '216', code: 'DS' }, { roomNumber: '218', code: 'DS' }, { roomNumber: '220', code: 'DS' },
+
         { roomNumber: '304', code: 'DS' }, { roomNumber: '306', code: 'DS' }, { roomNumber: '308', code: 'DS' }, { roomNumber: '316', code: 'DS' }, { roomNumber: '318', code: 'DS' }, { roomNumber: '320', code: 'DS' },
+
         { roomNumber: '404', code: 'DS' }, { roomNumber: '406', code: 'DS' }, { roomNumber: '408', code: 'DS' }, { roomNumber: '420', code: 'DS' },
+
         // KS (9 Rooms)
+
         { roomNumber: '202', code: 'KS' }, { roomNumber: '214', code: 'KS' }, { roomNumber: '224', code: 'KS' },
+
         { roomNumber: '302', code: 'KS' }, { roomNumber: '314', code: 'KS' }, { roomNumber: '324', code: 'KS' },
+
         { roomNumber: '402', code: 'KS' }, { roomNumber: '414', code: 'KS' }, { roomNumber: '424', code: 'KS' },
+
         // EX (1 Room)
+
         { roomNumber: '416', code: 'EX' }
+
     ],
+
     cgt: [
+
         // PDBL-D (2 Rooms)
+
         { roomNumber: '15', code: 'PDBL-D' }, { roomNumber: '35', code: 'PDBL-D' },
+
         // QUEEN-Q (11 Rooms)
+
         { roomNumber: '02', code: 'QUEEN-Q' }, { roomNumber: '05', code: 'QUEEN-Q' }, { roomNumber: '09', code: 'QUEEN-Q' }, { roomNumber: '10', code: 'QUEEN-Q' }, { roomNumber: '11', code: 'QUEEN-Q' }, { roomNumber: '12', code: 'QUEEN-Q' },
+
         { roomNumber: '25', code: 'QUEEN-Q' }, { roomNumber: '29', code: 'QUEEN-Q' }, { roomNumber: '30', code: 'QUEEN-Q' }, { roomNumber: '31', code: 'QUEEN-Q' }, { roomNumber: '32', code: 'QUEEN-Q' },
+
         // QUEENADA-Q (2 Rooms)
+
         { roomNumber: '07', code: 'QUEENADA-Q' }, { roomNumber: '27', code: 'QUEENADA-Q' },
+
         // KING-K (10 Rooms)
+
         { roomNumber: '01', code: 'KING-K' }, { roomNumber: '03', code: 'KING-K' }, { roomNumber: '06', code: 'KING-K' }, { roomNumber: '08', code: 'KING-K' }, { roomNumber: '14', code: 'KING-K' },
+
         { roomNumber: '17', code: 'KING-K' }, { roomNumber: '23', code: 'KING-K' }, { roomNumber: '26', code: 'KING-K' }, { roomNumber: '34', code: 'KING-K' }, { roomNumber: '37', code: 'KING-K' },
+
         // EKING-K (4 Rooms)
+
         { roomNumber: '16', code: 'EKING-K' }, { roomNumber: '21', code: 'EKING-K' }, { roomNumber: '22', code: 'EKING-K' }, { roomNumber: '36', code: 'EKING-K' },
+
         // QNQN-QQ (1 Room)
+
         { roomNumber: '28', code: 'QNQN-QQ' },
+
         // KSTE-K (2 Rooms)
+
         { roomNumber: '19', code: 'KSTE-K' }, { roomNumber: '39', code: 'KSTE-K' },
+
         // KSTWN-K/T (2 Rooms)
+
         { roomNumber: '13', code: 'KSTWN-K/T' }, { roomNumber: '33', code: 'KSTWN-K/T' },
+
         // KSTSB-K/POC (2 Rooms)
+
         { roomNumber: '20', code: 'KSTSB-K/POC' }, { roomNumber: '40', code: 'KSTSB-K/POC' },
+
         // KSS-K (4 Rooms)
+
         { roomNumber: '04', code: 'KSS-K' }, { roomNumber: '18', code: 'KSS-K' }, { roomNumber: '24', code: 'KSS-K' }, { roomNumber: '38', code: 'KSS-K' }
+
+    ],
+
+    gsl: [
+
+        // SQHC (4 Rooms)
+
+        { roomNumber: '194', code: 'SQHC' }, { roomNumber: '195', code: 'SQHC' }, { roomNumber: '196', code: 'SQHC' }, { roomNumber: '197', code: 'SQHC' },
+
+        
+
+        // QQ1-E (59 Rooms)
+
+        { roomNumber: '140', code: 'QQ1-E' }, { roomNumber: '142', code: 'QQ1-E' }, { roomNumber: '144', code: 'QQ1-E' }, { roomNumber: '146', code: 'QQ1-E' }, { roomNumber: '148', code: 'QQ1-E' }, { roomNumber: '150', code: 'QQ1-E' }, 
+
+        { roomNumber: '152', code: 'QQ1-E' }, { roomNumber: '154', code: 'QQ1-E' }, { roomNumber: '155', code: 'QQ1-E' }, { roomNumber: '156', code: 'QQ1-E' }, { roomNumber: '157', code: 'QQ1-E' }, { roomNumber: '158', code: 'QQ1-E' }, 
+
+        { roomNumber: '159', code: 'QQ1-E' }, { roomNumber: '160', code: 'QQ1-E' }, { roomNumber: '161', code: 'QQ1-E' }, { roomNumber: '162', code: 'QQ1-E' }, { roomNumber: '163', code: 'QQ1-E' }, { roomNumber: '164', code: 'QQ1-E' }, 
+
+        { roomNumber: '190', code: 'QQ1-E' }, { roomNumber: '191', code: 'QQ1-E' }, { roomNumber: '192', code: 'QQ1-E' }, { roomNumber: '193', code: 'QQ1-E' }, { roomNumber: '240', code: 'QQ1-E' }, { roomNumber: '242', code: 'QQ1-E' }, 
+
+        { roomNumber: '244', code: 'QQ1-E' }, { roomNumber: '246', code: 'QQ1-E' }, { roomNumber: '248', code: 'QQ1-E' }, { roomNumber: '250', code: 'QQ1-E' }, { roomNumber: '252', code: 'QQ1-E' }, { roomNumber: '254', code: 'QQ1-E' }, 
+
+        { roomNumber: '255', code: 'QQ1-E' }, { roomNumber: '256', code: 'QQ1-E' }, { roomNumber: '257', code: 'QQ1-E' }, { roomNumber: '258', code: 'QQ1-E' }, { roomNumber: '259', code: 'QQ1-E' }, { roomNumber: '260', code: 'QQ1-E' }, 
+
+        { roomNumber: '261', code: 'QQ1-E' }, { roomNumber: '262', code: 'QQ1-E' }, { roomNumber: '263', code: 'QQ1-E' }, { roomNumber: '264', code: 'QQ1-E' }, { roomNumber: '340', code: 'QQ1-E' }, { roomNumber: '342', code: 'QQ1-E' }, 
+
+        { roomNumber: '344', code: 'QQ1-E' }, { roomNumber: '346', code: 'QQ1-E' }, { roomNumber: '348', code: 'QQ1-E' }, { roomNumber: '350', code: 'QQ1-E' }, { roomNumber: '352', code: 'QQ1-E' }, { roomNumber: '354', code: 'QQ1-E' }, 
+
+        { roomNumber: '355', code: 'QQ1-E' }, { roomNumber: '356', code: 'QQ1-E' }, { roomNumber: '357', code: 'QQ1-E' }, { roomNumber: '358', code: 'QQ1-E' }, { roomNumber: '359', code: 'QQ1-E' }, { roomNumber: '360', code: 'QQ1-E' }, 
+
+        { roomNumber: '361', code: 'QQ1-E' }, { roomNumber: '362', code: 'QQ1-E' }, { roomNumber: '363', code: 'QQ1-E' }, { roomNumber: '364', code: 'QQ1-E' },
+
+
+
+        // K11-E (9 Rooms)
+
+        { roomNumber: '138', code: 'K11-E' }, { roomNumber: '165', code: 'K11-E' }, { roomNumber: '166', code: 'K11-E' }, { roomNumber: '238', code: 'K11-E' }, { roomNumber: '265', code: 'K11-E' }, { roomNumber: '266', code: 'K11-E' }, 
+
+        { roomNumber: '338', code: 'K11-E' }, { roomNumber: '365', code: 'K11-E' }, { roomNumber: '366', code: 'K11-E' },
+
+
+
+        // DD20-P (24 Rooms)
+
+        { roomNumber: '139', code: 'DD20-P' }, { roomNumber: '141', code: 'DD20-P' }, { roomNumber: '143', code: 'DD20-P' }, { roomNumber: '145', code: 'DD20-P' }, { roomNumber: '147', code: 'DD20-P' }, { roomNumber: '149', code: 'DD20-P' }, 
+
+        { roomNumber: '151', code: 'DD20-P' }, { roomNumber: '153', code: 'DD20-P' }, { roomNumber: '239', code: 'DD20-P' }, { roomNumber: '241', code: 'DD20-P' }, { roomNumber: '243', code: 'DD20-P' }, { roomNumber: '245', code: 'DD20-P' }, 
+
+        { roomNumber: '247', code: 'DD20-P' }, { roomNumber: '249', code: 'DD20-P' }, { roomNumber: '251', code: 'DD20-P' }, { roomNumber: '253', code: 'DD20-P' }, { roomNumber: '339', code: 'DD20-P' }, { roomNumber: '341', code: 'DD20-P' }, 
+
+        { roomNumber: '343', code: 'DD20-P' }, { roomNumber: '345', code: 'DD20-P' }, { roomNumber: '347', code: 'DD20-P' }, { roomNumber: '349', code: 'DD20-P' }, { roomNumber: '351', code: 'DD20-P' }, { roomNumber: '353', code: 'DD20-P' },
+
+
+
+        // K12-P (3 Rooms)
+
+        { roomNumber: '137', code: 'K12-P' }, { roomNumber: '237', code: 'K12-P' }, { roomNumber: '337', code: 'K12-P' },
+
+
+
+        // QQ2-I (41 Rooms)
+
+        { roomNumber: '102', code: 'QQ2-I' }, { roomNumber: '104', code: 'QQ2-I' }, { roomNumber: '106', code: 'QQ2-I' }, { roomNumber: '108', code: 'QQ2-I' }, { roomNumber: '201', code: 'QQ2-I' }, { roomNumber: '203', code: 'QQ2-I' }, 
+
+        { roomNumber: '209', code: 'QQ2-I' }, { roomNumber: '223', code: 'QQ2-I' }, { roomNumber: '225', code: 'QQ2-I' }, { roomNumber: '227', code: 'QQ2-I' }, { roomNumber: '229', code: 'QQ2-I' }, { roomNumber: '301', code: 'QQ2-I' }, 
+
+        { roomNumber: '303', code: 'QQ2-I' }, { roomNumber: '309', code: 'QQ2-I' }, { roomNumber: '311', code: 'QQ2-I' }, { roomNumber: '313', code: 'QQ2-I' }, { roomNumber: '315', code: 'QQ2-I' }, { roomNumber: '317', code: 'QQ2-I' }, 
+
+        { roomNumber: '319', code: 'QQ2-I' }, { roomNumber: '321', code: 'QQ2-I' }, { roomNumber: '323', code: 'QQ2-I' }, { roomNumber: '325', code: 'QQ2-I' }, { roomNumber: '327', code: 'QQ2-I' }, { roomNumber: '329', code: 'QQ2-I' }, 
+
+        { roomNumber: '401', code: 'QQ2-I' }, { roomNumber: '403', code: 'QQ2-I' }, { roomNumber: '409', code: 'QQ2-I' }, { roomNumber: '411', code: 'QQ2-I' }, { roomNumber: '413', code: 'QQ2-I' }, { roomNumber: '415', code: 'QQ2-I' }, 
+
+        { roomNumber: '417', code: 'QQ2-I' }, { roomNumber: '419', code: 'QQ2-I' }, { roomNumber: '421', code: 'QQ2-I' }, { roomNumber: '423', code: 'QQ2-I' }, { roomNumber: '425', code: 'QQ2-I' }, { roomNumber: '427', code: 'QQ2-I' }, 
+
+        { roomNumber: '429', code: 'QQ2-I' }, { roomNumber: '513', code: 'QQ2-I' }, { roomNumber: '515', code: 'QQ2-I' }, { roomNumber: '521', code: 'QQ2-I' }, { roomNumber: '523', code: 'QQ2-I' },
+
+
+
+        // DD2-B (52 Rooms)
+
+        { roomNumber: '200', code: 'DD2-B' }, { roomNumber: '202', code: 'DD2-B' }, { roomNumber: '204', code: 'DD2-B' }, { roomNumber: '206', code: 'DD2-B' }, { roomNumber: '208', code: 'DD2-B' }, { roomNumber: '210', code: 'DD2-B' }, 
+
+        { roomNumber: '212', code: 'DD2-B' }, { roomNumber: '222', code: 'DD2-B' }, { roomNumber: '224', code: 'DD2-B' }, { roomNumber: '226', code: 'DD2-B' }, { roomNumber: '228', code: 'DD2-B' }, { roomNumber: '230', code: 'DD2-B' }, 
+
+        { roomNumber: '232', code: 'DD2-B' }, { roomNumber: '234', code: 'DD2-B' }, { roomNumber: '236', code: 'DD2-B' }, { roomNumber: '300', code: 'DD2-B' }, { roomNumber: '302', code: 'DD2-B' }, { roomNumber: '304', code: 'DD2-B' }, 
+
+        { roomNumber: '306', code: 'DD2-B' }, { roomNumber: '308', code: 'DD2-B' }, { roomNumber: '310', code: 'DD2-B' }, { roomNumber: '312', code: 'DD2-B' }, { roomNumber: '322', code: 'DD2-B' }, { roomNumber: '324', code: 'DD2-B' }, 
+
+        { roomNumber: '326', code: 'DD2-B' }, { roomNumber: '328', code: 'DD2-B' }, { roomNumber: '330', code: 'DD2-B' }, { roomNumber: '332', code: 'DD2-B' }, { roomNumber: '334', code: 'DD2-B' }, { roomNumber: '336', code: 'DD2-B' }, 
+
+        { roomNumber: '400', code: 'DD2-B' }, { roomNumber: '402', code: 'DD2-B' }, { roomNumber: '404', code: 'DD2-B' }, { roomNumber: '406', code: 'DD2-B' }, { roomNumber: '408', code: 'DD2-B' }, { roomNumber: '410', code: 'DD2-B' }, 
+
+        { roomNumber: '412', code: 'DD2-B' }, { roomNumber: '422', code: 'DD2-B' }, { roomNumber: '424', code: 'DD2-B' }, { roomNumber: '426', code: 'DD2-B' }, { roomNumber: '428', code: 'DD2-B' }, { roomNumber: '430', code: 'DD2-B' }, 
+
+        { roomNumber: '432', code: 'DD2-B' }, { roomNumber: '434', code: 'DD2-B' }, { roomNumber: '436', code: 'DD2-B' }, { roomNumber: '504', code: 'DD2-B' }, { roomNumber: '506', code: 'DD2-B' }, { roomNumber: '512', code: 'DD2-B' }, 
+
+        { roomNumber: '522', code: 'DD2-B' }, { roomNumber: '528', code: 'DD2-B' }, { roomNumber: '530', code: 'DD2-B' },
+
+
+
+        // K13-F (9 Rooms)
+
+        { roomNumber: '501', code: 'K13-F' }, { roomNumber: '503', code: 'K13-F' }, { roomNumber: '509', code: 'K13-F' }, { roomNumber: '511', code: 'K13-F' }, { roomNumber: '517', code: 'K13-F' }, { roomNumber: '519', code: 'K13-F' }, 
+
+        { roomNumber: '525', code: 'K13-F' }, { roomNumber: '527', code: 'K13-F' }, { roomNumber: '529', code: 'K13-F' },
+
+
+
+        // K1-B (9 Rooms)
+
+        { roomNumber: '500', code: 'K1-B' }, { roomNumber: '502', code: 'K1-B' }, { roomNumber: '508', code: 'K1-B' }, { roomNumber: '510', code: 'K1-B' }, { roomNumber: '524', code: 'K1-B' }, { roomNumber: '526', code: 'K1-B' }, 
+
+        { roomNumber: '532', code: 'K1-B' }, { roomNumber: '534', code: 'K1-B' }, { roomNumber: '536', code: 'K1-B' },
+
+
+
+        // K3 (4 Rooms)
+
+        { roomNumber: '207', code: 'K3' }, { roomNumber: '307', code: 'K3' }, { roomNumber: '407', code: 'K3' }, { roomNumber: '507', code: 'K3' },
+
+
+
+        // SQQ4 (3 Rooms)
+
+        { roomNumber: '235', code: 'SQQ4' }, { roomNumber: '335', code: 'SQQ4' }, { roomNumber: '435', code: 'SQQ4' }
+
+    ],
+
+    one: [
+
+        // CORNSTE-K (1 Room)
+
+        { roomNumber: '234', code: 'CORNSTE-K' },
+
+        // DBDBADA-DD (4 Rooms)
+
+        { roomNumber: '102', code: 'DBDBADA-DD' }, { roomNumber: '104', code: 'DBDBADA-DD' }, { roomNumber: '128', code: 'DBDBADA-DD' }, { roomNumber: '129', code: 'DBDBADA-DD' },
+
+        // KING-K (10 Rooms)
+
+        { roomNumber: '109', code: 'KING-K' }, { roomNumber: '110', code: 'KING-K' }, { roomNumber: '137', code: 'KING-K' }, { roomNumber: '203', code: 'KING-K' }, { roomNumber: '204', code: 'KING-K' },
+
+        { roomNumber: '213', code: 'KING-K' }, { roomNumber: '214', code: 'KING-K' }, { roomNumber: '230', code: 'KING-K' }, { roomNumber: '237', code: 'KING-K' }, { roomNumber: '245', code: 'KING-K' },
+
+        // KINGADA-K (1 Room)
+
+        { roomNumber: '103', code: 'KINGADA-K' },
+
+        // KKING-K (5 Rooms)
+
+        { roomNumber: '106', code: 'KKING-K' }, { roomNumber: '111', code: 'KKING-K' }, { roomNumber: '122', code: 'KKING-K' }, { roomNumber: '207', code: 'KKING-K' }, { roomNumber: '224', code: 'KKING-K' },
+
+        // KSTE-K (1 Room)
+
+        { roomNumber: '232', code: 'KSTE-K' },
+
+        // QNQN-QQ (66 Rooms)
+
+        { roomNumber: '105', code: 'QNQN-QQ' }, { roomNumber: '107', code: 'QNQN-QQ' }, { roomNumber: '108', code: 'QNQN-QQ' }, { roomNumber: '113', code: 'QNQN-QQ' }, { roomNumber: '115', code: 'QNQN-QQ' }, { roomNumber: '116', code: 'QNQN-QQ' },
+
+        { roomNumber: '117', code: 'QNQN-QQ' }, { roomNumber: '118', code: 'QNQN-QQ' }, { roomNumber: '119', code: 'QNQN-QQ' }, { roomNumber: '120', code: 'QNQN-QQ' }, { roomNumber: '121', code: 'QNQN-QQ' }, { roomNumber: '123', code: 'QNQN-QQ' },
+
+        { roomNumber: '124', code: 'QNQN-QQ' }, { roomNumber: '125', code: 'QNQN-QQ' }, { roomNumber: '126', code: 'QNQN-QQ' }, { roomNumber: '127', code: 'QNQN-QQ' }, { roomNumber: '130', code: 'QNQN-QQ' }, { roomNumber: '131', code: 'QNQN-QQ' },
+
+        { roomNumber: '132', code: 'QNQN-QQ' }, { roomNumber: '133', code: 'QNQN-QQ' }, { roomNumber: '134', code: 'QNQN-QQ' }, { roomNumber: '135', code: 'QNQN-QQ' }, { roomNumber: '138', code: 'QNQN-QQ' }, { roomNumber: '139', code: 'QNQN-QQ' },
+
+        { roomNumber: '140', code: 'QNQN-QQ' }, { roomNumber: '141', code: 'QNQN-QQ' }, { roomNumber: '142', code: 'QNQN-QQ' }, { roomNumber: '143', code: 'QNQN-QQ' }, { roomNumber: '145', code: 'QNQN-QQ' }, { roomNumber: '201', code: 'QNQN-QQ' },
+
+        { roomNumber: '202', code: 'QNQN-QQ' }, { roomNumber: '205', code: 'QNQN-QQ' }, { roomNumber: '206', code: 'QNQN-QQ' }, { roomNumber: '208', code: 'QNQN-QQ' }, { roomNumber: '211', code: 'QNQN-QQ' }, { roomNumber: '215', code: 'QNQN-QQ' },
+
+        { roomNumber: '216', code: 'QNQN-QQ' }, { roomNumber: '217', code: 'QNQN-QQ' }, { roomNumber: '218', code: 'QNQN-QQ' }, { roomNumber: '219', code: 'QNQN-QQ' }, { roomNumber: '220', code: 'QNQN-QQ' }, { roomNumber: '221', code: 'QNQN-QQ' },
+
+        { roomNumber: '222', code: 'QNQN-QQ' }, { roomNumber: '223', code: 'QNQN-QQ' }, { roomNumber: '225', code: 'QNQN-QQ' }, { roomNumber: '226', code: 'QNQN-QQ' }, { roomNumber: '227', code: 'QNQN-QQ' }, { roomNumber: '228', code: 'QNQN-QQ' },
+
+        { roomNumber: '238', code: 'QNQN-QQ' }, { roomNumber: '239', code: 'QNQN-QQ' }, { roomNumber: '240', code: 'QNQN-QQ' }, { roomNumber: '241', code: 'QNQN-QQ' }, { roomNumber: '242', code: 'QNQN-QQ' }, { roomNumber: '243', code: 'QNQN-QQ' },
+
+        { roomNumber: '247', code: 'QNQN-QQ' }, { roomNumber: '248', code: 'QNQN-QQ' }, { roomNumber: '249', code: 'QNQN-QQ' }, { roomNumber: '250', code: 'QNQN-QQ' }, { roomNumber: '251', code: 'QNQN-QQ' }, { roomNumber: '252', code: 'QNQN-QQ' },
+
+        { roomNumber: '253', code: 'QNQN-QQ' }, { roomNumber: '254', code: 'QNQN-QQ' }, { roomNumber: '255', code: 'QNQN-QQ' },
+
+        // QNQNADA-QQ (1 Room)
+
+        { roomNumber: '101', code: 'QNQNADA-QQ' },
+
+        // QQNQN-QQ (6 Rooms)
+
+        { roomNumber: '136', code: 'QQNQN-QQ' }, { roomNumber: '209', code: 'QQNQN-QQ' }, { roomNumber: '210', code: 'QQNQN-QQ' }, { roomNumber: '212', code: 'QQNQN-QQ' }, { roomNumber: '244', code: 'QQNQN-QQ' }, { roomNumber: '246', code: 'QQNQN-QQ' }
+
+    ],
+
+    ich: [
+
+        // ACCESS-K (2 Rooms)
+
+        { roomNumber: '112', code: 'ACCESS-K' }, { roomNumber: '114', code: 'ACCESS-K' },
+
+        // DOUBLE-QQ (8 Rooms)
+
+        { roomNumber: '202', code: 'DOUBLE-QQ' }, { roomNumber: '203', code: 'DOUBLE-QQ' }, { roomNumber: '212', code: 'DOUBLE-QQ' }, { roomNumber: '225', code: 'DOUBLE-QQ' }, { roomNumber: '301', code: 'DOUBLE-QQ' }, { roomNumber: '309', code: 'DOUBLE-QQ' }, { roomNumber: '315', code: 'DOUBLE-QQ' }, { roomNumber: '317', code: 'DOUBLE-QQ' },
+
+        // EURO-D (2 Rooms)
+
+        { roomNumber: '221', code: 'EURO-D' }, { roomNumber: '312', code: 'EURO-D' },
+
+        // JUNIOR-K (1 Room)
+
+        { roomNumber: '217', code: 'JUNIOR-K' },
+
+        // KINGSB-K (13 Rooms)
+
+        { roomNumber: '204', code: 'KINGSB-K' }, { roomNumber: '205', code: 'KINGSB-K' }, { roomNumber: '215', code: 'KINGSB-K' }, { roomNumber: '216', code: 'KINGSB-K' }, { roomNumber: '223', code: 'KINGSB-K' }, { roomNumber: '224', code: 'KINGSB-K' }, { roomNumber: '226', code: 'KINGSB-K' }, { roomNumber: '302', code: 'KINGSB-K' }, { roomNumber: '303', code: 'KINGSB-K' }, { roomNumber: '304', code: 'KINGSB-K' }, { roomNumber: '310', code: 'KINGSB-K' }, { roomNumber: '311', code: 'KINGSB-K' }, { roomNumber: '316', code: 'KINGSB-K' },
+
+        // SENIOR-K (1 Room)
+
+        { roomNumber: '218', code: 'SENIOR-K' },
+
+        // STAND-K (22 Rooms)
+
+        { roomNumber: '101', code: 'STAND-K' }, { roomNumber: '102', code: 'STAND-K' }, { roomNumber: '103', code: 'STAND-K' }, { roomNumber: '104', code: 'STAND-K' }, { roomNumber: '105', code: 'STAND-K' }, { roomNumber: '106', code: 'STAND-K' }, { roomNumber: '201', code: 'STAND-K' }, { roomNumber: '206', code: 'STAND-K' }, { roomNumber: '207', code: 'STAND-K' }, { roomNumber: '208', code: 'STAND-K' }, { roomNumber: '209', code: 'STAND-K' }, { roomNumber: '210', code: 'STAND-K' }, { roomNumber: '211', code: 'STAND-K' }, { roomNumber: '214', code: 'STAND-K' }, { roomNumber: '219', code: 'STAND-K' }, { roomNumber: '220', code: 'STAND-K' }, { roomNumber: '222', code: 'STAND-K' }, { roomNumber: '305', code: 'STAND-K' }, { roomNumber: '306', code: 'STAND-K' }, { roomNumber: '307', code: 'STAND-K' }, { roomNumber: '308', code: 'STAND-K' }, { roomNumber: '314', code: 'STAND-K' }
+
+    ],
+
+    maj: [
+
+        // EX (1 Room)
+
+        { roomNumber: '401', code: 'EX' },
+
+        // KS (6 Rooms)
+
+        { roomNumber: '102', code: 'KS' }, { roomNumber: '120', code: 'KS' }, { roomNumber: '202', code: 'KS' }, { roomNumber: '220', code: 'KS' }, { roomNumber: '302', code: 'KS' }, { roomNumber: '320', code: 'KS' },
+
+        // QQ (1 Room)
+
+        { roomNumber: '403', code: 'QQ' },
+
+        // QS (10 Rooms)
+
+        { roomNumber: '104', code: 'QS' }, { roomNumber: '106', code: 'QS' }, { roomNumber: '118', code: 'QS' }, { roomNumber: '204', code: 'QS' }, { roomNumber: '206', code: 'QS' }, { roomNumber: '218', code: 'QS' }, { roomNumber: '304', code: 'QS' }, { roomNumber: '306', code: 'QS' }, { roomNumber: '318', code: 'QS' }, { roomNumber: '402', code: 'QS' },
+
+        // SQ (28 Rooms)
+
+        { roomNumber: '108', code: 'SQ' }, { roomNumber: '109', code: 'SQ' }, { roomNumber: '110', code: 'SQ' }, { roomNumber: '111', code: 'SQ' }, { roomNumber: '112', code: 'SQ' }, { roomNumber: '114', code: 'SQ' }, { roomNumber: '115', code: 'SQ' }, { roomNumber: '116', code: 'SQ' }, { roomNumber: '117', code: 'SQ' },
+
+        { roomNumber: '208', code: 'SQ' }, { roomNumber: '209', code: 'SQ' }, { roomNumber: '210', code: 'SQ' }, { roomNumber: '211', code: 'SQ' }, { roomNumber: '212', code: 'SQ' }, { roomNumber: '214', code: 'SQ' }, { roomNumber: '215', code: 'SQ' }, { roomNumber: '216', code: 'SQ' }, { roomNumber: '217', code: 'SQ' },
+
+        { roomNumber: '308', code: 'SQ' }, { roomNumber: '309', code: 'SQ' }, { roomNumber: '310', code: 'SQ' }, { roomNumber: '311', code: 'SQ' }, { roomNumber: '312', code: 'SQ' }, { roomNumber: '314', code: 'SQ' }, { roomNumber: '315', code: 'SQ' }, { roomNumber: '316', code: 'SQ' }, { roomNumber: '317', code: 'SQ' },
+
+        { roomNumber: '404', code: 'SQ' },
+
+        // SS (6 Rooms)
+
+        { roomNumber: '101', code: 'SS' }, { roomNumber: '122', code: 'SS' }, { roomNumber: '201', code: 'SS' }, { roomNumber: '222', code: 'SS' }, { roomNumber: '301', code: 'SS' }, { roomNumber: '322', code: 'SS' }
+
+    ],
+
+    mcs: [
+
+        // ADAKING (3 Rooms)
+
+        { roomNumber: '119', code: 'ADAKING' }, { roomNumber: '219', code: 'ADAKING' }, { roomNumber: '319', code: 'ADAKING' },
+
+        
+
+        // EXEC (2 Rooms)
+
+        { roomNumber: '200', code: 'EXEC' }, { roomNumber: '222', code: 'EXEC' },
+
+
+
+        // KING (37 Rooms)
+
+        { roomNumber: '104', code: 'KING' }, { roomNumber: '105', code: 'KING' }, { roomNumber: '106', code: 'KING' }, { roomNumber: '107', code: 'KING' }, { roomNumber: '108', code: 'KING' }, { roomNumber: '109', code: 'KING' }, 
+
+        { roomNumber: '111', code: 'KING' }, { roomNumber: '121', code: 'KING' }, { roomNumber: '123', code: 'KING' }, { roomNumber: '125', code: 'KING' }, { roomNumber: '204', code: 'KING' }, { roomNumber: '205', code: 'KING' }, 
+
+        { roomNumber: '206', code: 'KING' }, { roomNumber: '207', code: 'KING' }, { roomNumber: '208', code: 'KING' }, { roomNumber: '209', code: 'KING' }, { roomNumber: '210', code: 'KING' }, { roomNumber: '211', code: 'KING' }, 
+
+        { roomNumber: '221', code: 'KING' }, { roomNumber: '223', code: 'KING' }, { roomNumber: '224', code: 'KING' }, { roomNumber: '225', code: 'KING' }, { roomNumber: '226', code: 'KING' }, { roomNumber: '304', code: 'KING' }, 
+
+        { roomNumber: '305', code: 'KING' }, { roomNumber: '306', code: 'KING' }, { roomNumber: '307', code: 'KING' }, { roomNumber: '308', code: 'KING' }, { roomNumber: '309', code: 'KING' }, { roomNumber: '310', code: 'KING' }, 
+
+        { roomNumber: '311', code: 'KING' }, { roomNumber: '321', code: 'KING' }, { roomNumber: '322', code: 'KING' }, { roomNumber: '323', code: 'KING' }, { roomNumber: '324', code: 'KING' }, { roomNumber: '325', code: 'KING' }, 
+
+        { roomNumber: '326', code: 'KING' },
+
+
+
+        // KSUITE (3 Rooms)
+
+        { roomNumber: '215', code: 'KSUITE' }, { roomNumber: '314', code: 'KSUITE' }, { roomNumber: '315', code: 'KSUITE' },
+
+
+
+        // QQ (30 Rooms)
+
+        { roomNumber: '100', code: 'QQ' }, { roomNumber: '101', code: 'QQ' }, { roomNumber: '102', code: 'QQ' }, { roomNumber: '103', code: 'QQ' }, { roomNumber: '113', code: 'QQ' }, { roomNumber: '127', code: 'QQ' }, 
+
+        { roomNumber: '128', code: 'QQ' }, { roomNumber: '129', code: 'QQ' }, { roomNumber: '130', code: 'QQ' }, { roomNumber: '201', code: 'QQ' }, { roomNumber: '202', code: 'QQ' }, { roomNumber: '203', code: 'QQ' }, 
+
+        { roomNumber: '212', code: 'QQ' }, { roomNumber: '213', code: 'QQ' }, { roomNumber: '217', code: 'QQ' }, { roomNumber: '227', code: 'QQ' }, { roomNumber: '228', code: 'QQ' }, { roomNumber: '229', code: 'QQ' }, 
+
+        { roomNumber: '230', code: 'QQ' }, { roomNumber: '300', code: 'QQ' }, { roomNumber: '301', code: 'QQ' }, { roomNumber: '302', code: 'QQ' }, { roomNumber: '303', code: 'QQ' }, { roomNumber: '312', code: 'QQ' }, 
+
+        { roomNumber: '313', code: 'QQ' }, { roomNumber: '316', code: 'QQ' }, { roomNumber: '317', code: 'QQ' }, { roomNumber: '327', code: 'QQ' }, { roomNumber: '328', code: 'QQ' }, { roomNumber: '329', code: 'QQ' }, 
+
+        { roomNumber: '330', code: 'QQ' }
+
+    ],
+
+    sea: [
+
+        // DKING-K (5 Rooms)
+
+        { roomNumber: '213', code: 'DKING-K' }, { roomNumber: '215', code: 'DKING-K' }, { roomNumber: '305', code: 'DKING-K' }, { roomNumber: '311', code: 'DKING-K' }, { roomNumber: '313', code: 'DKING-K' },
+
+        // DQQ-QQ (6 Rooms)
+
+        { roomNumber: '114', code: 'DQQ-QQ' }, { roomNumber: '115', code: 'DQQ-QQ' }, { roomNumber: '212', code: 'DQQ-QQ' }, { roomNumber: '214', code: 'DQQ-QQ' }, { roomNumber: '314', code: 'DQQ-QQ' }, { roomNumber: '315', code: 'DQQ-QQ' },
+
+        // KING-K (13 Rooms)
+
+        { roomNumber: '105', code: 'KING-K' }, { roomNumber: '107', code: 'KING-K' }, { roomNumber: '109', code: 'KING-K' }, { roomNumber: '111', code: 'KING-K' }, { roomNumber: '202', code: 'KING-K' }, { roomNumber: '204', code: 'KING-K' }, 
+
+        { roomNumber: '205', code: 'KING-K' }, { roomNumber: '207', code: 'KING-K' }, { roomNumber: '209', code: 'KING-K' }, { roomNumber: '211', code: 'KING-K' }, { roomNumber: '306', code: 'KING-K' }, { roomNumber: '307', code: 'KING-K' }, 
+
+        { roomNumber: '309', code: 'KING-K' },
+
+        // KINGOF-K (6 Rooms)
+
+        { roomNumber: '116', code: 'KINGOF-K' }, { roomNumber: '117', code: 'KINGOF-K' }, { roomNumber: '216', code: 'KINGOF-K' }, { roomNumber: '217', code: 'KINGOF-K' }, { roomNumber: '316', code: 'KINGOF-K' }, { roomNumber: '317', code: 'KINGOF-K' },
+
+        // Q-Q (2 Rooms)
+
+        { roomNumber: '201', code: 'Q-Q' }, { roomNumber: '301', code: 'Q-Q' },
+
+        // QADA-Q (1 Room)
+
+        { roomNumber: '101', code: 'QADA-Q' },
+
+        // QQ-QQ (18 Rooms)
+
+        { roomNumber: '102', code: 'QQ-QQ' }, { roomNumber: '103', code: 'QQ-QQ' }, { roomNumber: '104', code: 'QQ-QQ' }, { roomNumber: '106', code: 'QQ-QQ' }, { roomNumber: '108', code: 'QQ-QQ' }, { roomNumber: '110', code: 'QQ-QQ' }, 
+
+        { roomNumber: '112', code: 'QQ-QQ' }, { roomNumber: '113', code: 'QQ-QQ' }, { roomNumber: '203', code: 'QQ-QQ' }, { roomNumber: '206', code: 'QQ-QQ' }, { roomNumber: '208', code: 'QQ-QQ' }, { roomNumber: '210', code: 'QQ-QQ' }, 
+
+        { roomNumber: '302', code: 'QQ-QQ' }, { roomNumber: '303', code: 'QQ-QQ' }, { roomNumber: '304', code: 'QQ-QQ' }, { roomNumber: '308', code: 'QQ-QQ' }, { roomNumber: '310', code: 'QQ-QQ' }, { roomNumber: '312', code: 'QQ-QQ' }
+
+    ],
+
+    sci: [
+
+        // 2QCrk (14 Rooms)
+
+        { roomNumber: '222', code: '2QCrk' }, { roomNumber: '122', code: '2QCrk' }, { roomNumber: '206', code: '2QCrk' }, { roomNumber: '116', code: '2QCrk' }, { roomNumber: '210', code: '2QCrk' }, 
+
+        { roomNumber: '110', code: '2QCrk' }, { roomNumber: '118', code: '2QCrk' }, { roomNumber: '106', code: '2QCrk' }, { roomNumber: '114', code: '2QCrk' }, { roomNumber: '208', code: '2QCrk' }, 
+
+        { roomNumber: '104', code: '2QCrk' }, { roomNumber: '102', code: '2QCrk' }, { roomNumber: '220', code: '2QCrk' }, { roomNumber: '204', code: '2QCrk' },
+
+        
+
+        // 2QCrk ADA (2 Rooms)
+
+        { roomNumber: '225', code: '2QCrk ADA' }, { roomNumber: '226', code: '2QCrk ADA' },
+
+
+
+        // 2QMrsh (13 Rooms)
+
+        { roomNumber: '109', code: '2QMRSH' }, { roomNumber: '209', code: '2QMRSH' }, { roomNumber: '115', code: '2QMRSH' }, { roomNumber: '101', code: '2QMRSH' }, { roomNumber: '105', code: '2QMRSH' }, 
+
+        { roomNumber: '215', code: '2QMRSH' }, { roomNumber: '217', code: '2QMRSH' }, { roomNumber: '121', code: '2QMRSH' }, { roomNumber: '201', code: '2QMRSH' }, { roomNumber: '117', code: '2QMRSH' }, 
+
+        { roomNumber: '205', code: '2QMRSH' }, { roomNumber: '113', code: '2QMRSH' }, { roomNumber: '221', code: '2QMRSH' }, { roomNumber: '103', code: '2QMRSH' },
+
+
+
+        // DKCrk (4 Rooms)
+
+        { roomNumber: '212', code: 'DKCrk' }, { roomNumber: '112', code: 'DKCrk' }, { roomNumber: '124', code: 'DKCrk' }, { roomNumber: '224', code: 'DKCrk' },
+
+
+
+        // DKMrsh-K (1 Room)
+
+        { roomNumber: '123', code: 'DKMrsh-K' },
+
+
+
+        // JRSTE-K/POC (1 Room)
+
+        { roomNumber: '227', code: 'JRSTE-K/POC' },
+
+
+
+        // KCrk (6 Rooms)
+
+        { roomNumber: '214', code: 'KCrk' }, { roomNumber: '216', code: 'KCrk' }, { roomNumber: '218', code: 'KCrk' }, { roomNumber: '108', code: 'KCrk' }, { roomNumber: '120', code: 'KCrk' }, 
+
+        { roomNumber: '202', code: 'KCrk' },
+
+
+
+        // KMrsh (9 Rooms)
+
+        { roomNumber: '203', code: 'KMrsh' }, { roomNumber: '207', code: 'KMrsh' }, { roomNumber: '213', code: 'KMrsh' }, { roomNumber: '119', code: 'KMrsh' }, { roomNumber: '107', code: 'KMrsh' }, 
+
+        { roomNumber: '219', code: 'KMrsh' }, { roomNumber: '111', code: 'KMrsh' }, { roomNumber: '223', code: 'KMrsh' }, { roomNumber: '211', code: 'KMrsh' }
+
+    ],
+
+    soh: [
+
+        // 1-2Q-NB-Stan-QQ (8 Rooms)
+
+        { roomNumber: '204', code: '1-2Q-NB-Stan-QQ' }, { roomNumber: '206', code: '1-2Q-NB-Stan-QQ' }, { roomNumber: '208', code: '1-2Q-NB-Stan-QQ' }, { roomNumber: '210', code: '1-2Q-NB-Stan-QQ' }, { roomNumber: '212', code: '1-2Q-NB-Stan-QQ' }, { roomNumber: '223', code: '1-2Q-NB-Stan-QQ' }, { roomNumber: '225', code: '1-2Q-NB-Stan-QQ' }, { roomNumber: '227', code: '1-2Q-NB-Stan-QQ' },
+
+        
+
+        // 10-King-OV-B-K (16 Rooms)
+
+        { roomNumber: '314', code: '10-King-OV-B-K' }, { roomNumber: '414', code: '10-King-OV-B-K' }, { roomNumber: '504', code: '10-King-OV-B-K' }, { roomNumber: '508', code: '10-King-OV-B-K' }, { roomNumber: '514', code: '10-King-OV-B-K' }, { roomNumber: '604', code: '10-King-OV-B-K' }, { roomNumber: '606', code: '10-King-OV-B-K' }, { roomNumber: '608', code: '10-King-OV-B-K' }, { roomNumber: '614', code: '10-King-OV-B-K' }, 
+
+        { roomNumber: '704', code: '10-King-OV-B-K' }, { roomNumber: '706', code: '10-King-OV-B-K' }, { roomNumber: '708', code: '10-King-OV-B-K' }, { roomNumber: '714', code: '10-King-OV-B-K' }, { roomNumber: '804', code: '10-King-OV-B-K' }, { roomNumber: '808', code: '10-King-OV-B-K' }, { roomNumber: '814', code: '10-King-OV-B-K' },
+
+
+
+        // 11-KingSuite-K/SOFA (1 Room)
+
+        { roomNumber: '201', code: '11-KingSuite-K/SOFA' },
+
+
+
+        // 3-King-NB-K (1 Room)
+
+        { roomNumber: '214', code: '3-King-NB-K' },
+
+
+
+        // 4-ADAQueenRS-Q (2 Rooms)
+
+        { roomNumber: '323', code: '4-ADAQueenRS-Q' }, { roomNumber: '327', code: '4-ADAQueenRS-Q' },
+
+
+
+        // 5-ADAQueen-Q (6 Rooms)
+
+        { roomNumber: '423', code: '5-ADAQueen-Q' }, { roomNumber: '427', code: '5-ADAQueen-Q' }, { roomNumber: '523', code: '5-ADAQueen-Q' }, { roomNumber: '527', code: '5-ADAQueen-Q' }, { roomNumber: '623', code: '5-ADAQueen-Q' }, { roomNumber: '627', code: '5-ADAQueen-Q' },
+
+
+
+        // 6-2Q-PV-Bal-QQ (58 Rooms)
+
+        { roomNumber: '301', code: '6-2Q-PV-Bal-QQ' }, { roomNumber: '303', code: '6-2Q-PV-Bal-QQ' }, { roomNumber: '305', code: '6-2Q-PV-Bal-QQ' }, { roomNumber: '307', code: '6-2Q-PV-Bal-QQ' }, { roomNumber: '309', code: '6-2Q-PV-Bal-QQ' }, { roomNumber: '311', code: '6-2Q-PV-Bal-QQ' }, { roomNumber: '313', code: '6-2Q-PV-Bal-QQ' }, { roomNumber: '315', code: '6-2Q-PV-Bal-QQ' }, { roomNumber: '321', code: '6-2Q-PV-Bal-QQ' }, { roomNumber: '325', code: '6-2Q-PV-Bal-QQ' },
+
+        { roomNumber: '401', code: '6-2Q-PV-Bal-QQ' }, { roomNumber: '403', code: '6-2Q-PV-Bal-QQ' }, { roomNumber: '405', code: '6-2Q-PV-Bal-QQ' }, { roomNumber: '407', code: '6-2Q-PV-Bal-QQ' }, { roomNumber: '409', code: '6-2Q-PV-Bal-QQ' }, { roomNumber: '411', code: '6-2Q-PV-Bal-QQ' }, { roomNumber: '413', code: '6-2Q-PV-Bal-QQ' }, { roomNumber: '415', code: '6-2Q-PV-Bal-QQ' }, { roomNumber: '421', code: '6-2Q-PV-Bal-QQ' }, { roomNumber: '425', code: '6-2Q-PV-Bal-QQ' },
+
+        { roomNumber: '501', code: '6-2Q-PV-Bal-QQ' }, { roomNumber: '503', code: '6-2Q-PV-Bal-QQ' }, { roomNumber: '505', code: '6-2Q-PV-Bal-QQ' }, { roomNumber: '507', code: '6-2Q-PV-Bal-QQ' }, { roomNumber: '509', code: '6-2Q-PV-Bal-QQ' }, { roomNumber: '511', code: '6-2Q-PV-Bal-QQ' }, { roomNumber: '513', code: '6-2Q-PV-Bal-QQ' }, { roomNumber: '515', code: '6-2Q-PV-Bal-QQ' }, { roomNumber: '521', code: '6-2Q-PV-Bal-QQ' }, { roomNumber: '525', code: '6-2Q-PV-Bal-QQ' },
+
+        { roomNumber: '601', code: '6-2Q-PV-Bal-QQ' }, { roomNumber: '603', code: '6-2Q-PV-Bal-QQ' }, { roomNumber: '605', code: '6-2Q-PV-Bal-QQ' }, { roomNumber: '607', code: '6-2Q-PV-Bal-QQ' }, { roomNumber: '609', code: '6-2Q-PV-Bal-QQ' }, { roomNumber: '611', code: '6-2Q-PV-Bal-QQ' }, { roomNumber: '613', code: '6-2Q-PV-Bal-QQ' }, { roomNumber: '615', code: '6-2Q-PV-Bal-QQ' }, { roomNumber: '621', code: '6-2Q-PV-Bal-QQ' }, { roomNumber: '625', code: '6-2Q-PV-Bal-QQ' },
+
+        { roomNumber: '701', code: '6-2Q-PV-Bal-QQ' }, { roomNumber: '703', code: '6-2Q-PV-Bal-QQ' }, { roomNumber: '705', code: '6-2Q-PV-Bal-QQ' }, { roomNumber: '707', code: '6-2Q-PV-Bal-QQ' }, { roomNumber: '709', code: '6-2Q-PV-Bal-QQ' }, { roomNumber: '711', code: '6-2Q-PV-Bal-QQ' }, { roomNumber: '713', code: '6-2Q-PV-Bal-QQ' }, { roomNumber: '715', code: '6-2Q-PV-Bal-QQ' }, { roomNumber: '721', code: '6-2Q-PV-Bal-QQ' }, { roomNumber: '725', code: '6-2Q-PV-Bal-QQ' },
+
+        { roomNumber: '801', code: '6-2Q-PV-Bal-QQ' }, { roomNumber: '803', code: '6-2Q-PV-Bal-QQ' }, { roomNumber: '805', code: '6-2Q-PV-Bal-QQ' }, { roomNumber: '809', code: '6-2Q-PV-Bal-QQ' }, { roomNumber: '811', code: '6-2Q-PV-Bal-QQ' }, { roomNumber: '813', code: '6-2Q-PV-Bal-QQ' }, { roomNumber: '815', code: '6-2Q-PV-Bal-QQ' }, { roomNumber: '821', code: '6-2Q-PV-Bal-QQ' }, { roomNumber: '825', code: '6-2Q-PV-Bal-QQ' },
+
+
+
+        // 7-2Q-PV-Bal-QQ (44 Rooms)
+
+        { roomNumber: '304', code: '7-2Q-PV-Bal-QQ' }, { roomNumber: '306', code: '7-2Q-PV-Bal-QQ' }, { roomNumber: '308', code: '7-2Q-PV-Bal-QQ' }, { roomNumber: '310', code: '7-2Q-PV-Bal-QQ' }, { roomNumber: '312', code: '7-2Q-PV-Bal-QQ' }, { roomNumber: '316', code: '7-2Q-PV-Bal-QQ' }, { roomNumber: '322', code: '7-2Q-PV-Bal-QQ' }, { roomNumber: '324', code: '7-2Q-PV-Bal-QQ' }, { roomNumber: '326', code: '7-2Q-PV-Bal-QQ' },
+
+        { roomNumber: '404', code: '7-2Q-PV-Bal-QQ' }, { roomNumber: '406', code: '7-2Q-PV-Bal-QQ' }, { roomNumber: '408', code: '7-2Q-PV-Bal-QQ' }, { roomNumber: '410', code: '7-2Q-PV-Bal-QQ' }, { roomNumber: '412', code: '7-2Q-PV-Bal-QQ' }, { roomNumber: '416', code: '7-2Q-PV-Bal-QQ' }, { roomNumber: '422', code: '7-2Q-PV-Bal-QQ' }, { roomNumber: '424', code: '7-2Q-PV-Bal-QQ' }, { roomNumber: '426', code: '7-2Q-PV-Bal-QQ' },
+
+        { roomNumber: '506', code: '7-2Q-PV-Bal-QQ' }, { roomNumber: '510', code: '7-2Q-PV-Bal-QQ' }, { roomNumber: '512', code: '7-2Q-PV-Bal-QQ' }, { roomNumber: '516', code: '7-2Q-PV-Bal-QQ' }, { roomNumber: '522', code: '7-2Q-PV-Bal-QQ' }, { roomNumber: '524', code: '7-2Q-PV-Bal-QQ' }, { roomNumber: '526', code: '7-2Q-PV-Bal-QQ' },
+
+        { roomNumber: '610', code: '7-2Q-PV-Bal-QQ' }, { roomNumber: '612', code: '7-2Q-PV-Bal-QQ' }, { roomNumber: '616', code: '7-2Q-PV-Bal-QQ' }, { roomNumber: '622', code: '7-2Q-PV-Bal-QQ' }, { roomNumber: '624', code: '7-2Q-PV-Bal-QQ' }, { roomNumber: '626', code: '7-2Q-PV-Bal-QQ' },
+
+        { roomNumber: '710', code: '7-2Q-PV-Bal-QQ' }, { roomNumber: '712', code: '7-2Q-PV-Bal-QQ' }, { roomNumber: '716', code: '7-2Q-PV-Bal-QQ' }, { roomNumber: '722', code: '7-2Q-PV-Bal-QQ' }, { roomNumber: '724', code: '7-2Q-PV-Bal-QQ' }, { roomNumber: '726', code: '7-2Q-PV-Bal-QQ' },
+
+        { roomNumber: '806', code: '7-2Q-PV-Bal-QQ' }, { roomNumber: '810', code: '7-2Q-PV-Bal-QQ' }, { roomNumber: '812', code: '7-2Q-PV-Bal-QQ' }, { roomNumber: '816', code: '7-2Q-PV-Bal-QQ' }, { roomNumber: '822', code: '7-2Q-PV-Bal-QQ' }, { roomNumber: '824', code: '7-2Q-PV-Bal-QQ' }, { roomNumber: '826', code: '7-2Q-PV-Bal-QQ' },
+
+
+
+        // 8-JrSuite-QQ (18 Rooms)
+
+        { roomNumber: '317', code: '8-JrSuite-QQ' }, { roomNumber: '318', code: '8-JrSuite-QQ' }, { roomNumber: '319', code: '8-JrSuite-QQ' },
+
+        { roomNumber: '417', code: '8-JrSuite-QQ' }, { roomNumber: '418', code: '8-JrSuite-QQ' }, { roomNumber: '419', code: '8-JrSuite-QQ' },
+
+        { roomNumber: '517', code: '8-JrSuite-QQ' }, { roomNumber: '518', code: '8-JrSuite-QQ' }, { roomNumber: '519', code: '8-JrSuite-QQ' },
+
+        { roomNumber: '617', code: '8-JrSuite-QQ' }, { roomNumber: '618', code: '8-JrSuite-QQ' }, { roomNumber: '619', code: '8-JrSuite-QQ' },
+
+        { roomNumber: '717', code: '8-JrSuite-QQ' }, { roomNumber: '718', code: '8-JrSuite-QQ' }, { roomNumber: '719', code: '8-JrSuite-QQ' },
+
+        { roomNumber: '817', code: '8-JrSuite-QQ' }, { roomNumber: '818', code: '8-JrSuite-QQ' }, { roomNumber: '819', code: '8-JrSuite-QQ' },
+
+
+
+        // 9-King-PV-Bal-K (5 Rooms)
+
+        { roomNumber: '723', code: '9-King-PV-Bal-K' }, { roomNumber: '727', code: '9-King-PV-Bal-K' }, { roomNumber: '807', code: '9-King-PV-Bal-K' }, { roomNumber: '823', code: '9-King-PV-Bal-K' }, { roomNumber: '827', code: '9-King-PV-Bal-K' }
+
+    ],
+
+    abr: [
+
+        // KING-K (28 Rooms)
+
+        { roomNumber: '103', code: 'KING-K' }, { roomNumber: '202', code: 'KING-K' }, { roomNumber: '203', code: 'KING-K' }, { roomNumber: '204', code: 'KING-K' }, { roomNumber: '205', code: 'KING-K' }, { roomNumber: '206', code: 'KING-K' }, { roomNumber: '207', code: 'KING-K' }, { roomNumber: '208', code: 'KING-K' }, { roomNumber: '209', code: 'KING-K' },
+
+        { roomNumber: '302', code: 'KING-K' }, { roomNumber: '303', code: 'KING-K' }, { roomNumber: '304', code: 'KING-K' }, { roomNumber: '305', code: 'KING-K' }, { roomNumber: '306', code: 'KING-K' }, { roomNumber: '307', code: 'KING-K' }, { roomNumber: '308', code: 'KING-K' }, { roomNumber: '309', code: 'KING-K' },
+
+        { roomNumber: '402', code: 'KING-K' }, { roomNumber: '403', code: 'KING-K' }, { roomNumber: '404', code: 'KING-K' }, { roomNumber: '405', code: 'KING-K' }, { roomNumber: '406', code: 'KING-K' }, { roomNumber: '407', code: 'KING-K' }, { roomNumber: '408', code: 'KING-K' }, { roomNumber: '409', code: 'KING-K' }, { roomNumber: '410', code: 'KING-K' }, { roomNumber: '411', code: 'KING-K' }, { roomNumber: '412', code: 'KING-K' },
+
+
+
+        // KINGADA-K (2 Rooms)
+
+        { roomNumber: '101', code: 'KINGADA-K' }, { roomNumber: '102', code: 'KINGADA-K' },
+
+
+
+        // KINGFULL (8 Rooms)
+
+        { roomNumber: '104', code: 'KINGFULL' }, { roomNumber: '105', code: 'KINGFULL' }, { roomNumber: '210', code: 'KINGFULL' }, { roomNumber: '211', code: 'KINGFULL' }, { roomNumber: '212', code: 'KINGFULL' },
+
+        { roomNumber: '310', code: 'KINGFULL' }, { roomNumber: '311', code: 'KINGFULL' }, { roomNumber: '312', code: 'KINGFULL' },
+
+
+
+        // PREMIUM-K (2 Rooms)
+
+        { roomNumber: '201', code: 'PREMIUM-K' }, { roomNumber: '301', code: 'PREMIUM-K' },
+
+
+
+        // DABO-K (1 Room)
+
+        { roomNumber: '401', code: 'DABO-K' }
+
     ]
+
 };
 
 
@@ -2664,4 +3618,5 @@ function downloadAcceptedUpgradesCsv() {
     link.click();
     document.body.removeChild(link);
 }
+
 
