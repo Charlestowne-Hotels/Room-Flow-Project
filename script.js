@@ -1628,7 +1628,16 @@ function parseCsv(csvContent) {
 
 function applyUpgradesAndRecalculate(currentAcceptedList, csvContent, rules, fileName) {
     const { data, header } = parseCsv(csvContent);
-    const allReservations = parseAllReservations(data, header, fileName);
+    
+    // Detect format and parse accordingly
+    let allReservations = [];
+    const isSynxisArrivals = header.includes('Guest_Nm') && header.includes('Rm_Typ_Cd') && header.includes('Rez_Status');
+    
+    if (isSynxisArrivals) {
+        allReservations = parseSynxisArrivals(data, header);
+    } else {
+        allReservations = parseAllReservations(data, header, fileName);
+    }
 
     currentAcceptedList.forEach(rec => {
         const reservationToUpdate = allReservations.find(res => res.resId === rec.resId);
@@ -1642,28 +1651,96 @@ function applyUpgradesAndRecalculate(currentAcceptedList, csvContent, rules, fil
     return results;
 }
 
+// --- UPDATED: PROCESS UPGRADE DATA (Supports Synxis Arrivals/Departures) ---
 function processUpgradeData(csvContent, rules, fileName) {
     const { data, header } = parseCsv(csvContent);
     if (!data || data.length === 0) {
         throw new Error('CSV file is empty or could not be parsed.');
     }
     
-    const isSnt = fileName && (fileName.startsWith('SNT') || fileName.startsWith('LTRL') || fileName.startsWith('VERD') || fileName.startsWith('LCKWD') || fileName.startsWith('TBH') || fileName.startsWith('DARLING'));
-    let requiredHeaders = [];
+    // Detect Format based on unique headers
+    const isSnt = header.includes('Arrival Room Type') && header.includes('Reservation Status');
+    const isSynxisArrivals = header.includes('Guest_Nm') && header.includes('Rm_Typ_Cd') && header.includes('Rez_Status');
     
-    if (isSnt) {
-        requiredHeaders = ['Arrival Date', 'Departure Date', 'First Name', 'Last Name', 'Arrival Rate Code', 'Adr', 'Reservation Id', 'Arrival Room Type', 'Reservation Status'];
+    // Validate Headers
+    let requiredHeaders = [];
+    if (isSynxisArrivals) {
+        requiredHeaders = ['Guest_Nm', 'Rm_Typ_Cd', 'Arrival_Date', 'Depart_Date', 'Rez_Status', 'Avg_Rate_Offshore', 'CRS_Confirm_No'];
+    } else if (isSnt) {
+        requiredHeaders = ['Arrival Date', 'Departure Date', 'First Name', 'Last Name', 'Arrival Room Type', 'Reservation Status'];
     } else {
         requiredHeaders = ['Guest Name', 'Res ID', 'Room Type', 'Rate Name', 'Rate', 'Arrival Date', 'Departure Date', 'Status'];
     }
 
     const missingHeaders = requiredHeaders.filter(h => !header.includes(h));
     if (missingHeaders.length > 0) {
-        throw new Error(`The uploaded PMS export is missing required columns for ${isSnt ? 'SNT' : 'Standard'} format. Could not find: '${missingHeaders.join(', ')}'`);
+        throw new Error(`The uploaded PMS export is missing required columns. Could not find: '${missingHeaders.join(', ')}'`);
     }
     
-    const allReservations = parseAllReservations(data, header, fileName);
+    // Parse based on format
+    let allReservations = [];
+    if (isSynxisArrivals) {
+        allReservations = parseSynxisArrivals(data, header);
+    } else {
+        allReservations = parseAllReservations(data, header, fileName);
+    }
+
     return generateRecommendationsFromData(allReservations, rules);
+}
+
+// --- NEW: PARSER FOR SYNXIS ARRIVALS/DEPARTURES ---
+function parseSynxisArrivals(data, header) {
+    const nameIndex = header.indexOf('Guest_Nm');
+    const resIdIndex = header.indexOf('CRS_Confirm_No');
+    const roomTypeIndex = header.indexOf('Rm_Typ_Cd');
+    const rateNameIndex = header.indexOf('Rate_Type_Name_Code_Offshore');
+    const arrivalIndex = header.indexOf('Arrival_Date');
+    const departureIndex = header.indexOf('Depart_Date');
+    const statusIndex = header.indexOf('Rez_Status');
+    const rateIndex = header.indexOf('Avg_Rate_Offshore');
+
+    return data.map(values => {
+        if (values.length < header.length) return null;
+
+        const arrival = values[arrivalIndex] ? parseDate(values[arrivalIndex]) : null;
+        const departure = values[departureIndex] ? parseDate(values[departureIndex]) : null;
+
+        let nights = 0;
+        if (arrival && departure) {
+            const diffTime = departure - arrival;
+            nights = Math.max(1, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
+        }
+
+        const dailyRate = parseFloat(values[rateIndex]) || 0;
+        const totalRevenue = dailyRate * nights;
+
+        // Parse Name "DeFord, Shawn" -> "Shawn DeFord"
+        let fullName = values[nameIndex] || "";
+        if (fullName.includes(',')) {
+            const parts = fullName.split(',');
+            if (parts.length >= 2) {
+                fullName = `${parts[1].trim()} ${parts[0].trim()}`;
+            }
+        }
+
+        // Map Status "Confirmed" -> "RESERVATION"
+        let status = values[statusIndex] ? values[statusIndex].trim().toUpperCase() : '';
+        if (status === 'CONFIRMED') status = 'RESERVATION';
+        if (status === 'CANCELLED') status = 'CANCELED';
+
+        return {
+            name: fullName,
+            resId: values[resIdIndex] ? values[resIdIndex].trim() : '',
+            roomType: values[roomTypeIndex] ? values[roomTypeIndex].trim().toUpperCase() : '',
+            rate: values[rateNameIndex] ? values[rateNameIndex].trim() : '',
+            nights: nights,
+            arrival: arrival,
+            departure: departure,
+            status: status,
+            revenue: totalRevenue.toLocaleString('en-US', { style: 'currency', currency: 'USD' }),
+            marketCode: '' // Not strictly needed unless using specific STS logic
+        };
+    }).filter(r => r && r.roomType && r.arrival && r.departure && r.nights > 0);
 }
 
 function generateRecommendationsFromData(allReservations, rules) {
