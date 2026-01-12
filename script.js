@@ -1601,17 +1601,19 @@ const MASTER_INVENTORIES = {
 
 };
 
+// ... (Your existing Config, ADMIN_UIDS, SNT_PROPERTY_MAP, DOM References, profiles, and MASTER_INVENTORIES remain above this) ...
+
 // --- STATE MANAGEMENT ---
 let currentCsvContent = null;
 let currentFileName = null; 
 let currentRules = null;
 let currentScenarios = {}; 
 let currentAllReservations = []; 
+let originalAllReservations = []; // To capture baseline for comparison
 let acceptedUpgrades = [];
 let completedUpgrades = [];
 let oooRecords = [];
 let currentInventoryMap = null; 
-// Stores the verified inventory matrix from the simulation for display
 let currentPostAcceptanceInventory = null; 
 
 // --- FUNCTIONS ---
@@ -1621,6 +1623,7 @@ function resetAppState() {
     currentRules = null;
     currentScenarios = {};
     currentAllReservations = [];
+    originalAllReservations = [];
     acceptedUpgrades = [];
     currentInventoryMap = null; 
     currentPostAcceptanceInventory = null;
@@ -1666,14 +1669,12 @@ function handleRefresh() {
         
         setTimeout(() => {
             try {
-                // Always re-process scenarios on refresh
-                const results = processUpgradeData(currentCsvContent, currentRules, currentFileName);
-                
-                // If we are in "Post-Acceptance" mode (upgrades accepted), re-apply them to get the matrix
+                // If we have previously accepted upgrades in this session, re-calculate based on them
                 if (acceptedUpgrades.length > 0) {
-                     const postResults = applyUpgradesAndRecalculate(acceptedUpgrades, currentCsvContent, currentRules, currentFileName);
-                     displayMatrixOnlyView(postResults); 
+                     const results = applyUpgradesAndRecalculate(acceptedUpgrades, currentCsvContent, currentRules, currentFileName);
+                     displayMatrixOnlyView(results); 
                 } else {
+                    const results = processUpgradeData(currentCsvContent, currentRules, currentFileName);
                     displayResults(results); 
                 }
             } catch (err) {
@@ -2027,6 +2028,300 @@ async function handleClearAnalytics() {
     finally { showLoader(false); }
 }
 
+document.addEventListener('DOMContentLoaded', function() {
+    loginContainer = document.getElementById('login-container'); appContainer = document.getElementById('app-container');
+    signinBtn = document.getElementById('signin-btn'); signoutBtn = document.getElementById('signout-btn');
+    emailInput = document.getElementById('email-input'); passwordInput = document.getElementById('password-input');
+    errorMessage = document.getElementById('error-message'); clearAnalyticsBtn = document.getElementById('clear-analytics-btn');
+    saveRulesBtn = document.getElementById('save-rules-btn'); saveStatus = document.getElementById('save-status');
+
+    const settingsModal = document.getElementById('settings-modal');
+    const settingsTriggerBtn = document.getElementById('settings-trigger-btn');
+    const closeSettingsBtn = document.getElementById('close-settings-btn');
+    const generateBtn = document.getElementById('generate-btn');
+    const addPropBtn = document.getElementById('add-property-btn');
+    const addPropModal = document.getElementById('add-property-modal');
+    const closeAddPropBtn = document.getElementById('close-add-prop-btn');
+    const saveNewPropBtn = document.getElementById('save-new-prop-btn');
+
+    if (addPropBtn) addPropBtn.addEventListener('click', () => addPropModal.classList.remove('hidden'));
+    if (closeAddPropBtn) closeAddPropBtn.addEventListener('click', () => addPropModal.classList.add('hidden'));
+    if (saveNewPropBtn) saveNewPropBtn.addEventListener('click', handleSaveNewProperty);
+    window.addEventListener('click', (e) => { if (e.target === addPropModal) addPropModal.classList.add('hidden'); });
+
+    // --- SETUP MANUAL UPLOAD WRAPPERS ---
+    const fileInput = document.getElementById('csv-file');
+    const genBtnRef = document.getElementById('generate-btn');
+    
+    const manualUploadWrapper = document.createElement('div');
+    manualUploadWrapper.id = 'manual-upload-wrapper';
+    
+    const uploadTitle = document.createElement('h3');
+    uploadTitle.id = 'manual-upload-title';
+    uploadTitle.textContent = "Manual PMS Upload";
+    uploadTitle.style.marginBottom = "15px";
+    uploadTitle.style.color = '#333';
+    manualUploadWrapper.appendChild(uploadTitle);
+
+    if (fileInput && fileInput.parentNode) {
+        fileInput.parentNode.insertBefore(manualUploadWrapper, fileInput);
+        manualUploadWrapper.appendChild(fileInput);
+        if (genBtnRef) manualUploadWrapper.appendChild(genBtnRef);
+    }
+
+    const mainPagePlaceholder = document.createElement('div');
+    mainPagePlaceholder.id = 'manual-upload-placeholder';
+    if (manualUploadWrapper.parentNode) {
+        manualUploadWrapper.parentNode.insertBefore(mainPagePlaceholder, manualUploadWrapper);
+    }
+
+    const updateUIForProfile = () => {
+        const currentProfile = document.getElementById('profile-dropdown').value;
+        const isSnt = !!SNT_PROPERTY_MAP[currentProfile];
+        const autoLoadBtn = document.getElementById('auto-load-btn');
+        
+        if (autoLoadBtn) autoLoadBtn.style.display = isSnt ? 'inline-block' : 'none';
+
+        if (isSnt) {
+            const settingsContent = settingsModal.firstElementChild; 
+            if (settingsContent && manualUploadWrapper.parentNode !== settingsContent) {
+                settingsContent.appendChild(manualUploadWrapper);
+            }
+            manualUploadWrapper.style.marginTop = '20px';
+            manualUploadWrapper.style.padding = '15px';
+            manualUploadWrapper.style.border = '1px solid #eee';
+            manualUploadWrapper.style.borderRadius = '5px';
+            manualUploadWrapper.style.backgroundColor = '#fafafa';
+            manualUploadWrapper.style.textAlign = 'left';
+            manualUploadWrapper.style.display = 'block';
+            manualUploadWrapper.style.minHeight = 'auto';
+            manualUploadWrapper.style.background = '#fafafa'; 
+            manualUploadWrapper.style.boxShadow = 'none';
+            manualUploadWrapper.style.gap = '0';
+            
+            uploadTitle.style.fontSize = '16px';
+            uploadTitle.style.textAlign = 'left';
+            uploadTitle.style.margin = '0 0 10px 0';
+            
+            if (fileInput) {
+                fileInput.style.flexGrow = '0';
+                fileInput.style.width = 'auto';
+                fileInput.style.border = '1px solid #ccc';
+            }
+            if (genBtnRef) {
+                genBtnRef.style.width = 'auto';
+                genBtnRef.style.display = 'inline-block';
+                genBtnRef.style.marginTop = '10px';
+                genBtnRef.style.fontSize = '14px';
+                genBtnRef.style.padding = '8px 15px';
+            }
+        } else {
+            if (mainPagePlaceholder && mainPagePlaceholder.parentNode) {
+                mainPagePlaceholder.parentNode.insertBefore(manualUploadWrapper, mainPagePlaceholder.nextSibling);
+            }
+            manualUploadWrapper.style.marginTop = '20px';
+            manualUploadWrapper.style.marginBottom = '20px';
+            manualUploadWrapper.style.padding = '25px 30px'; 
+            manualUploadWrapper.style.border = '2px dashed #ccc'; 
+            manualUploadWrapper.style.borderRadius = '12px';
+            manualUploadWrapper.style.backgroundColor = '#f8f9fa';
+            manualUploadWrapper.style.background = 'linear-gradient(to right, #ffffff, #f4f6f8)'; 
+            manualUploadWrapper.style.boxShadow = '0 4px 6px rgba(0,0,0,0.05)';
+            manualUploadWrapper.style.display = 'flex';
+            manualUploadWrapper.style.flexDirection = 'row';
+            manualUploadWrapper.style.alignItems = 'center';
+            manualUploadWrapper.style.justifyContent = 'space-between';
+            manualUploadWrapper.style.gap = '20px';
+            manualUploadWrapper.style.minHeight = 'auto'; 
+            
+            uploadTitle.style.fontSize = '18px';
+            uploadTitle.style.fontWeight = '600';
+            uploadTitle.style.color = '#333';
+            uploadTitle.style.margin = '0'; 
+            uploadTitle.style.whiteSpace = 'nowrap'; 
+
+            if (fileInput) {
+                fileInput.style.flexGrow = '1';
+                fileInput.style.maxWidth = 'none';
+                fileInput.style.padding = '10px';
+                fileInput.style.border = '1px solid #ddd';
+                fileInput.style.borderRadius = '6px';
+                fileInput.style.backgroundColor = '#fff';
+            }
+            if (genBtnRef) {
+                genBtnRef.style.width = 'auto';
+                genBtnRef.style.maxWidth = 'none';
+                genBtnRef.style.fontSize = '15px';
+                genBtnRef.style.padding = '10px 25px';
+                genBtnRef.style.marginTop = '0'; 
+            }
+        }
+    };
+
+    auth.onAuthStateChanged(async user => {
+        const adminButton = document.getElementById('clear-analytics-btn');
+        const saveBtn = document.getElementById('save-rules-btn'); 
+        if (user) {
+            loginContainer.classList.add('hidden'); appContainer.classList.remove('hidden');
+            await loadCustomProperties(); await loadRemoteProfiles(); await loadOooRecords(); 
+            const isUserAdmin = ADMIN_UIDS.includes(user.uid);
+            if (isUserAdmin) {
+                if(adminButton) adminButton.classList.remove('hidden');
+                if(saveBtn) saveBtn.classList.remove('hidden');
+                if(settingsTriggerBtn) settingsTriggerBtn.classList.remove('hidden');
+                if(addPropBtn) addPropBtn.classList.remove('hidden'); 
+            } else {
+                if(saveBtn) saveBtn.classList.add('hidden');
+                if(adminButton) adminButton.classList.add('hidden');
+                if(settingsTriggerBtn) settingsTriggerBtn.classList.add('hidden');
+                if(addPropBtn) addPropBtn.classList.add('hidden'); 
+            }
+            setAdminControls(isUserAdmin);
+            loadCompletedUpgrades(user.uid);
+            resetAppState();
+            updateUIForProfile(); // Ensure correct UI state on login
+        } else {
+            loginContainer.classList.remove('hidden'); appContainer.classList.add('hidden');
+            setAdminControls(false);
+        }
+    });
+
+    if(settingsTriggerBtn) {
+        settingsTriggerBtn.addEventListener('click', () => { settingsModal.classList.remove('hidden'); populateOooDropdown(); });
+    }
+
+    if(closeSettingsBtn) {
+        closeSettingsBtn.addEventListener('click', () => {
+            settingsModal.classList.add('hidden');
+            handleRefresh();
+        });
+    }
+    window.addEventListener('click', (e) => {
+        if (e.target === settingsModal) {
+            settingsModal.classList.add('hidden');
+            handleRefresh();
+        }
+    });
+
+    if(generateBtn) generateBtn.addEventListener('click', handleGenerateClick);
+
+    const autoLoadBtn = document.getElementById('auto-load-btn');
+    if (autoLoadBtn) autoLoadBtn.addEventListener('click', handleAutoLoad);
+
+    const profileDropdown = document.getElementById('profile-dropdown');
+    
+    profileDropdown.addEventListener('change', (event) => {
+        updateRulesForm(event.target.value);
+        resetAppState();
+        displayCompletedUpgrades();
+        displayDemandInsights(); 
+        loadOooRecords(); 
+        updateUIForProfile(); // Trigger UI switch on dropdown change
+    });
+    
+    updateRulesForm('fqi'); 
+    updateUIForProfile(); // Initial check
+
+    if(saveRulesBtn) saveRulesBtn.addEventListener('click', handleSaveRules);
+    const addOooBtn = document.getElementById('add-ooo-btn');
+    if (addOooBtn) addOooBtn.addEventListener('click', handleAddOoo);
+
+    if (emailInput) emailInput.addEventListener('keydown', (e) => { if(e.key==='Enter') handleSignIn(); });
+    if (passwordInput) passwordInput.addEventListener('keydown', (e) => { if(e.key==='Enter') handleSignIn(); });
+
+    signinBtn.addEventListener('click', handleSignIn);
+    signoutBtn.addEventListener('click', handleSignOut);
+    clearAnalyticsBtn.addEventListener('click', handleClearAnalytics);
+
+    const futureDate = new Date(); futureDate.setDate(futureDate.getDate() + 3);
+    document.getElementById('selected-date').value = futureDate.toISOString().slice(0, 10);
+    
+    document.getElementById('sort-date-dropdown').addEventListener('change', () => {
+        displayCompletedUpgrades(); displayDemandInsights();
+    });
+    
+    const tabs = document.querySelectorAll('[data-tab-target]');
+    const tabContents = document.querySelectorAll('.tab-content');
+    tabs.forEach(tab => {
+        tab.addEventListener('click', () => {
+            const target = document.querySelector(tab.dataset.tabTarget);
+            tabContents.forEach(tc => tc.classList.remove('active'));
+            tabs.forEach(t => t.classList.remove('active'));
+            tab.classList.add('active');
+            target.classList.add('active');
+        });
+    });
+
+    const subTabs = document.querySelectorAll('[data-sub-tab-target]');
+    subTabs.forEach(tab => {
+        tab.addEventListener('click', () => {
+            const targetSelector = tab.dataset.subTabTarget;
+            const target = document.querySelector(targetSelector);
+            subTabs.forEach(t => t.classList.remove('active'));
+            const completedView = document.querySelector('#completed-container')?.parentElement;
+            const demandView = document.querySelector('#demand-insights-container')?.parentElement;
+            if(document.querySelector('#completed-container')) document.querySelector('#completed-container').style.display = 'none';
+            if(document.querySelector('#demand-insights-container')) document.querySelector('#demand-insights-container').style.display = 'none';
+            tab.classList.add('active');
+            if(target) {
+                target.style.display = 'block';
+                if (target.id === 'demand-insights-container') displayDemandInsights();
+                else if (target.id === 'completed-container') displayCompletedUpgrades();
+            }
+        });
+    });
+});
+
+async function handleAutoLoad() {
+    const btn = document.getElementById('auto-load-btn');
+    const originalText = btn.textContent;
+    const currentProfile = document.getElementById('profile-dropdown').value;
+    const requiredPrefix = SNT_PROPERTY_MAP[currentProfile];
+
+    if (!requiredPrefix) { alert("This property is not configured for Auto-Load."); return; }
+
+    btn.disabled = true; btn.textContent = "Loading..."; showLoader(true, `Fetching ${requiredPrefix}...`);
+    currentInventoryMap = null;
+
+    try {
+        const docRef = db.collection('SNTData').doc(`${requiredPrefix}_latest`); 
+        const doc = await docRef.get();
+        if (!doc.exists) throw new Error("No report found.");
+        const data = doc.data();
+        if (!data.csv_content) throw new Error("Report empty.");
+
+        try {
+            const invDocRef = db.collection('SynxisData').doc(`${requiredPrefix}_latest`);
+            const invDoc = await invDocRef.get();
+            if (invDoc.exists && invDoc.data().csv_content) {
+                currentInventoryMap = parseSynxisInventory(invDoc.data().csv_content);
+            }
+        } catch (invError) { console.warn("Inv load fail", invError); }
+
+        currentCsvContent = data.csv_content;
+        currentFileName = data.filename || "Unknown.csv";
+        
+        currentRules = {
+            hierarchy: document.getElementById('hierarchy').value,
+            targetRooms: document.getElementById('target-rooms').value,
+            prioritizedRates: document.getElementById('prioritized-rates').value,
+            otaRates: document.getElementById('ota-rates').value,
+            ineligibleUpgrades: document.getElementById('ineligible-upgrades').value,
+            selectedDate: document.getElementById('selected-date').value,
+            profile: currentProfile 
+        };
+
+        setTimeout(() => {
+            try {
+                const results = processUpgradeData(currentCsvContent, currentRules, currentFileName);
+                displayResults(results);
+                alert(`Loaded: ${currentFileName}\nInventory: ${currentInventoryMap ? "SynXis" : "Calculated"}`);
+            } catch (err) { showError(err); } finally { btn.disabled = false; btn.textContent = originalText; }
+        }, 50);
+
+    } catch (error) { console.error("Auto-load error:", error); showLoader(false); btn.disabled = false; btn.textContent = originalText; alert(error.message); }
+}
+
 function handleGenerateClick() {
     const fileInput = document.getElementById('csv-file');
     if (!fileInput.files.length) { alert('Select file.'); return; }
@@ -2060,223 +2355,7 @@ function handleGenerateClick() {
     reader.readAsText(fileInput.files[0]);
 }
 
-// ... (AutoLoad, UI Setup remain same) ...
-
-function applyUpgradesAndRecalculate(currentAcceptedList, csvContent, rules, fileName) {
-    const { data, header } = parseCsv(csvContent);
-    let allReservations = [];
-    const isSynxisArrivals = header.includes('Guest_Nm');
-    if (isSynxisArrivals) allReservations = parseSynxisArrivals(data, header);
-    else allReservations = parseAllReservations(data, header, fileName);
-
-    // Apply the accepted upgrades to the reservation list
-    currentAcceptedList.forEach(rec => {
-        const r = allReservations.find(res => res.resId === rec.resId);
-        if (r) r.roomType = rec.upgradeTo;
-    });
-
-    // Run simulation to calculate the FINAL inventory state based on these changes
-    const results = generateScenariosFromData(allReservations, rules);
-    results.acceptedUpgrades = currentAcceptedList;
-    return results;
-}
-
-function processUpgradeData(csvContent, rules, fileName) {
-    const { data, header } = parseCsv(csvContent);
-    if (!data || !data.length) throw new Error('Empty CSV');
-    
-    const isSynxisArrivals = header.includes('Guest_Nm');
-    let allReservations = [];
-    if (isSynxisArrivals) allReservations = parseSynxisArrivals(data, header);
-    else allReservations = parseAllReservations(data, header, fileName);
-
-    currentAllReservations = allReservations;
-    return generateScenariosFromData(allReservations, rules);
-}
-
-function generateScenariosFromData(allReservations, rules) {
-    const masterInventory = getMasterInventory(rules.profile);
-    if (!Object.keys(masterInventory).length) return { error: `No inventory for ${rules.profile}` };
-
-    const activeReservations = allReservations.filter(res => res.status !== 'CANCELED' && res.status !== 'CANCELLED' && res.status !== 'NO SHOW');
-    const completedResIds = new Set(completedUpgrades.filter(up => up.profile === rules.profile).map(up => up.resId));
-    
-    const startDate = parseDate(rules.selectedDate);
-    const reservationsByDate = buildReservationsByDate(activeReservations);
-    
-    // Calculate "Current" Inventory (before simulation)
-    const todayInventory = getInventoryForDate(masterInventory, reservationsByDate, startDate);
-    
-    // Calculate "Current" Matrix (before simulation)
-    const matrixData = generateMatrixData(masterInventory, reservationsByDate, startDate, rules.hierarchy.toUpperCase().split(',').map(r => r.trim()).filter(Boolean));
-
-    const strategies = ['Revenue Focus', 'VIP Focus', 'Efficiency (Fill Gaps)'];
-    const scenarios = {};
-
-    strategies.forEach(strategy => {
-        scenarios[strategy] = runSimulation(strategy, activeReservations, masterInventory, rules, completedResIds);
-    });
-
-    return { scenarios, inventory: todayInventory, matrixData, message: null };
-}
-
-function runSimulation(strategy, allReservations, masterInv, rules, completedIds) {
-    const startDate = parseDate(rules.selectedDate);
-    const hierarchy = rules.hierarchy.toUpperCase().split(',').map(r => r.trim()).filter(Boolean);
-    const ineligible = rules.ineligibleUpgrades.toUpperCase().split(',');
-    const otaRates = rules.otaRates.toLowerCase().split(',');
-
-    // 1. Build Dynamic Inventory (Base + OOO + PMS File)
-    // This serves as the source of truth for availability
-    const simInventory = {};
-    for (let i = 0; i < 14; i++) {
-        const d = new Date(startDate); d.setUTCDate(d.getUTCDate() + i);
-        const dStr = d.toISOString().split('T')[0];
-        simInventory[dStr] = {};
-        for (let room in masterInv) {
-            const dTime = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate())).getTime();
-            const existingCount = allReservations.reduce((acc, res) => {
-                if (res.roomType === room && res.arrival <= d && res.departure > d) return acc + 1;
-                return acc;
-            }, 0);
-            const oooCount = oooRecords.reduce((acc, rec) => {
-                const rStart = rec.startDate.getTime(); const rEnd = rec.endDate.getTime();
-                if (rec.roomType === room && dTime >= rStart && dTime <= rEnd) return acc + (rec.count || 1);
-                return acc;
-            }, 0);
-
-            // Priority: SynXis File > Calculated
-            if (currentInventoryMap && currentInventoryMap[dStr] && currentInventoryMap[dStr][room] !== undefined) {
-                simInventory[dStr][room] = currentInventoryMap[dStr][room];
-            } else {
-                simInventory[dStr][room] = (masterInv[room] || 0) - existingCount - oooCount;
-            }
-        }
-    }
-
-    // 2. State Tracking
-    const guestState = {};
-    allReservations.forEach(r => guestState[r.resId] = r.roomType);
-    const pendingUpgrades = {}; 
-
-    // 3. Iterative Passes
-    for (let pass = 0; pass < 20; pass++) { 
-        let activity = false;
-        let candidates = [];
-
-        // Identify candidates
-        for (let i = 0; i < 7; i++) {
-            const d = new Date(startDate); d.setUTCDate(d.getUTCDate() + i);
-            const dTime = d.getTime();
-            const dailyArrivals = allReservations.filter(r => r.arrival && r.arrival.getTime() === dTime && r.status === 'RESERVATION');
-
-            dailyArrivals.forEach(res => {
-                if (completedIds.has(res.resId)) return;
-                
-                const currentRoom = guestState[res.resId];
-                const currentIdx = hierarchy.indexOf(currentRoom);
-                if (currentIdx === -1) return;
-                const originalBed = getBedType(res.roomType); 
-                if (originalBed === 'OTHER') return;
-                if (rules.profile === 'sts' && res.marketCode === 'Internet Merchant Model') return;
-                if (otaRates.some(ota => res.rate.toLowerCase().includes(ota))) return;
-                
-                for (let u = currentIdx + 1; u < hierarchy.length; u++) {
-                    const targetRoom = hierarchy[u];
-                    if (ineligible.includes(targetRoom)) continue;
-                    if (getBedType(targetRoom) !== originalBed) continue;
-
-                    candidates.push({
-                        resObj: res, 
-                        currentRoom: currentRoom,
-                        targetRoom: targetRoom,
-                        score: parseFloat(res.revenue.replace(/[$,]/g, '')) || 0,
-                        vip: res.vipStatus ? 1 : 0,
-                        nights: res.nights,
-                        rank: u 
-                    });
-                }
-            });
-        }
-
-        // Sort candidates
-        if (strategy === 'Revenue Focus') {
-            candidates.sort((a, b) => (b.score - a.score) || (b.rank - a.rank));
-        } else if (strategy === 'VIP Focus') {
-            candidates.sort((a, b) => (b.vip - a.vip) || (b.score - a.score) || (b.rank - a.rank));
-        } else {
-            candidates.sort((a, b) => a.nights - b.nights);
-        }
-
-        const processedResIdsThisPass = new Set();
-
-        candidates.forEach(cand => {
-            if (processedResIdsThisPass.has(cand.resObj.resId)) return;
-
-            let canMove = true;
-            let checkDate = new Date(cand.resObj.arrival);
-            while (checkDate < cand.resObj.departure) {
-                const dStr = checkDate.toISOString().split('T')[0];
-                // Strict check: Room must exist and be > 0
-                if (!simInventory[dStr] || (simInventory[dStr][cand.targetRoom] || 0) <= 0) {
-                    canMove = false;
-                    break;
-                }
-                checkDate.setUTCDate(checkDate.getUTCDate() + 1);
-            }
-
-            if (canMove) {
-                activity = true;
-                processedResIdsThisPass.add(cand.resObj.resId);
-
-                // Update Inventory
-                checkDate = new Date(cand.resObj.arrival);
-                while (checkDate < cand.resObj.departure) {
-                    const dStr = checkDate.toISOString().split('T')[0];
-                    if (simInventory[dStr]) {
-                        simInventory[dStr][cand.targetRoom]--; // Take New
-                        if (simInventory[dStr][cand.currentRoom] !== undefined) {
-                            simInventory[dStr][cand.currentRoom]++; // Release Old
-                        }
-                    }
-                    checkDate.setUTCDate(checkDate.getUTCDate() + 1);
-                }
-
-                guestState[cand.resObj.resId] = cand.targetRoom;
-
-                if (!pendingUpgrades[cand.resObj.resId]) {
-                    pendingUpgrades[cand.resObj.resId] = {
-                        name: cand.resObj.name,
-                        resId: cand.resObj.resId,
-                        revenue: cand.resObj.revenue,
-                        room: cand.resObj.roomType, 
-                        rate: cand.resObj.rate,
-                        nights: cand.resObj.nights,
-                        upgradeTo: cand.targetRoom, 
-                        score: cand.score,
-                        arrivalDate: cand.resObj.arrival.toLocaleDateString('en-US', { timeZone: 'UTC' }),
-                        departureDate: cand.resObj.departure.toLocaleDateString('en-US', { timeZone: 'UTC' }),
-                        vipStatus: cand.resObj.vipStatus
-                    };
-                } else {
-                    pendingUpgrades[cand.resObj.resId].upgradeTo = cand.targetRoom;
-                }
-            }
-        });
-
-        if (!activity) break; 
-    }
-
-    // Return the RECOMMENDATIONS and the FINAL INVENTORY MATRIX
-    return {
-        recommendations: Object.values(pendingUpgrades),
-        inventory: simInventory 
-    };
-}
-
-// ... (Helper functions like buildReservationsByDate, parseDate, etc. remain the same) ...
-
-// NEW: Accept Scenario Logic
+// NEW: Accept Scenario Logic - UPDATED TO SHOW MATRIX ONLY VIEW
 function handleAcceptScenario(scenarioName) {
     const scenario = currentScenarios[scenarioName];
     if (!scenario || !scenario.recommendations || scenario.recommendations.length === 0) { alert("No upgrades available."); return; }
@@ -2284,7 +2363,8 @@ function handleAcceptScenario(scenarioName) {
 
     acceptedUpgrades.push(...scenario.recommendations);
     
-    // IMPORTANT: Store the verified simulation inventory for display
+    // Store the FINAL simulation inventory matrix from the selected scenario
+    // This is the source of truth for the "Projected" display
     currentPostAcceptanceInventory = scenario.inventory; 
     
     currentScenarios = {}; 
@@ -2292,7 +2372,7 @@ function handleAcceptScenario(scenarioName) {
     showLoader(true, "Processing...");
     setTimeout(() => {
         try {
-            // Apply upgrades purely for the visual list, but use stored matrix for table
+            // Apply upgrades to refresh the data state
             const results = applyUpgradesAndRecalculate(acceptedUpgrades, currentCsvContent, currentRules, currentFileName);
             displayMatrixOnlyView(results); 
         } catch (err) { showError(err); }
@@ -2303,13 +2383,16 @@ function handleAcceptScenario(scenarioName) {
 function displayMatrixOnlyView(results) {
     showLoader(false);
     
+    // 1. Show Accepted List
     const acceptedContainer = document.getElementById('accepted-container');
     if(acceptedContainer) acceptedContainer.style.display = 'block';
     displayAcceptedUpgrades(); 
 
+    // 2. Target Container (Clear current content)
     const container = document.getElementById('recommendations-container');
     container.innerHTML = ''; 
 
+    // 3. Render Matrix - Using ONLY the recalculated results (No manual delta)
     const matDiv = document.createElement('div');
     matDiv.style.marginTop = '20px';
     
@@ -2319,8 +2402,10 @@ function displayMatrixOnlyView(results) {
     
     const hierarchy = currentRules.hierarchy.toUpperCase().split(',').map(r => r.trim()).filter(Boolean);
     const numCols = dates.length;
+    const colTotals = new Array(numCols).fill(0);
     
     // A. "Updated Availability" - USE THE SIMULATION RESULT DIRECTLY
+    // We stored this in currentPostAcceptanceInventory
     const updatedRows = [];
     const updatedColTotals = new Array(numCols).fill(0);
     
@@ -2339,11 +2424,16 @@ function displayMatrixOnlyView(results) {
         updatedRows.push({ roomCode: roomCode, data: rowData });
     });
 
-    // B. "Current Availability" (Base) - FROM RESULT OBJECT
-    // The `applyUpgradesAndRecalculate` function returns a fresh "Base" matrix 
-    // which represents the state BEFORE the *latest* round of simulation logic, 
-    // effectively showing the "Before vs After".
-    const baseRows = results.matrixData.rows.map(r => ({ roomCode: r.roomCode, data: r.availability }));
+    // B. "Current Availability" (Base before these specific upgrades)
+    // Use the base calculation function with ORIGINAL data
+    const baseMatrixData = generateMatrixData(
+        getMasterInventory(currentRules.profile), 
+        buildReservationsByDate(originalAllReservations), // Raw data
+        startDate, 
+        hierarchy
+    );
+    
+    const baseRows = baseMatrixData.rows.map(r => ({ roomCode: r.roomCode, data: r.availability }));
     const baseColTotals = new Array(numCols).fill(0);
     baseRows.forEach(r => r.data.forEach((v, i) => baseColTotals[i] += v));
 
@@ -2352,7 +2442,7 @@ function displayMatrixOnlyView(results) {
     
     container.appendChild(matDiv);
 
-    // Continue Button
+    // 4. "Continue Reviewing" Button to restore view
     const continueBtn = document.createElement('button');
     continueBtn.textContent = "Continue / Review More";
     continueBtn.style.cssText = "margin-top: 20px; padding: 12px 24px; background: #4343FF; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 16px; display: block; margin-left: auto; margin-right: auto;";
@@ -2363,8 +2453,221 @@ function displayMatrixOnlyView(results) {
     container.appendChild(continueBtn);
 }
 
-// ... (Rest of displayScenarios, parsers, and UI helpers remain the same) ...
-// The provided code includes the full logic with these changes incorporated.
+function handlePmsUpdateClick(event) {
+    const user = auth.currentUser; if (!user) { showError({message:"Login req"}); return; }
+    const recIndex = event.target.dataset.index;
+    const item = acceptedUpgrades[recIndex];
+    if (item) {
+        const toComplete = acceptedUpgrades.splice(recIndex, 1)[0];
+        toComplete.completedTimestamp = new Date();
+        toComplete.profile = document.getElementById('profile-dropdown').value;
+        completedUpgrades.push(toComplete);
+        db.collection('users').doc(user.uid).collection('completedUpgrades').add(toComplete)
+            .then((doc) => { toComplete.firestoreId = doc.id; displayCompletedUpgrades(); displayDemandInsights(); })
+            .catch((e) => { completedUpgrades.pop(); acceptedUpgrades.splice(recIndex, 0, toComplete); showError({message:"Save failed"}); });
+        displayAcceptedUpgrades(); displayCompletedUpgrades();
+    }
+}
+
+async function handleUndoCompletedClick(event) {
+    const user = auth.currentUser; if (!user) return;
+    if (!confirm("Undo?")) return;
+    const fid = event.target.dataset.firestoreId;
+    const idx = completedUpgrades.findIndex(u => u.firestoreId === fid);
+    if (idx === -1) return;
+    const item = completedUpgrades[idx];
+    event.target.disabled = true; 
+    try {
+        await db.collection('users').doc(user.uid).collection('completedUpgrades').doc(fid).delete();
+        completedUpgrades.splice(idx, 1);
+        delete item.completedTimestamp; delete item.firestoreId;
+        acceptedUpgrades.push(item);
+        displayCompletedUpgrades(); displayDemandInsights(); displayAcceptedUpgrades();
+        if (currentCsvContent) {
+             const results = applyUpgradesAndRecalculate(acceptedUpgrades, currentCsvContent, currentRules, currentFileName);
+             displayResults(results);
+        }
+    } catch (e) { alert("Undo failed."); }
+}
+
+function displayResults(data) {
+    showLoader(false);
+    if (data.error) { showError({ message: data.error }); return; }
+    if (data.acceptedUpgrades) acceptedUpgrades = data.acceptedUpgrades;
+    
+    currentScenarios = data.scenarios || {};
+    
+    // Ensure Accepted Container is visible 
+    const accCont = document.getElementById('accepted-container');
+    if(accCont) accCont.style.display = 'block';
+
+    displayAcceptedUpgrades();
+    displayScenarios(currentScenarios, data.matrixData); 
+    
+    document.getElementById('output').style.display = 'block';
+    const messageEl = document.getElementById('message');
+    messageEl.style.display = data.message ? 'block' : 'none';
+    messageEl.innerHTML = data.message || '';
+    
+    displayInventory(data.inventory);
+}
+
+function displayInventory(inventory) {
+    const container = document.getElementById('inventory');
+    let rooms = []; for (const r in inventory) if (inventory[r]>0) rooms.push(`<strong>${r}:</strong> ${inventory[r]}`);
+    container.innerHTML = '<h3>Available Rooms</h3>' + (rooms.length ? rooms.join(' | ') : '<p>None.</p>');
+}
+
+// NEW: Display Scenario Tabs + Double Matrix (Projected & Current)
+function displayScenarios(scenarios, currentMatrix) {
+    const container = document.getElementById('recommendations-container');
+    container.innerHTML = '';
+    const keys = Object.keys(scenarios);
+    if (!keys.length) { container.innerHTML = '<p>No upgrade paths.</p>'; return; }
+
+    const header = document.createElement('div');
+    header.style.cssText = 'display:flex; gap:10px; margin-bottom:20px; border-bottom:2px solid #eee; padding-bottom:10px;';
+
+    keys.forEach((key, i) => {
+        const tab = document.createElement('button');
+        tab.textContent = key;
+        tab.style.cssText = `padding:10px 20px; border:none; cursor:pointer; border-radius:5px; background:${i===0?'#4343FF':'#f0f0f0'}; color:${i===0?'white':'#333'};`;
+        tab.className = 'scenario-tab';
+        tab.addEventListener('click', () => {
+            container.querySelectorAll('.scenario-tab').forEach(b => { b.style.background='#f0f0f0'; b.style.color='#333'; });
+            tab.style.background='#4343FF'; tab.style.color='white';
+            renderScenarioContent(key, scenarios[key], container, currentMatrix);
+        });
+        header.appendChild(tab);
+    });
+    container.appendChild(header);
+    renderScenarioContent(keys[0], scenarios[keys[0]], container, currentMatrix);
+}
+
+// Helper to render HTML table for matrix (UPDATED STYLING)
+function generateMatrixHTML(title, rows, headers, colTotals) {
+    // Aesthetic Palette
+    const styleTable = 'width:100%; border-collapse:collapse; font-size:13px; font-family:sans-serif; min-width:100%;';
+    const styleTh = 'padding:12px 8px; background-color:#f8f9fa; color:#495057; font-weight:600; border-bottom:2px solid #e9ecef; text-align:center;';
+    const styleTd = 'padding:10px 8px; border-bottom:1px solid #e9ecef; text-align:center; color:#333;';
+    const styleRowLabel = 'padding:10px 8px; border-bottom:1px solid #e9ecef; text-align:left; font-weight:600; color:#333; background-color:#fff; position:sticky; left:0;';
+    const styleTotalRow = 'background-color:#f1f3f5; font-weight:bold;';
+
+    // Helper for cell color
+    const getCellColor = (val) => {
+        if (val < 0) return 'background-color:#ffebee; color:#c62828; font-weight:bold;'; // Red
+        if (val < 3) return 'background-color:#fff3e0; color:#ef6c00;'; // Orange/Yellow
+        return 'background-color:#e8f5e9; color:#2e7d32;'; // Green
+    };
+
+    let html = `
+        <div style="background:white; border-radius:8px; box-shadow:0 2px 4px rgba(0,0,0,0.05); overflow:hidden; margin-bottom:25px; border:1px solid #eee;">
+            <div style="padding:15px; border-bottom:1px solid #eee; background:#fff;">
+                <h4 style="margin:0; color:#4343FF; font-size:16px;">${title}</h4>
+            </div>
+            <div style="overflow-x:auto;">
+                <table style="${styleTable}">
+                    <thead>
+                        <tr>
+                            ${headers.map(h => `<th style="${styleTh}">${h}</th>`).join('')}
+                        </tr>
+                    </thead>
+                    <tbody>
+    `;
+
+    rows.forEach(row => {
+        html += `<tr><td style="${styleRowLabel}">${row.roomCode}</td>`;
+        row.data.forEach(avail => {
+            html += `<td style="${styleTd} ${getCellColor(avail)}">${avail}</td>`;
+        });
+        html += '</tr>';
+    });
+
+    // Totals Row
+    html += `<tr style="${styleTotalRow}">
+                <td style="${styleRowLabel} background-color:#f1f3f5;">TOTAL</td>`;
+    colTotals.forEach(total => {
+        html += `<td style="${styleTd}">${total}</td>`;
+    });
+    html += '</tr></tbody></table></div></div>';
+
+    return html;
+}
+
+function renderScenarioContent(name, scenarioData, parent, currentMatrix) {
+    const recs = scenarioData.recommendations || [];
+    
+    const old = parent.querySelector('.scenario-content'); if(old) old.remove();
+    const wrapper = document.createElement('div'); wrapper.className = 'scenario-content';
+    
+    const totalRev = recs.reduce((sum,r)=>sum+r.score,0);
+    const head = document.createElement('div');
+    head.style.cssText = 'display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; padding:15px; background:#f9f9f9; border-radius:8px;';
+    head.innerHTML = `<div><h3 style="margin:0;">${name} Path</h3><span style="color:#666;">${recs.length} Upgrades | Potential: <strong>$${totalRev.toLocaleString()}</strong></span></div>`;
+    
+    const btn = document.createElement('button');
+    btn.textContent = "Accept Entire Path";
+    btn.style.cssText = 'background:#28a745; color:white; border:none; padding:10px 20px; border-radius:5px; cursor:pointer;';
+    btn.addEventListener('click', () => handleAcceptScenario(name));
+    head.appendChild(btn); wrapper.appendChild(head);
+
+    // --- CALC MATRICES ---
+    // 1. Current (Base) Matrix - from parameter
+    const currentRows = currentMatrix ? currentMatrix.rows.map(r => ({roomCode: r.roomCode, data: r.availability})) : [];
+    
+    const startDate = parseDate(currentRules.selectedDate);
+    const dates = Array.from({ length: 14 }, (_, i) => { const d = new Date(startDate); d.setUTCDate(d.getUTCDate() + i); return d; });
+    const headers = ['Room Type', ...dates.map(date => `${date.toLocaleDateString('en-US', { weekday: 'short', timeZone: 'UTC' })}<br>${date.getUTCMonth() + 1}/${date.getUTCDate()}`)];
+    
+    const numCols = dates.length;
+    const currColTotals = new Array(numCols).fill(0);
+    currentRows.forEach(r => r.data.forEach((v,i) => currColTotals[i]+=v));
+
+    // 2. Projected Matrix - DIRECTLY FROM SIMULATION RESULT
+    // This is the source of truth for the "Projected" view
+    const projectedInvMap = scenarioData.inventory;
+    const hierarchy = currentRules.hierarchy.toUpperCase().split(',').map(r => r.trim()).filter(Boolean);
+    
+    const projectedRows = [];
+    const projColTotals = new Array(numCols).fill(0);
+
+    hierarchy.forEach(roomCode => {
+        const rowData = [];
+        dates.forEach((date, i) => {
+            const dStr = date.toISOString().split('T')[0];
+            let val = 0;
+            // Lookup in the simulation result
+            if (projectedInvMap && projectedInvMap[dStr] && projectedInvMap[dStr][roomCode] !== undefined) {
+                val = projectedInvMap[dStr][roomCode];
+            } else {
+                // Fallback (shouldn't happen if simulation ran correctly for all 14 days)
+                // If it does, fallback to current
+                const currRow = currentRows.find(r => r.roomCode === roomCode);
+                val = currRow ? currRow.data[i] : 0;
+            }
+            rowData.push(val);
+            projColTotals[i] += val;
+        });
+        projectedRows.push({ roomCode: roomCode, data: rowData });
+    });
+
+    // --- RENDER MATRICES ---
+    const matrixContainer = document.createElement('div');
+    matrixContainer.innerHTML = generateMatrixHTML("Projected Availability (With Scenario)", projectedRows, headers, projColTotals) + 
+                                generateMatrixHTML("Current Availability (Base)", currentRows, headers, currColTotals);
+    
+    wrapper.appendChild(matrixContainer);
+    parent.appendChild(wrapper);
+}
+
+function downloadAcceptedUpgradesCsv() {
+    if (!acceptedUpgrades || acceptedUpgrades.length === 0) { alert("No data to export."); return; }
+    const headers = ['Guest Name', 'Res ID', 'Current Room Type', 'Room Type to Upgrade To', 'Arrival Date', 'Departure Date'];
+    const rows = acceptedUpgrades.map(rec => { return [`"${rec.name}"`, `"${rec.resId}"`, `"${rec.room}"`, `"${rec.upgradeTo}"`, `"${rec.arrivalDate}"`, `"${rec.departureDate}"`].join(','); });
+    const csvContent = [headers.join(','), ...rows].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' }); const link = document.createElement('a'); const url = URL.createObjectURL(blob); const dateStr = new Date().toISOString().slice(0, 10); link.setAttribute('href', url); link.setAttribute('download', `accepted_upgrades_${dateStr}.csv`); link.style.visibility = 'hidden'; document.body.appendChild(link); link.click(); document.body.removeChild(link);
+}
+
 
 
 
