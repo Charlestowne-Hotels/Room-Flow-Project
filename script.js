@@ -2043,16 +2043,12 @@ document.addEventListener('DOMContentLoaded', function() {
     // Create wrapper for the manual controls
     const manualUploadWrapper = document.createElement('div');
     manualUploadWrapper.id = 'manual-upload-wrapper';
-    manualUploadWrapper.style.marginTop = '20px';
-    manualUploadWrapper.style.padding = '15px';
-    manualUploadWrapper.style.border = '1px dashed #ccc';
-    manualUploadWrapper.style.borderRadius = '8px';
-    manualUploadWrapper.style.backgroundColor = '#fafafa';
-
-    const uploadTitle = document.createElement('h4');
+    
+    const uploadTitle = document.createElement('h3');
+    uploadTitle.id = 'manual-upload-title';
     uploadTitle.textContent = "Manual PMS Upload";
-    uploadTitle.style.margin = "0 0 10px 0";
-    uploadTitle.style.color = '#555';
+    uploadTitle.style.marginBottom = "15px";
+    uploadTitle.style.color = '#333';
     manualUploadWrapper.appendChild(uploadTitle);
 
     // Insert wrapper where input currently is
@@ -2069,7 +2065,7 @@ document.addEventListener('DOMContentLoaded', function() {
         manualUploadWrapper.parentNode.insertBefore(mainPagePlaceholder, manualUploadWrapper);
     }
 
-    // Function to Switch UI Layout
+    // Function to Switch UI Layout & Styles
     const updateUIForProfile = () => {
         const currentProfile = document.getElementById('profile-dropdown').value;
         const isSnt = !!SNT_PROPERTY_MAP[currentProfile];
@@ -2080,20 +2076,64 @@ document.addEventListener('DOMContentLoaded', function() {
             autoLoadBtn.style.display = isSnt ? 'inline-block' : 'none';
         }
 
-        // 2. Move Manual Upload Controls
+        // 2. Move Manual Upload Controls & Apply Specific Styles
         if (isSnt) {
-            // Move to Settings Modal content (first element child usually content box)
-            const settingsContent = settingsModal.firstElementChild; 
-            if (settingsContent) {
-                // Check if already there to avoid reload flickers
-                if (manualUploadWrapper.parentNode !== settingsContent) {
-                    settingsContent.appendChild(manualUploadWrapper);
-                }
+            // --- MODE: COMPACT (Inside Settings) ---
+            const settingsContent = settingsModal.firstElementChild; // The .modal-content div
+            if (settingsContent && manualUploadWrapper.parentNode !== settingsContent) {
+                // Move elements after the last child of modal content
+                settingsContent.appendChild(manualUploadWrapper);
             }
+
+            // Apply Compact Styles
+            manualUploadWrapper.style.marginTop = '20px';
+            manualUploadWrapper.style.padding = '15px';
+            manualUploadWrapper.style.border = '1px solid #eee';
+            manualUploadWrapper.style.borderRadius = '5px';
+            manualUploadWrapper.style.backgroundColor = '#fafafa';
+            manualUploadWrapper.style.textAlign = 'left';
+            manualUploadWrapper.style.display = 'block';
+            manualUploadWrapper.style.minHeight = 'auto';
+            uploadTitle.style.fontSize = '16px';
+            uploadTitle.style.textAlign = 'left';
+            
+            if (genBtnRef) {
+                genBtnRef.style.width = 'auto';
+                genBtnRef.style.display = 'inline-block';
+                genBtnRef.style.marginTop = '10px';
+                genBtnRef.style.fontSize = '14px';
+            }
+
         } else {
-            // Move back to Main Page
+            // --- MODE: HERO (Main Page) ---
             if (mainPagePlaceholder && mainPagePlaceholder.parentNode) {
                 mainPagePlaceholder.parentNode.insertBefore(manualUploadWrapper, mainPagePlaceholder.nextSibling);
+            }
+
+            // Apply Hero Styles
+            manualUploadWrapper.style.marginTop = '20px';
+            manualUploadWrapper.style.padding = '40px';
+            manualUploadWrapper.style.border = '2px dashed #bbb';
+            manualUploadWrapper.style.borderRadius = '12px';
+            manualUploadWrapper.style.backgroundColor = '#f8f9fa'; // Light gray background
+            manualUploadWrapper.style.background = 'linear-gradient(135deg, #f9f9f9 0%, #f0f2f5 100%)';
+            manualUploadWrapper.style.textAlign = 'center';
+            manualUploadWrapper.style.display = 'flex';
+            manualUploadWrapper.style.flexDirection = 'column';
+            manualUploadWrapper.style.alignItems = 'center';
+            manualUploadWrapper.style.justifyContent = 'center';
+            manualUploadWrapper.style.minHeight = '250px';
+            manualUploadWrapper.style.gap = '15px';
+            
+            uploadTitle.style.fontSize = '24px';
+            uploadTitle.style.color = '#4343FF'; // Brand color
+            uploadTitle.style.textAlign = 'center';
+
+            if (genBtnRef) {
+                genBtnRef.style.width = '100%';
+                genBtnRef.style.maxWidth = '300px';
+                genBtnRef.style.fontSize = '16px';
+                genBtnRef.style.padding = '12px 20px';
             }
         }
     };
@@ -2119,7 +2159,7 @@ document.addEventListener('DOMContentLoaded', function() {
             setAdminControls(isUserAdmin);
             loadCompletedUpgrades(user.uid);
             resetAppState();
-            updateUIForProfile(); // Ensure correct UI state on login
+            updateUIForProfile(); // Trigger UI check on load
         } else {
             loginContainer.classList.remove('hidden'); appContainer.classList.add('hidden');
             setAdminControls(false);
@@ -2157,7 +2197,7 @@ document.addEventListener('DOMContentLoaded', function() {
         displayCompletedUpgrades();
         displayDemandInsights(); 
         loadOooRecords(); 
-        updateUIForProfile(); // Switch UI on profile change
+        updateUIForProfile(); // Trigger UI switch on dropdown change
     });
     
     updateRulesForm('fqi'); 
@@ -2782,6 +2822,7 @@ function downloadAcceptedUpgradesCsv() {
     const csvContent = [headers.join(','), ...rows].join('\n');
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' }); const link = document.createElement('a'); const url = URL.createObjectURL(blob); const dateStr = new Date().toISOString().slice(0, 10); link.setAttribute('href', url); link.setAttribute('download', `accepted_upgrades_${dateStr}.csv`); link.style.visibility = 'hidden'; document.body.appendChild(link); link.click(); document.body.removeChild(link);
 }
+
 
 
 
