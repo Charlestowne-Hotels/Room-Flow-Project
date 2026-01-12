@@ -1601,20 +1601,13 @@ const MASTER_INVENTORIES = {
 
 };
 
-
-// ... (Your existing Config, ADMIN_UIDS, SNT_PROPERTY_MAP, DOM References, profiles, and MASTER_INVENTORIES remain above this) ...
-
-// --- STATE MANAGEMENT ---
-// ... (Your existing Config, ADMIN_UIDS, SNT_PROPERTY_MAP, DOM References, profiles, and MASTER_INVENTORIES remain above this) ...
-
-// --- STATE MANAGEMENT ---
 // ... (Your existing Config, ADMIN_UIDS, SNT_PROPERTY_MAP, DOM References, profiles, and MASTER_INVENTORIES remain above this) ...
 
 // --- STATE MANAGEMENT ---
 let currentCsvContent = null;
 let currentFileName = null; 
 let currentRules = null;
-let currentScenarios = {}; // NEW: Holds the generated scenarios
+let currentScenarios = {}; 
 let acceptedUpgrades = [];
 let completedUpgrades = [];
 let oooRecords = [];
@@ -1632,9 +1625,7 @@ function resetAppState() {
     document.getElementById('csv-file').value = '';
 
     const outputEl = document.getElementById('output');
-    if (outputEl) {
-        outputEl.style.display = 'block'; 
-    }
+    if (outputEl) outputEl.style.display = 'block'; 
 
     const placeholderMsg = '<p style="padding: 20px; text-align: center; color: #666; font-style: italic;">Please upload and generate a PMS file to view data.</p>';
 
@@ -1653,6 +1644,7 @@ function resetAppState() {
     displayAcceptedUpgrades();
 }
 
+// Refresh data when Settings are closed
 function handleRefresh() {
     if (currentCsvContent) {
         currentRules = {
@@ -1699,9 +1691,7 @@ function parseInventoryInput(inputText) {
         if (parts.length < 2) return; 
         const code = parts.pop(); 
         parts.forEach(roomNum => {
-            if (roomNum) {
-                inventoryList.push({ roomNumber: roomNum, code: code });
-            }
+            if (roomNum) inventoryList.push({ roomNumber: roomNum, code: code });
         });
     });
     return inventoryList;
@@ -1715,9 +1705,7 @@ function parseSynxisInventory(csvContent) {
     const roomIndex = headers.indexOf('Rm_Typ_Nm');
     const availIndex = headers.indexOf('Avail_Qty');
 
-    if (dateIndex === -1 || roomIndex === -1 || availIndex === -1) {
-        return null;
-    }
+    if (dateIndex === -1 || roomIndex === -1 || availIndex === -1) return null;
 
     const inventoryMap = {}; 
 
@@ -1740,121 +1728,293 @@ function parseSynxisInventory(csvContent) {
 
         const qty = parseInt(availRaw, 10);
 
-        if (!inventoryMap[dateKey]) {
-            inventoryMap[dateKey] = {};
-        }
+        if (!inventoryMap[dateKey]) inventoryMap[dateKey] = {};
         inventoryMap[dateKey][roomCode] = (isNaN(qty) ? 0 : qty);
     }
 
     return inventoryMap;
 }
 
-// ... (Save New Property & Load Custom Properties functions can remain the same) ...
-// For brevity, assuming handleSaveNewProperty, loadCustomProperties, rebuildProfileDropdown are here.
-// You can keep the existing implementations of these functions.
-
-async function handleSaveNewProperty() { /* Use previous implementation */ 
+async function handleSaveNewProperty() {
     const codeInput = document.getElementById('new-prop-code');
     const hierarchyInput = document.getElementById('new-prop-hierarchy');
     const inventoryInput = document.getElementById('new-prop-inventory');
     const ineligibleInput = document.getElementById('new-prop-ineligible'); 
     const btn = document.getElementById('save-new-prop-btn');
     const code = codeInput.value.trim().toLowerCase();
+    
     if (!code || !hierarchyInput.value || !inventoryInput.value) { alert("Please fill in Code, Hierarchy, and Inventory."); return; }
+
     btn.disabled = true; btn.textContent = "Parsing & Saving...";
+
     try {
         const parsedInventory = parseInventoryInput(inventoryInput.value);
         if (parsedInventory.length === 0) throw new Error("Could not parse inventory data.");
-        const newPropertyData = { code, hierarchy: hierarchyInput.value, inventory: parsedInventory, rules: { hierarchy: hierarchyInput.value, targetRooms: document.getElementById('new-prop-target').value, prioritizedRates: document.getElementById('new-prop-rates').value, otaRates: 'Expedia, Booking.com, Priceline, GDS', ineligibleUpgrades: ineligibleInput ? ineligibleInput.value : '' } };
+
+        const newPropertyData = {
+            code: code,
+            hierarchy: hierarchyInput.value,
+            inventory: parsedInventory,
+            rules: {
+                hierarchy: hierarchyInput.value,
+                targetRooms: document.getElementById('new-prop-target').value,
+                prioritizedRates: document.getElementById('new-prop-rates').value,
+                otaRates: 'Expedia, Booking.com, Priceline, GDS', 
+                ineligibleUpgrades: ineligibleInput ? ineligibleInput.value : '' 
+            }
+        };
+
         await db.collection('custom_properties').doc(code).set(newPropertyData);
-        profiles[code] = newPropertyData.rules; MASTER_INVENTORIES[code] = parsedInventory;
-        rebuildProfileDropdown(); document.getElementById('profile-dropdown').value = code; updateRulesForm(code);
-        alert(`Property ${code.toUpperCase()} saved successfully!`); document.getElementById('add-property-modal').classList.add('hidden');
-        codeInput.value = ''; hierarchyInput.value = ''; inventoryInput.value = ''; if(ineligibleInput) ineligibleInput.value = '';
-    } catch (error) { console.error("Error saving property:", error); alert("Error saving: " + error.message); } finally { btn.disabled = false; btn.textContent = "Save Property to Cloud"; }
+        profiles[code] = newPropertyData.rules;
+        MASTER_INVENTORIES[code] = parsedInventory;
+
+        rebuildProfileDropdown();
+        document.getElementById('profile-dropdown').value = code;
+        updateRulesForm(code);
+
+        alert(`Property ${code.toUpperCase()} saved successfully!`);
+        document.getElementById('add-property-modal').classList.add('hidden');
+        
+        codeInput.value = ''; hierarchyInput.value = ''; inventoryInput.value = '';
+        if(ineligibleInput) ineligibleInput.value = '';
+
+    } catch (error) {
+        console.error("Error saving property:", error);
+        alert("Error saving: " + error.message);
+    } finally {
+        btn.disabled = false; btn.textContent = "Save Property to Cloud";
+    }
 }
 
-async function loadCustomProperties() { /* Use previous implementation */
-    try { const snapshot = await db.collection('custom_properties').get(); snapshot.forEach(doc => { const data = doc.data(); const code = doc.id; if (data.rules) profiles[code] = data.rules; if (data.inventory) MASTER_INVENTORIES[code] = data.inventory; }); rebuildProfileDropdown(); console.log("Custom properties loaded."); } catch (error) { console.error("Error loading custom properties:", error); }
+async function loadCustomProperties() {
+    try {
+        const snapshot = await db.collection('custom_properties').get();
+        snapshot.forEach(doc => {
+            const data = doc.data();
+            const code = doc.id;
+            if (data.rules) profiles[code] = data.rules;
+            if (data.inventory) MASTER_INVENTORIES[code] = data.inventory;
+        });
+        rebuildProfileDropdown();
+    } catch (error) { console.error("Error loading custom properties:", error); }
 }
 
-function rebuildProfileDropdown() { /* Use previous implementation */
-    const dropdown = document.getElementById('profile-dropdown'); const currentVal = dropdown.value; dropdown.innerHTML = ''; const allKeys = Object.keys(profiles).sort(); allKeys.forEach(key => { const option = document.createElement('option'); option.value = key; option.textContent = key.toUpperCase(); dropdown.appendChild(option); }); if (profiles[currentVal]) { dropdown.value = currentVal; } else if (allKeys.length > 0) { dropdown.value = allKeys[0]; updateRulesForm(allKeys[0]); }
+function rebuildProfileDropdown() {
+    const dropdown = document.getElementById('profile-dropdown');
+    const currentVal = dropdown.value;
+    dropdown.innerHTML = '';
+    Object.keys(profiles).sort().forEach(key => {
+        const option = document.createElement('option');
+        option.value = key; option.textContent = key.toUpperCase();
+        dropdown.appendChild(option);
+    });
+    if (profiles[currentVal]) dropdown.value = currentVal;
+    else if (dropdown.options.length > 0) {
+        dropdown.value = dropdown.options[0].value;
+        updateRulesForm(dropdown.value);
+    }
 }
 
-// --- OOO MANAGEMENT ---
-// (Keep existing OOO functions: loadOooRecords, handleAddOoo, handleDeleteOoo, renderOooList, populateOooDropdown)
 async function loadOooRecords() {
     const currentProfile = document.getElementById('profile-dropdown').value;
     const listContainer = document.getElementById('ooo-list');
     oooRecords = []; 
     if(listContainer) listContainer.innerHTML = '<p>Loading...</p>';
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+
     try {
         const snapshot = await db.collection('ooo_logs').where('profile', '==', currentProfile).get();
-        snapshot.forEach(doc => { const data = doc.data(); const endDate = data.endDate.toDate(); if (endDate >= today) { oooRecords.push({ id: doc.id, roomType: data.roomType, count: data.count || 1, startDate: data.startDate.toDate(), endDate: endDate, profile: data.profile }); } });
+        snapshot.forEach(doc => {
+            const data = doc.data();
+            const endDate = data.endDate.toDate();
+            if (endDate >= today) {
+                oooRecords.push({
+                    id: doc.id, roomType: data.roomType, count: data.count || 1, 
+                    startDate: data.startDate.toDate(), endDate: endDate, profile: data.profile
+                });
+            }
+        });
         renderOooList(); populateOooDropdown(); 
-    } catch (error) { console.error("Error loading OOO records:", error); if(listContainer) listContainer.innerHTML = '<p style="color:red">Error loading OOO records.</p>'; }
+    } catch (error) {
+        console.error("Error loading OOO:", error);
+        if(listContainer) listContainer.innerHTML = '<p style="color:red">Error.</p>';
+    }
 }
 
-async function handleAddOoo() { /* Use previous implementation */ 
-    const profile = document.getElementById('profile-dropdown').value; const roomType = document.getElementById('ooo-room-type').value; const countInput = document.getElementById('ooo-count'); const startStr = document.getElementById('ooo-start-date').value; const endStr = document.getElementById('ooo-end-date').value; const count = parseInt(countInput.value, 10);
-    if (!roomType || !startStr || !endStr || isNaN(count) || count < 1) { alert("Please fill in all OOO fields correctly."); return; }
-    const startDate = new Date(startStr); const utcStart = new Date(Date.UTC(startDate.getFullYear(), startDate.getMonth(), startDate.getDate(), 12, 0, 0));
-    const endDate = new Date(endStr); const utcEnd = new Date(Date.UTC(endDate.getFullYear(), endDate.getMonth(), endDate.getDate(), 12, 0, 0));
+async function handleAddOoo() {
+    const profile = document.getElementById('profile-dropdown').value;
+    const roomType = document.getElementById('ooo-room-type').value;
+    const countInput = document.getElementById('ooo-count');
+    const startStr = document.getElementById('ooo-start-date').value;
+    const endStr = document.getElementById('ooo-end-date').value;
+    const count = parseInt(countInput.value, 10);
+
+    if (!roomType || !startStr || !endStr || isNaN(count) || count < 1) {
+        alert("Please fill in all OOO fields correctly."); return;
+    }
+
+    const startDate = new Date(startStr); 
+    const utcStart = new Date(Date.UTC(startDate.getFullYear(), startDate.getMonth(), startDate.getDate(), 12, 0, 0));
+    const endDate = new Date(endStr);
+    const utcEnd = new Date(Date.UTC(endDate.getFullYear(), endDate.getMonth(), endDate.getDate(), 12, 0, 0));
+
     if (utcEnd < utcStart) { alert("End date cannot be before start date."); return; }
+
     const newRecord = { profile, roomType, count, startDate: utcStart, endDate: utcEnd };
-    const btn = document.getElementById('add-ooo-btn'); btn.disabled = true; btn.textContent = "Adding...";
-    try { const docRef = await db.collection('ooo_logs').add(newRecord); oooRecords.push({ ...newRecord, id: docRef.id }); renderOooList(); document.getElementById('ooo-room-type').value = ""; countInput.value = "1"; document.getElementById('ooo-start-date').value = ""; document.getElementById('ooo-end-date').value = ""; } catch (error) { console.error("Error adding OOO:", error); alert("Failed to save."); } finally { btn.disabled = false; btn.textContent = "Add"; }
+    const btn = document.getElementById('add-ooo-btn');
+    btn.disabled = true; btn.textContent = "Adding...";
+
+    try {
+        const docRef = await db.collection('ooo_logs').add(newRecord);
+        oooRecords.push({ ...newRecord, id: docRef.id });
+        renderOooList();
+        document.getElementById('ooo-room-type').value = ""; countInput.value = "1";
+        document.getElementById('ooo-start-date').value = ""; document.getElementById('ooo-end-date').value = "";
+    } catch (error) { console.error("Error adding OOO:", error); alert("Failed to save."); } 
+    finally { btn.disabled = false; btn.textContent = "Add"; }
 }
 
-async function handleDeleteOoo(id) { /* Use previous implementation */
-    if(!confirm("Remove this OOO record?")) return; try { await db.collection('ooo_logs').doc(id).delete(); oooRecords = oooRecords.filter(r => r.id !== id); renderOooList(); } catch (error) { console.error("Error deleting OOO:", error); alert("Failed to delete."); }
+async function handleDeleteOoo(id) {
+    if(!confirm("Remove this OOO record?")) return;
+    try {
+        await db.collection('ooo_logs').doc(id).delete();
+        oooRecords = oooRecords.filter(r => r.id !== id);
+        renderOooList();
+    } catch (error) { console.error("Error deleting OOO:", error); alert("Failed to delete."); }
 }
 
-function renderOooList() { /* Use previous implementation */
-    const container = document.getElementById('ooo-list'); if(!container) return;
+function renderOooList() {
+    const container = document.getElementById('ooo-list');
+    if(!container) return;
     if (oooRecords.length === 0) { container.innerHTML = '<p style="color: #888; font-size: 13px;">No active OOO records.</p>'; return; }
     oooRecords.sort((a, b) => a.startDate - b.startDate);
     let html = '<ul style="list-style: none; padding: 0; margin: 0;">';
-    oooRecords.forEach(rec => { const start = rec.startDate.toISOString().split('T')[0]; const end = rec.endDate.toISOString().split('T')[0]; const countDisplay = rec.count > 1 ? `<strong style="color: #d63384;">(x${rec.count})</strong>` : ''; html += `<li style="display: flex; justify-content: space-between; align-items: center; background: white; padding: 8px; border-bottom: 1px solid #eee; margin-bottom: 4px; font-size: 13px;"><span><strong>${rec.roomType}</strong> ${countDisplay} <br><small>${start} to ${end}</small></span><button onclick="handleDeleteOoo('${rec.id}')" style="color: red; background: none; border: none; cursor: pointer; font-weight: bold; font-size: 14px;">&times;</button></li>`; });
+    oooRecords.forEach(rec => {
+        const start = rec.startDate.toISOString().split('T')[0];
+        const end = rec.endDate.toISOString().split('T')[0];
+        const countDisplay = rec.count > 1 ? `<strong style="color: #d63384;">(x${rec.count})</strong>` : '';
+        html += `<li style="display: flex; justify-content: space-between; align-items: center; background: white; padding: 8px; border-bottom: 1px solid #eee; margin-bottom: 4px; font-size: 13px;">
+                <span><strong>${rec.roomType}</strong> ${countDisplay} <br><small>${start} to ${end}</small></span>
+                <button onclick="handleDeleteOoo('${rec.id}')" style="color: red; background: none; border: none; cursor: pointer; font-weight: bold; font-size: 14px;">&times;</button>
+            </li>`;
+    });
     html += '</ul>'; container.innerHTML = html;
 }
 
-function populateOooDropdown() { /* Use previous implementation */
-    const dropdown = document.getElementById('ooo-room-type'); const hierarchyVal = document.getElementById('hierarchy').value; if(!dropdown || !hierarchyVal) return; const hierarchy = hierarchyVal.split(','); dropdown.innerHTML = '<option value="">Select Room</option>'; hierarchy.forEach(code => { const cleanCode = code.trim().toUpperCase(); if(cleanCode) { const opt = document.createElement('option'); opt.value = cleanCode; opt.textContent = cleanCode; dropdown.appendChild(opt); } });
+function populateOooDropdown() {
+    const dropdown = document.getElementById('ooo-room-type');
+    const hierarchyVal = document.getElementById('hierarchy').value;
+    if(!dropdown || !hierarchyVal) return;
+    const hierarchy = hierarchyVal.split(',');
+    dropdown.innerHTML = '<option value="">Select Room</option>';
+    hierarchy.forEach(code => {
+        const cleanCode = code.trim().toUpperCase();
+        if(cleanCode) {
+            const opt = document.createElement('option'); opt.value = cleanCode; opt.textContent = cleanCode; dropdown.appendChild(opt);
+        }
+    });
 }
 
-function setAdminControls(isAdmin) { /* Use previous implementation */
-    const shouldBeDisabled = !isAdmin; const elements = [document.getElementById('hierarchy'), document.getElementById('target-rooms'), document.getElementById('prioritized-rates'), document.getElementById('ota-rates'), document.getElementById('ineligible-upgrades'), document.getElementById('ooo-start-date'), document.getElementById('ooo-end-date'), document.getElementById('ooo-room-type'), document.getElementById('ooo-count'), document.getElementById('add-ooo-btn')];
+function setAdminControls(isAdmin) {
+    const shouldBeDisabled = !isAdmin;
+    const elements = [
+        document.getElementById('hierarchy'), document.getElementById('target-rooms'),
+        document.getElementById('prioritized-rates'), document.getElementById('ota-rates'),
+        document.getElementById('ineligible-upgrades'), document.getElementById('ooo-start-date'),
+        document.getElementById('ooo-end-date'), document.getElementById('ooo-room-type'),
+        document.getElementById('ooo-count'), document.getElementById('add-ooo-btn')
+    ];
     elements.forEach(el => { if (el) el.disabled = shouldBeDisabled; });
-    const rulesContainer = document.getElementById('admin-rules-container'); if(rulesContainer) rulesContainer.style.display = isAdmin ? 'block' : 'none';
+    const rulesContainer = document.getElementById('admin-rules-container');
+    if(rulesContainer) rulesContainer.style.display = isAdmin ? 'block' : 'none';
 }
 
-async function loadRemoteProfiles() { /* Use previous implementation */
-    try { const doc = await db.collection('app_settings').doc('profile_rules').get(); if (doc.exists) { const savedData = doc.data(); Object.keys(savedData).forEach(key => { if (profiles[key]) profiles[key] = { ...profiles[key], ...savedData[key] }; }); } updateRulesForm(document.getElementById('profile-dropdown').value); } catch (error) { console.error(error); }
+async function loadRemoteProfiles() {
+    try {
+        const docRef = db.collection('app_settings').doc('profile_rules');
+        const doc = await docRef.get();
+        if (doc.exists) {
+            const savedData = doc.data();
+            Object.keys(savedData).forEach(key => {
+                if (profiles[key]) profiles[key] = { ...profiles[key], ...savedData[key] };
+            });
+        }
+        updateRulesForm(document.getElementById('profile-dropdown').value);
+    } catch (error) { console.error("Error loading remote profiles:", error); }
 }
 
-async function handleSaveRules() { /* Use previous implementation */
-    const profile = document.getElementById('profile-dropdown').value; const btn = document.getElementById('save-rules-btn'); const status = document.getElementById('save-status');
-    const newRules = { hierarchy: document.getElementById('hierarchy').value, targetRooms: document.getElementById('target-rooms').value, prioritizedRates: document.getElementById('prioritized-rates').value, otaRates: document.getElementById('ota-rates').value, ineligibleUpgrades: document.getElementById('ineligible-upgrades').value };
-    if (profiles[profile]) Object.assign(profiles[profile], newRules);
-    btn.disabled = true; btn.textContent = "Saving..."; try { await db.collection('app_settings').doc('profile_rules').set({ [profile]: newRules }, { merge: true }); status.textContent = "Saved!"; status.style.color = "green"; setTimeout(() => status.textContent="", 3000); } catch(e) { console.error(e); status.textContent="Error"; status.style.color="red"; } finally { btn.disabled=false; btn.textContent="Save Rules"; }
+async function handleSaveRules() {
+    const currentProfile = document.getElementById('profile-dropdown').value;
+    const btn = document.getElementById('save-rules-btn');
+    const status = document.getElementById('save-status');
+    const newRules = {
+        hierarchy: document.getElementById('hierarchy').value,
+        targetRooms: document.getElementById('target-rooms').value,
+        prioritizedRates: document.getElementById('prioritized-rates').value,
+        otaRates: document.getElementById('ota-rates').value,
+        ineligibleUpgrades: document.getElementById('ineligible-upgrades').value
+    };
+    if (profiles[currentProfile]) Object.assign(profiles[currentProfile], newRules);
+    
+    btn.disabled = true; btn.textContent = "Saving..."; status.textContent = "";
+    try {
+        await db.collection('app_settings').doc('profile_rules').set({ [currentProfile]: newRules }, { merge: true });
+        status.textContent = "Saved successfully!"; status.style.color = "green";
+        setTimeout(() => { status.textContent = ""; }, 3000);
+    } catch (error) {
+        console.error("Error saving rules:", error);
+        status.textContent = "Error saving."; status.style.color = "red";
+    } finally {
+        btn.disabled = false; btn.textContent = "Save Rules";
+    }
 }
 
-async function loadCompletedUpgrades(userId) { /* Use previous implementation */
-    if (!userId) return; completedUpgrades = []; try { const snapshot = await db.collection('users').doc(userId).collection('completedUpgrades').get(); snapshot.forEach(doc => { const u = doc.data(); u.firestoreId = doc.id; if(u.completedTimestamp?.toDate) u.completedTimestamp = u.completedTimestamp.toDate(); completedUpgrades.push(u); }); displayCompletedUpgrades(); displayDemandInsights(); } catch(e) { console.error(e); }
+async function loadCompletedUpgrades(userId) {
+    if (!userId) return;
+    completedUpgrades = [];
+    const upgradesRef = db.collection('users').doc(userId).collection('completedUpgrades');
+    try {
+        const snapshot = await upgradesRef.get();
+        snapshot.forEach(doc => {
+            const upgrade = doc.data();
+            upgrade.firestoreId = doc.id;
+            if (upgrade.completedTimestamp?.toDate) upgrade.completedTimestamp = upgrade.completedTimestamp.toDate();
+            completedUpgrades.push(upgrade);
+        });
+        displayCompletedUpgrades(); displayDemandInsights(); 
+    } catch (error) { console.error("Error loading completed upgrades: ", error); }
 }
 
-// ... (Auth handlers handleSignIn, handleSignOut, handleClearAnalytics remain same) ...
-const handleSignIn = () => { const e=emailInput.value, p=passwordInput.value; if(!e||!p) { errorMessage.textContent="Enter email/pass"; return; } auth.signInWithEmailAndPassword(e,p).catch(err=>errorMessage.textContent=err.message); };
+const handleSignIn = () => {
+    const email = emailInput.value; const password = passwordInput.value;
+    errorMessage.textContent = '';
+    if (!email || !password) { errorMessage.textContent = "Please enter both email and password."; return; }
+    auth.signInWithEmailAndPassword(email, password).catch(error => { errorMessage.textContent = error.message; });
+};
+
 const handleSignOut = () => auth.signOut();
-async function handleClearAnalytics() { if(!confirm("Delete all data?")) return; const u=auth.currentUser, p=document.getElementById('profile-dropdown').value; if(!u) return; showLoader(true,'Clearing...'); try { const q=await db.collection('users').doc(u.uid).collection('completedUpgrades').where('profile','==',p).get(); const b=db.batch(); q.docs.forEach(d=>b.delete(d.ref)); await b.commit(); alert("Cleared."); await loadCompletedUpgrades(u.uid); } catch(e){console.error(e);} finally { showLoader(false); } }
 
-// --- INITIALIZATION ---
+async function handleClearAnalytics() {
+    if (!confirm("Permanently delete ALL completed upgrades for this profile?")) return;
+    const user = auth.currentUser;
+    const currentProfile = document.getElementById('profile-dropdown').value;
+    if (!user) return;
+    showLoader(true, 'Clearing Data...');
+    const upgradesRef = db.collection('users').doc(user.uid).collection('completedUpgrades');
+    const query = upgradesRef.where('profile', '==', currentProfile);
+    try {
+        const snapshot = await query.get();
+        if (snapshot.empty) { alert("No data to clear."); showLoader(false); return; }
+        const batch = db.batch();
+        snapshot.docs.forEach(doc => batch.delete(doc.ref));
+        await batch.commit();
+        alert(`Deleted ${snapshot.size} records.`);
+        await loadCompletedUpgrades(user.uid);
+    } catch (error) { console.error(error); alert("Failed to clear."); } 
+    finally { showLoader(false); }
+}
+
 document.addEventListener('DOMContentLoaded', function() {
-    // ... (Keep your existing DOM element selections and basic event listeners) ...
     loginContainer = document.getElementById('login-container'); appContainer = document.getElementById('app-container');
     signinBtn = document.getElementById('signin-btn'); signoutBtn = document.getElementById('signout-btn');
     emailInput = document.getElementById('email-input'); passwordInput = document.getElementById('password-input');
@@ -1876,16 +2036,26 @@ document.addEventListener('DOMContentLoaded', function() {
     window.addEventListener('click', (e) => { if (e.target === addPropModal) addPropModal.classList.add('hidden'); });
 
     auth.onAuthStateChanged(async user => {
-        // ... (Keep existing auth logic) ...
         const adminButton = document.getElementById('clear-analytics-btn');
         const saveBtn = document.getElementById('save-rules-btn'); 
         if (user) {
             loginContainer.classList.add('hidden'); appContainer.classList.remove('hidden');
             await loadCustomProperties(); await loadRemoteProfiles(); await loadOooRecords(); 
-            const isAdmin = ADMIN_UIDS.includes(user.uid);
-            if(isAdmin) { adminButton.classList.remove('hidden'); saveBtn.classList.remove('hidden'); settingsTriggerBtn.classList.remove('hidden'); addPropBtn.classList.remove('hidden'); }
-            else { saveBtn.classList.add('hidden'); adminButton.classList.add('hidden'); settingsTriggerBtn.classList.add('hidden'); addPropBtn.classList.add('hidden'); }
-            setAdminControls(isAdmin); loadCompletedUpgrades(user.uid); resetAppState();
+            const isUserAdmin = ADMIN_UIDS.includes(user.uid);
+            if (isUserAdmin) {
+                if(adminButton) adminButton.classList.remove('hidden');
+                if(saveBtn) saveBtn.classList.remove('hidden');
+                if(settingsTriggerBtn) settingsTriggerBtn.classList.remove('hidden');
+                if(addPropBtn) addPropBtn.classList.remove('hidden'); 
+            } else {
+                if(saveBtn) saveBtn.classList.add('hidden');
+                if(adminButton) adminButton.classList.add('hidden');
+                if(settingsTriggerBtn) settingsTriggerBtn.classList.add('hidden');
+                if(addPropBtn) addPropBtn.classList.add('hidden'); 
+            }
+            setAdminControls(isUserAdmin);
+            loadCompletedUpgrades(user.uid);
+            resetAppState();
         } else {
             loginContainer.classList.remove('hidden'); appContainer.classList.add('hidden');
             setAdminControls(false);
@@ -1896,45 +2066,67 @@ document.addEventListener('DOMContentLoaded', function() {
         settingsTriggerBtn.addEventListener('click', () => { settingsModal.classList.remove('hidden'); populateOooDropdown(); });
     }
 
-    // UPDATED: Close button for Settings Modal - Trigger Refresh
+    // CLOSE SETTINGS -> REFRESH DATA
     if(closeSettingsBtn) {
         closeSettingsBtn.addEventListener('click', () => {
             settingsModal.classList.add('hidden');
-            handleRefresh(); 
+            handleRefresh();
         });
     }
-
-    // UPDATED: Window click for Settings Modal - Trigger Refresh
     window.addEventListener('click', (e) => {
         if (e.target === settingsModal) {
             settingsModal.classList.add('hidden');
-            handleRefresh(); 
+            handleRefresh();
         }
     });
 
     if(generateBtn) generateBtn.addEventListener('click', handleGenerateClick);
-    
-    // ... (Keep Auto Load, Date Dropdown, Tab logic) ...
+
     const autoLoadBtn = document.getElementById('auto-load-btn');
     if (autoLoadBtn) autoLoadBtn.addEventListener('click', handleAutoLoad);
+
     const profileDropdown = document.getElementById('profile-dropdown');
-    profileDropdown.addEventListener('change', (e) => {
-        updateRulesForm(e.target.value); resetAppState(); displayCompletedUpgrades(); displayDemandInsights(); loadOooRecords();
-        if(SNT_PROPERTY_MAP[e.target.value]) autoLoadBtn.style.display='inline-block'; else autoLoadBtn.style.display='none';
+    
+    // Function to check if button should be visible (SNT only)
+    const updateAutoLoadButtonVisibility = () => {
+        const currentProfile = profileDropdown.value;
+        const autoLoadBtn = document.getElementById('auto-load-btn');
+        if (autoLoadBtn) {
+            // Hide if not in SNT map
+            autoLoadBtn.style.display = SNT_PROPERTY_MAP[currentProfile] ? 'inline-block' : 'none'; 
+        }
+    };
+
+    profileDropdown.addEventListener('change', (event) => {
+        updateRulesForm(event.target.value);
+        resetAppState();
+        displayCompletedUpgrades();
+        displayDemandInsights(); 
+        loadOooRecords(); 
+        updateAutoLoadButtonVisibility(); // Check visibility on change
     });
-    updateRulesForm('fqi');
-    if(SNT_PROPERTY_MAP['fqi'] && autoLoadBtn) autoLoadBtn.style.display='inline-block';
+    
+    updateRulesForm('fqi'); 
+    updateAutoLoadButtonVisibility(); // Check visibility on init
 
     if(saveRulesBtn) saveRulesBtn.addEventListener('click', handleSaveRules);
     const addOooBtn = document.getElementById('add-ooo-btn');
     if (addOooBtn) addOooBtn.addEventListener('click', handleAddOoo);
 
-    signinBtn.addEventListener('click', handleSignIn); signoutBtn.addEventListener('click', handleSignOut); clearAnalyticsBtn.addEventListener('click', handleClearAnalytics);
+    if (emailInput) emailInput.addEventListener('keydown', (e) => { if(e.key==='Enter') handleSignIn(); });
+    if (passwordInput) passwordInput.addEventListener('keydown', (e) => { if(e.key==='Enter') handleSignIn(); });
+
+    signinBtn.addEventListener('click', handleSignIn);
+    signoutBtn.addEventListener('click', handleSignOut);
+    clearAnalyticsBtn.addEventListener('click', handleClearAnalytics);
+
     const futureDate = new Date(); futureDate.setDate(futureDate.getDate() + 3);
     document.getElementById('selected-date').value = futureDate.toISOString().slice(0, 10);
-    document.getElementById('sort-date-dropdown').addEventListener('change', () => { displayCompletedUpgrades(); displayDemandInsights(); });
-
-    // Tabs logic...
+    
+    document.getElementById('sort-date-dropdown').addEventListener('change', () => {
+        displayCompletedUpgrades(); displayDemandInsights();
+    });
+    
     const tabs = document.querySelectorAll('[data-tab-target]');
     const tabContents = document.querySelectorAll('.tab-content');
     tabs.forEach(tab => {
@@ -1946,22 +2138,26 @@ document.addEventListener('DOMContentLoaded', function() {
             target.classList.add('active');
         });
     });
+
     const subTabs = document.querySelectorAll('[data-sub-tab-target]');
     subTabs.forEach(tab => {
         tab.addEventListener('click', () => {
-            const target = document.querySelector(tab.dataset.subTabTarget);
+            const targetSelector = tab.dataset.subTabTarget;
+            const target = document.querySelector(targetSelector);
             subTabs.forEach(t => t.classList.remove('active'));
-            document.querySelector('#completed-container').parentElement.style.display = 'none';
-            document.querySelector('#demand-insights-container').parentElement.style.display = 'none';
-            if(document.querySelector('#completed-container')) document.querySelector('#completed-container').style.display='none';
-            if(document.querySelector('#demand-insights-container')) document.querySelector('#demand-insights-container').style.display='none';
+            const completedView = document.querySelector('#completed-container')?.parentElement;
+            const demandView = document.querySelector('#demand-insights-container')?.parentElement;
+            if(document.querySelector('#completed-container')) document.querySelector('#completed-container').style.display = 'none';
+            if(document.querySelector('#demand-insights-container')) document.querySelector('#demand-insights-container').style.display = 'none';
             tab.classList.add('active');
-            if(target) { target.style.display = 'block'; if (target.id === 'demand-insights-container') displayDemandInsights(); else if (target.id === 'completed-container') displayCompletedUpgrades(); }
+            if(target) {
+                target.style.display = 'block';
+                if (target.id === 'demand-insights-container') displayDemandInsights();
+                else if (target.id === 'completed-container') displayCompletedUpgrades();
+            }
         });
     });
 });
-
-// --- MAIN LOGIC FUNCTIONS ---
 
 async function handleAutoLoad() {
     const btn = document.getElementById('auto-load-btn');
@@ -1975,17 +2171,23 @@ async function handleAutoLoad() {
     currentInventoryMap = null;
 
     try {
-        const doc = await db.collection('SNTData').doc(`${requiredPrefix}_latest`).get();
+        const docRef = db.collection('SNTData').doc(`${requiredPrefix}_latest`); 
+        const doc = await docRef.get();
         if (!doc.exists) throw new Error("No report found.");
         const data = doc.data();
         if (!data.csv_content) throw new Error("Report empty.");
-        
-        try {
-            const invDoc = await db.collection('SynxisData').doc(`${requiredPrefix}_latest`).get();
-            if (invDoc.exists && invDoc.data().csv_content) currentInventoryMap = parseSynxisInventory(invDoc.data().csv_content);
-        } catch (e) { console.warn("Inv load fail", e); }
 
-        currentCsvContent = data.csv_content; currentFileName = data.filename || "Unknown.csv";
+        try {
+            const invDocRef = db.collection('SynxisData').doc(`${requiredPrefix}_latest`);
+            const invDoc = await invDocRef.get();
+            if (invDoc.exists && invDoc.data().csv_content) {
+                currentInventoryMap = parseSynxisInventory(invDoc.data().csv_content);
+            }
+        } catch (invError) { console.warn("Inv load fail", invError); }
+
+        currentCsvContent = data.csv_content;
+        currentFileName = data.filename || "Unknown.csv";
+        
         currentRules = {
             hierarchy: document.getElementById('hierarchy').value,
             targetRooms: document.getElementById('target-rooms').value,
@@ -2000,16 +2202,22 @@ async function handleAutoLoad() {
             try {
                 const results = processUpgradeData(currentCsvContent, currentRules, currentFileName);
                 displayResults(results);
-                alert(`Loaded: ${currentFileName}\nInventory: ${currentInventoryMap ? 'SynXis Loaded' : 'Calculated'}`);
+                alert(`Loaded: ${currentFileName}\nInventory: ${currentInventoryMap ? "SynXis" : "Calculated"}`);
             } catch (err) { showError(err); } finally { btn.disabled = false; btn.textContent = originalText; }
         }, 50);
-    } catch (error) { console.error(error); showLoader(false); btn.disabled = false; btn.textContent = originalText; alert(error.message); }
+
+    } catch (error) { console.error("Auto-load error:", error); showLoader(false); btn.disabled = false; btn.textContent = originalText; alert(error.message); }
 }
 
 function handleGenerateClick() {
     const fileInput = document.getElementById('csv-file');
     if (!fileInput.files.length) { alert('Select file.'); return; }
-    currentFileName = fileInput.files[0].name; currentInventoryMap = null; acceptedUpgrades = []; displayAcceptedUpgrades();
+    
+    currentFileName = fileInput.files[0].name;
+    currentInventoryMap = null; 
+    acceptedUpgrades = [];
+    displayAcceptedUpgrades();
+
     const rules = {
         hierarchy: document.getElementById('hierarchy').value,
         targetRooms: document.getElementById('target-rooms').value,
@@ -2021,7 +2229,8 @@ function handleGenerateClick() {
     };
     const reader = new FileReader();
     reader.onload = function(e) {
-        currentCsvContent = e.target.result; currentRules = rules;
+        currentCsvContent = e.target.result;
+        currentRules = rules;
         showLoader(true, 'Generating...');
         setTimeout(() => {
             try {
@@ -2033,64 +2242,59 @@ function handleGenerateClick() {
     reader.readAsText(fileInput.files[0]);
 }
 
-// NEW: Handle Accepting a WHOLE Scenario
+// NEW: Accept Scenario Logic
 function handleAcceptScenario(scenarioName) {
     const scenario = currentScenarios[scenarioName];
-    if (!scenario || scenario.length === 0) {
-        alert("No upgrades in this scenario.");
-        return;
-    }
+    if (!scenario || !scenario.length) { alert("No upgrades available."); return; }
+    if(!confirm(`Accept all ${scenario.length} upgrades in ${scenarioName}?`)) return;
 
-    if(!confirm(`Accept all ${scenario.length} upgrades in '${scenarioName}'?`)) return;
-
-    // Add all to accepted list
     acceptedUpgrades.push(...scenario);
-    
-    // Clear scenarios to force refresh
-    currentScenarios = {};
+    currentScenarios = {}; // Clear scenarios to force re-gen
 
-    showLoader(true, "Processing Scenario...");
+    showLoader(true, "Processing...");
     setTimeout(() => {
         try {
-            // Re-run process to recalculate inventory
             const results = applyUpgradesAndRecalculate(acceptedUpgrades, currentCsvContent, currentRules, currentFileName);
             displayResults(results);
-        } catch (err) {
-            showError(err);
-        }
+        } catch (err) { showError(err); }
     }, 50);
 }
 
 function handlePmsUpdateClick(event) {
-    const user = auth.currentUser; if (!user) return;
+    const user = auth.currentUser; if (!user) { showError({message:"Login req"}); return; }
     const recIndex = event.target.dataset.index;
     const item = acceptedUpgrades[recIndex];
-    if(item) {
-        const toSave = acceptedUpgrades.splice(recIndex, 1)[0];
-        toSave.completedTimestamp = new Date(); toSave.profile = document.getElementById('profile-dropdown').value;
-        completedUpgrades.push(toSave);
-        db.collection('users').doc(user.uid).collection('completedUpgrades').add(toSave)
-            .then(doc => { toSave.firestoreId = doc.id; displayCompletedUpgrades(); displayDemandInsights(); })
-            .catch(e => { console.error(e); completedUpgrades.pop(); acceptedUpgrades.splice(recIndex, 0, toSave); alert("Save failed"); });
+    if (item) {
+        const toComplete = acceptedUpgrades.splice(recIndex, 1)[0];
+        toComplete.completedTimestamp = new Date();
+        toComplete.profile = document.getElementById('profile-dropdown').value;
+        completedUpgrades.push(toComplete);
+        db.collection('users').doc(user.uid).collection('completedUpgrades').add(toComplete)
+            .then((doc) => { toComplete.firestoreId = doc.id; displayCompletedUpgrades(); displayDemandInsights(); })
+            .catch((e) => { completedUpgrades.pop(); acceptedUpgrades.splice(recIndex, 0, toComplete); showError({message:"Save failed"}); });
         displayAcceptedUpgrades(); displayCompletedUpgrades();
     }
 }
 
 async function handleUndoCompletedClick(event) {
     const user = auth.currentUser; if (!user) return;
-    if (!confirm("Undo this completion?")) return;
+    if (!confirm("Undo?")) return;
     const fid = event.target.dataset.firestoreId;
     const idx = completedUpgrades.findIndex(u => u.firestoreId === fid);
     if (idx === -1) return;
     const item = completedUpgrades[idx];
-    event.target.disabled = true; event.target.textContent = "...";
+    event.target.disabled = true; 
     try {
         await db.collection('users').doc(user.uid).collection('completedUpgrades').doc(fid).delete();
-        completedUpgrades.splice(idx, 1); delete item.completedTimestamp; delete item.firestoreId;
+        completedUpgrades.splice(idx, 1);
+        delete item.completedTimestamp; delete item.firestoreId;
         acceptedUpgrades.push(item);
         displayCompletedUpgrades(); displayDemandInsights(); displayAcceptedUpgrades();
-        if (currentCsvContent) { const r = applyUpgradesAndRecalculate(acceptedUpgrades, currentCsvContent, currentRules, currentFileName); displayResults(r); }
-    } catch(e) { console.error(e); alert("Undo failed"); }
+        if (currentCsvContent) {
+             const results = applyUpgradesAndRecalculate(acceptedUpgrades, currentCsvContent, currentRules, currentFileName);
+             displayResults(results);
+        }
+    } catch (e) { alert("Undo failed."); }
 }
 
 function displayResults(data) {
@@ -2098,10 +2302,10 @@ function displayResults(data) {
     if (data.error) { showError({ message: data.error }); return; }
     if (data.acceptedUpgrades) acceptedUpgrades = data.acceptedUpgrades;
     
-    currentScenarios = data.scenarios || {}; // Store the generated scenarios
+    currentScenarios = data.scenarios || {};
     
     displayAcceptedUpgrades();
-    displayScenarios(currentScenarios); // Display Scenarios instead of flat recommendations
+    displayScenarios(currentScenarios); // Show Tabs
     
     document.getElementById('output').style.display = 'block';
     const messageEl = document.getElementById('message');
@@ -2117,173 +2321,89 @@ function displayInventory(inventory) {
     container.innerHTML = '<h3>Available Rooms</h3>' + (rooms.length ? rooms.join(' | ') : '<p>None.</p>');
 }
 
-// NEW: Display SCENARIOS (Tabs)
+// NEW: Display Scenario Tabs
 function displayScenarios(scenarios) {
     const container = document.getElementById('recommendations-container');
     container.innerHTML = '';
+    const keys = Object.keys(scenarios);
+    if (!keys.length) { container.innerHTML = '<p>No upgrade paths.</p>'; return; }
 
-    const scenarioKeys = Object.keys(scenarios);
-    if (scenarioKeys.length === 0) {
-        container.innerHTML = '<p>No upgrade paths found.</p>';
-        return;
-    }
+    const header = document.createElement('div');
+    header.style.cssText = 'display:flex; gap:10px; margin-bottom:20px; border-bottom:2px solid #eee; padding-bottom:10px;';
 
-    // Create Tabs Header
-    const tabsHeader = document.createElement('div');
-    tabsHeader.style.display = 'flex';
-    tabsHeader.style.gap = '10px';
-    tabsHeader.style.marginBottom = '20px';
-    tabsHeader.style.borderBottom = '2px solid #eee';
-    tabsHeader.style.paddingBottom = '10px';
-
-    scenarioKeys.forEach((key, index) => {
+    keys.forEach((key, i) => {
         const tab = document.createElement('button');
         tab.textContent = key;
-        tab.className = 'scenario-tab-btn'; // Add CSS class if needed
-        tab.style.padding = '10px 20px';
-        tab.style.border = 'none';
-        tab.style.cursor = 'pointer';
-        tab.style.background = index === 0 ? '#4343FF' : '#f0f0f0';
-        tab.style.color = index === 0 ? 'white' : '#333';
-        tab.style.borderRadius = '5px';
-        tab.dataset.scenario = key;
-        
+        tab.style.cssText = `padding:10px 20px; border:none; cursor:pointer; border-radius:5px; background:${i===0?'#4343FF':'#f0f0f0'}; color:${i===0?'white':'#333'};`;
+        tab.className = 'scenario-tab';
         tab.addEventListener('click', () => {
-            // Switch tabs visually
-            document.querySelectorAll('.scenario-tab-btn').forEach(b => {
-                b.style.background = '#f0f0f0';
-                b.style.color = '#333';
-            });
-            tab.style.background = '#4343FF';
-            tab.style.color = 'white';
-            
-            // Render Content
+            container.querySelectorAll('.scenario-tab').forEach(b => { b.style.background='#f0f0f0'; b.style.color='#333'; });
+            tab.style.background='#4343FF'; tab.style.color='white';
             renderScenarioContent(key, scenarios[key], container);
         });
-
-        tabsHeader.appendChild(tab);
+        header.appendChild(tab);
     });
-
-    container.appendChild(tabsHeader);
-
-    // Render Initial Content (First Scenario)
-    renderScenarioContent(scenarioKeys[0], scenarios[scenarioKeys[0]], container);
+    container.appendChild(header);
+    renderScenarioContent(keys[0], scenarios[keys[0]], container);
 }
 
-function renderScenarioContent(name, recs, parentContainer) {
-    // Clear previous content area (everything after tabs)
-    const existingContent = parentContainer.querySelector('.scenario-content');
-    if (existingContent) existingContent.remove();
+function renderScenarioContent(name, recs, parent) {
+    const old = parent.querySelector('.scenario-content'); if(old) old.remove();
+    const wrapper = document.createElement('div'); wrapper.className = 'scenario-content';
+    
+    const totalRev = recs.reduce((sum,r)=>sum+r.score,0);
+    const head = document.createElement('div');
+    head.style.cssText = 'display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; padding:15px; background:#f9f9f9; border-radius:8px;';
+    head.innerHTML = `<div><h3 style="margin:0;">${name} Path</h3><span style="color:#666;">${recs.length} Upgrades | Potential: <strong>$${totalRev.toLocaleString()}</strong></span></div>`;
+    
+    const btn = document.createElement('button');
+    btn.textContent = "Accept Entire Path";
+    btn.style.cssText = 'background:#28a745; color:white; border:none; padding:10px 20px; border-radius:5px; cursor:pointer;';
+    btn.addEventListener('click', () => handleAcceptScenario(name));
+    head.appendChild(btn); wrapper.appendChild(head);
 
-    const wrapper = document.createElement('div');
-    wrapper.className = 'scenario-content';
-
-    // Summary & Accept Button
-    const totalRev = recs.reduce((sum, r) => sum + r.score, 0);
-    const headerDiv = document.createElement('div');
-    headerDiv.style.display = 'flex';
-    headerDiv.style.justifyContent = 'space-between';
-    headerDiv.style.alignItems = 'center';
-    headerDiv.style.marginBottom = '15px';
-    headerDiv.style.padding = '15px';
-    headerDiv.style.background = '#f9f9f9';
-    headerDiv.style.borderRadius = '8px';
-
-    headerDiv.innerHTML = `
-        <div>
-            <h3 style="margin:0;">${name} Path</h3>
-            <span style="color:#666;">${recs.length} Upgrades | Potential Revenue: <strong>$${totalRev.toLocaleString()}</strong></span>
-        </div>
-    `;
-
-    const acceptBtn = document.createElement('button');
-    acceptBtn.textContent = "Accept Entire Path";
-    acceptBtn.style.background = '#28a745';
-    acceptBtn.style.color = 'white';
-    acceptBtn.style.border = 'none';
-    acceptBtn.style.padding = '10px 20px';
-    acceptBtn.style.borderRadius = '5px';
-    acceptBtn.style.cursor = 'pointer';
-    acceptBtn.style.fontSize = '14px';
-    acceptBtn.addEventListener('click', () => handleAcceptScenario(name));
-
-    headerDiv.appendChild(acceptBtn);
-    wrapper.appendChild(headerDiv);
-
-    // Tiles Grouped by Date
-    if (recs.length > 0) {
-        const byDate = recs.reduce((g, r) => { (g[r.arrivalDate] = g[r.arrivalDate] || []).push(r); return g; }, {});
+    if(recs.length > 0) {
+        const byDate = recs.reduce((g,r)=>{ (g[r.arrivalDate]=g[r.arrivalDate]||[]).push(r); return g; }, {});
         Object.keys(byDate).sort((a,b)=>new Date(a)-new Date(b)).forEach(date => {
-            const h4 = document.createElement('h4');
-            h4.textContent = `Arrivals: ${date}`;
-            h4.style.borderBottom = '1px solid #eee';
-            h4.style.paddingBottom = '5px';
-            h4.style.marginTop = '20px';
-            wrapper.appendChild(h4);
-
+            const h4 = document.createElement('h4'); h4.textContent=`Arrivals: ${date}`; h4.style.cssText='border-bottom:1px solid #eee; margin-top:20px;'; wrapper.appendChild(h4);
             byDate[date].forEach(rec => {
-                const card = document.createElement('div');
-                card.className = 'rec-card';
-                // VIP Red Text
+                const card = document.createElement('div'); card.className = 'rec-card';
+                // VIP RED TEXT
                 const vipHtml = rec.vipStatus ? `<div style="color: red; font-weight: bold; margin-bottom: 4px; font-size: 14px;">${rec.vipStatus}</div>` : '';
-                
-                card.innerHTML = `
-                    <div class="rec-info">
-                        <h3>${rec.name} (${rec.resId})</h3>
-                        ${vipHtml}
-                        <div class="rec-details">
-                            Booked: <b>${rec.room}</b> (${rec.nights} nts) | Rate: <i>${rec.rate}</i><br>
-                            Value: <strong>${rec.revenue}</strong>
-                        </div>
-                    </div>
-                    <div class="rec-actions">
-                        <div class="rec-upgrade-to">Upgrade To<br><strong>${rec.upgradeTo}</strong></div>
-                        <div class="rec-score">${rec.score.toLocaleString('en-US', {style:'currency', currency:'USD'})}</div>
-                    </div>
-                `;
+                card.innerHTML = `<div class="rec-info"><h3>${rec.name} (${rec.resId})</h3>${vipHtml}<div class="rec-details">Booked: <b>${rec.room}</b> (${rec.nights} nts) | Rate: <i>${rec.rate}</i><br>Value: <strong>${rec.revenue}</strong></div></div><div class="rec-actions"><div class="rec-upgrade-to">Upgrade To<br><strong>${rec.upgradeTo}</strong></div><div class="rec-score">$${rec.score.toLocaleString()}</div></div>`;
                 wrapper.appendChild(card);
             });
         });
-    } else {
-        wrapper.innerHTML += '<p>No upgrades available for this strategy.</p>';
-    }
-
-    parentContainer.appendChild(wrapper);
+    } else wrapper.innerHTML+='<p>No upgrades.</p>';
+    parent.appendChild(wrapper);
 }
 
 function displayAcceptedUpgrades() {
-    const container = document.getElementById('accepted-container');
-    container.innerHTML = '';
+    const container = document.getElementById('accepted-container'); container.innerHTML = '';
     if (acceptedUpgrades.length > 0) {
-        const controls = document.createElement('div');
-        controls.style.cssText = 'display:flex; justify-content:flex-end; margin-bottom:20px; padding:10px; background:#f8f9fa; border-radius:5px;';
-        const btn = document.createElement('button');
-        btn.textContent = 'Download CSV';
-        btn.style.cssText = 'background:#4343FF; color:white; border:none; padding:10px 15px; border-radius:4px; cursor:pointer;';
-        btn.addEventListener('click', downloadAcceptedUpgradesCsv);
-        controls.appendChild(btn); container.appendChild(controls);
+        const c = document.createElement('div'); c.style.cssText='display:flex;justify-content:flex-end;margin-bottom:20px;padding:10px;background:#f8f9fa;border-radius:5px;';
+        const b = document.createElement('button'); b.textContent='Download CSV'; b.style.cssText='background:#4343FF;color:white;border:none;padding:10px 15px;border-radius:4px;cursor:pointer;';
+        b.addEventListener('click', downloadAcceptedUpgradesCsv); c.appendChild(b); container.appendChild(c);
 
-        acceptedUpgrades.forEach((rec, index) => {
+        acceptedUpgrades.forEach((rec, i) => {
             const card = document.createElement('div'); card.className = 'rec-card';
+            // VIP RED TEXT
             const vipHtml = rec.vipStatus ? `<div style="color: red; font-weight: bold; margin-bottom: 4px; font-size: 14px;">${rec.vipStatus}</div>` : '';
-            card.innerHTML = `<div class="rec-info"><h3>${rec.name} (${rec.resId})</h3>${vipHtml}<div class="rec-details">Original: <b>${rec.room}</b> | Upgraded To: <strong>${rec.upgradeTo}</strong><br>Value: <strong>${rec.revenue}</strong></div></div><div class="rec-actions"><button class="pms-btn" data-index="${index}" style="margin-right:5px;">Mark as PMS Updated</button></div>`;
+            card.innerHTML = `<div class="rec-info"><h3>${rec.name} (${rec.resId})</h3>${vipHtml}<div class="rec-details">Original: <b>${rec.room}</b> | Upgraded To: <strong>${rec.upgradeTo}</strong><br>Value: <strong>${rec.revenue}</strong></div></div><div class="rec-actions"><button class="pms-btn" data-index="${i}" style="margin-right:5px;">Mark as PMS Updated</button></div>`;
             container.appendChild(card);
         });
-        container.querySelectorAll('.pms-btn').forEach(b => b.addEventListener('click', handlePmsUpdateClick));
-    } else {
-        container.innerHTML = '<p>No upgrades accepted yet.</p>';
-    }
+        container.querySelectorAll('.pms-btn').forEach(btn => btn.addEventListener('click', handlePmsUpdateClick));
+    } else container.innerHTML = '<p>No accepted upgrades.</p>';
 }
 
 // ... (Display Demand Insights, Completed Upgrades, Matrix, Loader, ShowError, ParseCSV remain same) ...
-// (Assume standard implementations for displayDemandInsights, displayCompletedUpgrades, displayMatrix, showLoader, showError, parseCsv)
-function displayDemandInsights() { /* ... use previous ... */ 
+function displayDemandInsights() { 
     const container = document.getElementById('demand-insights-container'); const profileDropdown = document.getElementById('profile-dropdown'); if (!container || !profileDropdown) return; const currentProfile = profileDropdown.value; const profileUpgrades = completedUpgrades.filter(rec => rec.profile === currentProfile); container.innerHTML = ''; if (profileUpgrades.length === 0) { container.innerHTML = '<p style="text-align:center; color:#888;">No completed upgrade data available for Demand Insights.</p>'; return; } const roomTypeCounts = {}; let totalRevenue = 0; profileUpgrades.forEach(rec => { const type = rec.upgradeTo; roomTypeCounts[type] = (roomTypeCounts[type] || 0) + 1; const val = parseFloat(rec.revenue.replace(/[$,]/g, '')) || 0; totalRevenue += val; }); const sortedRooms = Object.entries(roomTypeCounts).sort((a, b) => b[1] - a[1]); const avgRevenue = profileUpgrades.length > 0 ? (totalRevenue / profileUpgrades.length) : 0; let html = ` <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 25px;"> <div style="background: #f0f7ff; padding: 15px; border-radius: 8px; text-align: center;"> <h4 style="margin:0; color:#555;">Total Completed Upgrades</h4> <div style="font-size: 24px; font-weight: bold; color: #4343FF;">${profileUpgrades.length}</div> </div> <div style="background: #f0fff4; padding: 15px; border-radius: 8px; text-align: center;"> <h4 style="margin:0; color:#555;">Total Revenue Value</h4> <div style="font-size: 24px; font-weight: bold; color: #28a745;">${totalRevenue.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</div> </div> <div style="background: #fff8f0; padding: 15px; border-radius: 8px; text-align: center;"> <h4 style="margin:0; color:#555;">Avg. Upgrade Value</h4> <div style="font-size: 24px; font-weight: bold; color: #fd7e14;">${avgRevenue.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</div> </div> </div> <h3>Top Performing Upgrade Rooms</h3> <table style="width: 100%; border-collapse: collapse; margin-top: 10px;"> <thead> <tr style="background: #f8f9fa; text-align: left;"> <th style="padding: 10px; border-bottom: 2px solid #ddd;">Room Type</th> <th style="padding: 10px; border-bottom: 2px solid #ddd;">Upgrade Count</th> <th style="padding: 10px; border-bottom: 2px solid #ddd;">% of Total</th> </tr> </thead> <tbody> `; sortedRooms.forEach(([room, count]) => { const percentage = ((count / profileUpgrades.length) * 100).toFixed(1); html += ` <tr> <td style="padding: 10px; border-bottom: 1px solid #eee;"><strong>${room}</strong></td> <td style="padding: 10px; border-bottom: 1px solid #eee;">${count}</td> <td style="padding: 10px; border-bottom: 1px solid #eee;"> <div style="display: flex; align-items: center;"> <span style="width: 40px;">${percentage}%</span> <div style="flex-grow: 1; height: 6px; background: #eee; border-radius: 3px; margin-left: 10px;"> <div style="width: ${percentage}%; height: 100%; background: #4343FF; border-radius: 3px;"></div> </div> </div> </td> </tr> `; }); html += ` </tbody> </table> `; container.innerHTML = html;
 }
-function displayCompletedUpgrades() { /* ... use previous ... */
+function displayCompletedUpgrades() {
     const container = document.getElementById('completed-container'); const dateDropdown = document.getElementById('sort-date-dropdown'); const profileDropdown = document.getElementById('profile-dropdown'); if (!container || !dateDropdown || !profileDropdown) return; const selectedDate = dateDropdown.value; const currentProfile = profileDropdown.value; let totalValue = 0; const profileUpgrades = completedUpgrades.filter(rec => rec.profile === currentProfile); while (dateDropdown.options.length > 1) { dateDropdown.remove(1); } const existingOptions = new Set(Array.from(dateDropdown.options).map(opt => opt.value)); const uniqueDates = new Set(profileUpgrades.map(rec => rec.completedTimestamp.toLocaleDateString())); uniqueDates.forEach(date => { if (!existingOptions.has(date)) { const option = document.createElement('option'); option.value = date; option.textContent = date; dateDropdown.appendChild(option); } }); container.innerHTML = ''; const dateFilteredUpgrades = selectedDate === 'all' ? profileUpgrades : profileUpgrades.filter(rec => rec.completedTimestamp.toLocaleDateString() === selectedDate); if (dateFilteredUpgrades && dateFilteredUpgrades.length > 0) { dateFilteredUpgrades.sort((a, b) => b.completedTimestamp - a.completedTimestamp); dateFilteredUpgrades.forEach(rec => { totalValue += parseFloat(rec.revenue.replace(/[$,]/g, '')) || 0; const card = document.createElement('div'); card.className = 'rec-card completed'; card.innerHTML = ` <div class="rec-info"> <h3>${rec.name} (${rec.resId})</h3> <div class="rec-details"> Original: <b>${rec.room}</b> | Upgraded To: <strong>${rec.upgradeTo}</strong><br> Value of Reservation: <strong>${rec.revenue}</strong><br> Completed On: <strong>${rec.completedTimestamp.toLocaleDateString()}</strong> </div> </div> <div class="rec-actions" style="flex-direction: column; align-items: flex-end;"> <div style="color: var(--success-color); margin-bottom: 5px;"> <strong style="color: #4343FF;">✓ Completed</strong> </div> <button class="undo-completed-btn" data-firestore-id="${rec.firestoreId}" style="background-color: #dc3545; color: white; padding: 5px 10px; font-size: 12px; border: none; border-radius: 4px; cursor: pointer;">Undo</button> </div> `; container.appendChild(card); }); const totalHeader = document.createElement('h3'); totalHeader.style.textAlign = 'right'; totalHeader.style.marginTop = '20px'; totalHeader.textContent = `Total Value: ${totalValue.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}`; container.appendChild(totalHeader); container.querySelectorAll('.undo-completed-btn').forEach(btn => { btn.addEventListener('click', handleUndoCompletedClick); }); } else { container.innerHTML = '<p>No upgrades have been marked as completed for this profile and date.</p>'; }
 }
-function displayMatrix(matrix) { /* ... use previous ... */
+function displayMatrix(matrix) {
     const container = document.getElementById('matrix-container'); if (!matrix || !matrix.headers || !matrix.rows) { container.innerHTML = '<p>Could not generate the availability matrix.</p>'; return; } const numDateColumns = matrix.headers.length - 1; const columnTotals = new Array(numDateColumns).fill(0); let html = '<table><thead><tr>' + matrix.headers.map(h => `<th>${h}</th>`).join('') + '</tr></thead><tbody>'; matrix.rows.forEach(row => { html += `<tr><td><strong>${row.roomCode}</strong></td>`; row.availability.forEach((avail, index) => { html += `<td>${avail}</td>`; columnTotals[index] += (typeof avail === 'number' ? avail : 0); }); html += '</tr>'; }); html += '<tr style="background-color: #f8f9fa; border-top: 2px solid #ccc;">'; html += '<td><strong>TOTAL AVAILABLE</strong></td>'; columnTotals.forEach(total => { html += `<td><strong>${total}</strong></td>`; }); html += '</tr>'; html += '</tbody></table>'; container.innerHTML = html; colorMatrixCells();
 }
 function colorMatrixCells() { const cells = document.querySelectorAll("#matrix-container td:not(:first-child)"); cells.forEach(cell => { const value = parseInt(cell.textContent, 10); if (isNaN(value)) return; cell.classList.remove('matrix-neg', 'matrix-low', 'matrix-high'); if (value < 0) cell.classList.add('matrix-neg'); else if (value >= 3) cell.classList.add('matrix-high'); else cell.classList.add('matrix-low'); }); }
@@ -2320,8 +2440,35 @@ function processUpgradeData(csvContent, rules, fileName) {
     return generateScenariosFromData(allReservations, rules);
 }
 
-// ... (parseSynxisArrivals, parseAllReservations, buildReservationsByDate, getInventoryForDate, getMasterInventory, parseDate, generateMatrixData, getBedType, downloadAcceptedUpgradesCsv remain same) ...
-// (I will paste parseAllReservations again just to ensure VIP Status is included)
+function parseSynxisArrivals(data, header) {
+    const nameIndex = header.indexOf('Guest_Nm');
+    const resIdIndex = header.indexOf('CRS_Confirm_No');
+    const roomTypeIndex = header.indexOf('Rm_Typ_Cd');
+    const rateNameIndex = header.indexOf('Rate_Type_Name_Code_Offshore');
+    const arrivalIndex = header.indexOf('Arrival_Date');
+    const departureIndex = header.indexOf('Depart_Date');
+    const statusIndex = header.indexOf('Rez_Status');
+    const rateIndex = header.indexOf('Avg_Rate_Offshore');
+    const ids = new Set();
+
+    return data.map(values => {
+        if (values.length < header.length) return null;
+        const resId = values[resIdIndex]?.trim();
+        if (!resId || ids.has(resId)) return null; 
+        ids.add(resId);
+
+        const arrival = values[arrivalIndex] ? parseDate(values[arrivalIndex]) : null;
+        const departure = values[departureIndex] ? parseDate(values[departureIndex]) : null;
+        let nights = 0; if (arrival && departure) nights = Math.max(1, Math.ceil((departure - arrival) / (1000 * 60 * 60 * 24)));
+        const dailyRate = parseFloat(values[rateIndex]) || 0;
+        let fullName = values[nameIndex] || "";
+        if (fullName.includes(',')) { const parts = fullName.split(','); if (parts.length >= 2) fullName = `${parts[1].trim()} ${parts[0].trim()}`; }
+        let status = values[statusIndex]?.trim().toUpperCase() || 'RESERVATION';
+        if (status === 'CONFIRMED') status = 'RESERVATION'; if (status === 'CANCELLED') status = 'CANCELED';
+
+        return { name: fullName, resId, roomType: values[roomTypeIndex]?.trim().toUpperCase(), rate: values[rateNameIndex]?.trim(), nights, arrival, departure, status, revenue: (dailyRate*nights).toLocaleString('en-US',{style:'currency',currency:'USD'}), marketCode: '' };
+    }).filter(r => r && r.roomType && r.arrival && r.departure && r.nights > 0);
+}
 
 function parseAllReservations(data, header, fileName) {
     const isSnt = fileName && (fileName.startsWith('SNT') || fileName.startsWith('LTRL') || fileName.startsWith('VERD') || fileName.startsWith('LCKWD') || fileName.startsWith('TBH') || fileName.startsWith('DARLING'));
@@ -2351,22 +2498,19 @@ function parseAllReservations(data, header, fileName) {
     }).filter(r => r && r.roomType && r.arrival && r.departure && r.nights > 0);
 }
 
-// --- NEW: GENERATE SCENARIOS (Replaces generateRecommendationsFromData) ---
+// --- GENERATE SCENARIOS (SIMULATION) ---
 function generateScenariosFromData(allReservations, rules) {
     const masterInventory = getMasterInventory(rules.profile);
     if (!Object.keys(masterInventory).length) return { error: `No inventory for ${rules.profile}` };
 
-    // 1. Identify Valid Reservations
     const activeReservations = allReservations.filter(res => res.status !== 'CANCELED' && res.status !== 'CANCELLED' && res.status !== 'NO SHOW');
     const completedResIds = new Set(completedUpgrades.filter(up => up.profile === rules.profile).map(up => up.resId));
     
-    // 2. Base Data
     const startDate = parseDate(rules.selectedDate);
     const reservationsByDate = buildReservationsByDate(activeReservations);
     const todayInventory = getInventoryForDate(masterInventory, reservationsByDate, startDate);
     const matrixData = generateMatrixData(masterInventory, reservationsByDate, startDate, rules.hierarchy.toUpperCase().split(',').map(r => r.trim()).filter(Boolean));
 
-    // 3. Run Simulations
     const strategies = ['Revenue Focus', 'VIP Focus', 'Efficiency (Fill Gaps)'];
     const scenarios = {};
 
@@ -2374,64 +2518,34 @@ function generateScenariosFromData(allReservations, rules) {
         scenarios[strategy] = runSimulation(strategy, activeReservations, masterInventory, rules, completedResIds);
     });
 
-    return {
-        scenarios: scenarios,
-        inventory: todayInventory,
-        matrixData: matrixData,
-        message: null
-    };
+    return { scenarios, inventory: todayInventory, matrixData, message: null };
 }
 
-// --- NEW: SIMULATION LOGIC ---
 function runSimulation(strategy, allReservations, masterInv, rules, completedIds) {
     const startDate = parseDate(rules.selectedDate);
-    const recommendations = [];
     const hierarchy = rules.hierarchy.toUpperCase().split(',').map(r => r.trim()).filter(Boolean);
-    const targetRooms = rules.targetRooms ? rules.targetRooms.toUpperCase().split(',').map(r => r.trim()).filter(Boolean) : hierarchy;
     const ineligible = rules.ineligibleUpgrades.toUpperCase().split(',');
     const otaRates = rules.otaRates.toLowerCase().split(',');
 
-    // A. Build Dynamic Inventory Map for 7 Days (Start with Master)
-    // We will decrement this as we assign upgrades in this simulation.
+    // Build Dynamic Inventory Map for 7 Days
     const simInventory = {};
     for(let i=0; i<7; i++) {
         const d = new Date(startDate); d.setUTCDate(d.getUTCDate()+i);
         const dStr = d.toISOString().split('T')[0];
-        
         simInventory[dStr] = {};
         for(let room in masterInv) {
-            // Start with Master - Existing Bookings - OOO
             const dTime = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate())).getTime();
-            
-            // Existing bookings count on this day
-            const existingCount = allReservations.reduce((acc, res) => {
-                if(res.roomType === room && res.arrival <= d && res.departure > d) return acc + 1;
-                return acc;
-            }, 0);
-
-            // OOO count
-            const oooCount = oooRecords.reduce((acc, rec) => {
-                const rStart = rec.startDate.getTime(); const rEnd = rec.endDate.getTime();
-                if(rec.roomType === room && dTime >= rStart && dTime <= rEnd) return acc + (rec.count || 1);
-                return acc;
-            }, 0);
-
-            // Use PMS Inventory Report if available, otherwise calc
-            if (currentInventoryMap && currentInventoryMap[dStr] && currentInventoryMap[dStr][room] !== undefined) {
-                simInventory[dStr][room] = currentInventoryMap[dStr][room]; 
-            } else {
-                simInventory[dStr][room] = (masterInv[room] || 0) - existingCount - oooCount;
-            }
+            const existingCount = allReservations.reduce((acc, res) => { if(res.roomType === room && res.arrival <= d && res.departure > d) return acc + 1; return acc; }, 0);
+            const oooCount = oooRecords.reduce((acc, rec) => { const rStart = rec.startDate.getTime(); const rEnd = rec.endDate.getTime(); if(rec.roomType === room && dTime >= rStart && dTime <= rEnd) return acc + (rec.count || 1); return acc; }, 0);
+            if (currentInventoryMap && currentInventoryMap[dStr] && currentInventoryMap[dStr][room] !== undefined) simInventory[dStr][room] = currentInventoryMap[dStr][room]; 
+            else simInventory[dStr][room] = (masterInv[room] || 0) - existingCount - oooCount;
         }
     }
 
-    // B. Get Candidates for 7 Days
     let candidates = [];
     for(let i=0; i<7; i++) {
         const d = new Date(startDate); d.setUTCDate(d.getUTCDate()+i);
         const dTime = d.getTime();
-        
-        // Find arrivals for this day
         const dailyArrivals = allReservations.filter(r => r.arrival && r.arrival.getTime() === dTime && r.status === 'RESERVATION');
         
         dailyArrivals.forEach(res => {
@@ -2445,87 +2559,49 @@ function runSimulation(strategy, allReservations, masterInv, rules, completedIds
             const bedType = getBedType(res.roomType);
             if (bedType === 'OTHER') return;
 
-            // Find best upgrade target
-            // Strategy: Look for closest valid upgrade in hierarchy that is in 'targetRooms' (or just higher)
             for(let u=currentIdx+1; u<hierarchy.length; u++) {
                 const upRoom = hierarchy[u];
                 if (ineligible.includes(upRoom)) continue;
                 if (getBedType(upRoom) !== bedType) continue;
-                
-                // Add as candidate
                 candidates.push({
-                    reservation: res,
-                    upgradeTo: upRoom,
-                    score: parseFloat(res.revenue.replace(/[$,]/g, '')) || 0,
-                    vip: res.vipStatus ? 1 : 0,
-                    nights: res.nights,
-                    distance: u - currentIdx,
-                    dateStr: d.toISOString().split('T')[0]
+                    reservation: res, upgradeTo: upRoom, score: parseFloat(res.revenue.replace(/[$,]/g, '')) || 0,
+                    vip: res.vipStatus ? 1 : 0, nights: res.nights, distance: u - currentIdx, dateStr: d.toISOString().split('T')[0]
                 });
-                // Note: We add ALL valid paths? No, let's just add the 'Next Best' or all?
-                // To keep it simple for optimization: Add one candidate per person (best available).
-                // Or add all and let sorting pick best?
-                // Let's add all valid upgrades and let the Sorter pick the best one for the strategy.
             }
         });
     }
 
-    // C. Sort Candidates based on Strategy
-    if (strategy === 'Revenue Focus') {
-        candidates.sort((a, b) => b.score - a.score); // Highest Revenue First
-    } else if (strategy === 'VIP Focus') {
-        candidates.sort((a, b) => {
-            if (b.vip !== a.vip) return b.vip - a.vip; // VIP First
-            return b.score - a.score; // Then Revenue
-        });
-    } else {
-        // Efficiency / Fill Gaps (Shortest stays first? Or linear?)
-        candidates.sort((a, b) => a.nights - b.nights); 
-    }
+    if (strategy === 'Revenue Focus') candidates.sort((a, b) => b.score - a.score);
+    else if (strategy === 'VIP Focus') candidates.sort((a, b) => { if (b.vip !== a.vip) return b.vip - a.vip; return b.score - a.score; });
+    else candidates.sort((a, b) => a.nights - b.nights); 
 
-    // D. Assign upgrades respecting Dynamic Inventory
     const processedResIds = new Set();
+    const recommendations = [];
 
     candidates.forEach(cand => {
-        if (processedResIds.has(cand.reservation.resId)) return; // Already upgraded this person
-
-        // Check availability for full stay
+        if (processedResIds.has(cand.reservation.resId)) return;
         let canUpgrade = true;
         let checkDate = new Date(cand.reservation.arrival);
         while(checkDate < cand.reservation.departure) {
             const dStr = checkDate.toISOString().split('T')[0];
-            if (!simInventory[dStr] || (simInventory[dStr][cand.upgradeTo] || 0) <= 0) {
-                canUpgrade = false; 
-                break;
-            }
+            if (!simInventory[dStr] || (simInventory[dStr][cand.upgradeTo] || 0) <= 0) { canUpgrade = false; break; }
             checkDate.setUTCDate(checkDate.getUTCDate()+1);
         }
 
         if (canUpgrade) {
-            // Apply Upgrade
             recommendations.push({
-                name: cand.reservation.name, 
-                resId: cand.reservation.resId, 
-                revenue: cand.reservation.revenue,
-                room: cand.reservation.roomType, 
-                rate: cand.reservation.rate, 
-                nights: cand.reservation.nights,
-                upgradeTo: cand.upgradeTo, 
-                score: cand.score,
+                name: cand.reservation.name, resId: cand.reservation.resId, revenue: cand.reservation.revenue,
+                room: cand.reservation.roomType, rate: cand.reservation.rate, nights: cand.reservation.nights,
+                upgradeTo: cand.upgradeTo, score: cand.score,
                 arrivalDate: cand.reservation.arrival.toLocaleDateString('en-US', { timeZone: 'UTC' }),
                 departureDate: cand.reservation.departure.toLocaleDateString('en-US', { timeZone: 'UTC' }),
                 vipStatus: cand.reservation.vipStatus
             });
             processedResIds.add(cand.reservation.resId);
-
-            // Decrement Inventory
             checkDate = new Date(cand.reservation.arrival);
             while(checkDate < cand.reservation.departure) {
                 const dStr = checkDate.toISOString().split('T')[0];
                 simInventory[dStr][cand.upgradeTo]--;
-                // We should also theoretically increment the old room, but for upgrade availability 
-                // we mainly care about the target room having space. 
-                // (Incrementing old room matters if we do multi-leg swaps, but that's complex).
                 checkDate.setUTCDate(checkDate.getUTCDate()+1);
             }
         }
@@ -2534,8 +2610,6 @@ function runSimulation(strategy, allReservations, masterInv, rules, completedIds
     return recommendations;
 }
 
-// ... (Utility functions like parseDate, generateMatrixData, getBedType, downloadAcceptedUpgradesCsv remain as previously defined) ...
-// (Ensure generateMatrixData, getBedType, downloadAcceptedUpgradesCsv, buildReservationsByDate, getInventoryForDate, getMasterInventory are present)
 function buildReservationsByDate(allReservations) { const reservationsByDate = {}; allReservations.forEach(res => { if (!res.arrival || !res.departure) return; let currentDate = new Date(res.arrival); while (currentDate < res.departure) { const dateString = currentDate.toISOString().split('T')[0]; if (!reservationsByDate[dateString]) reservationsByDate[dateString] = {}; reservationsByDate[dateString][res.roomType] = (reservationsByDate[dateString][res.roomType] || 0) + 1; currentDate.setUTCDate(currentDate.getUTCDate() + 1); } }); return reservationsByDate; }
 function getInventoryForDate(masterInventory, reservationsByDate, date) { const inventory = {}; const dateString = date.toISOString().split('T')[0]; for (const roomCode in masterInventory) { const totalPhysical = masterInventory[roomCode]; const reservedCount = reservationsByDate[dateString]?.[roomCode] || 0; const oooDeduction = oooRecords.reduce((total, rec) => { const isMatch = rec.roomType === roomCode; const dTime = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate())).getTime(); const rStart = new Date(Date.UTC(rec.startDate.getUTCFullYear(), rec.startDate.getUTCMonth(), rec.startDate.getUTCDate())).getTime(); const rEnd = new Date(Date.UTC(rec.endDate.getUTCFullYear(), rec.endDate.getUTCMonth(), rec.endDate.getUTCDate())).getTime(); if (isMatch && (dTime >= rStart && dTime <= rEnd)) { return total + (rec.count || 1); } return total; }, 0); inventory[roomCode] = totalPhysical - reservedCount - oooDeduction; } return inventory; }
 function getMasterInventory(profileName) { const masterRoomList = MASTER_INVENTORIES[profileName]; if (!masterRoomList) { console.error(`No master inventory found for profile: ${profileName}`); return {}; } const totalInventory = {}; masterRoomList.forEach(room => { totalInventory[room.code.toUpperCase()] = (totalInventory[room.code.toUpperCase()] || 0) + 1; }); return totalInventory; }
@@ -2549,6 +2623,8 @@ function downloadAcceptedUpgradesCsv() {
     const csvContent = [headers.join(','), ...rows].join('\n');
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' }); const link = document.createElement('a'); const url = URL.createObjectURL(blob); const dateStr = new Date().toISOString().slice(0, 10); link.setAttribute('href', url); link.setAttribute('download', `accepted_upgrades_${dateStr}.csv`); link.style.visibility = 'hidden'; document.body.appendChild(link); link.click(); document.body.removeChild(link);
 }
+
+
 
 
 
