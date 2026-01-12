@@ -1634,7 +1634,6 @@ function resetAppState() {
     const recContainer = document.getElementById('recommendations-container');
     if (recContainer) recContainer.innerHTML = placeholderMsg;
 
-    // Clear the standalone matrix container as requested
     const matrixContainer = document.getElementById('matrix-container');
     if (matrixContainer) matrixContainer.innerHTML = ''; 
 
@@ -1647,7 +1646,6 @@ function resetAppState() {
     displayAcceptedUpgrades();
 }
 
-// Refresh data when Settings are closed
 function handleRefresh() {
     if (currentCsvContent) {
         currentRules = {
@@ -2351,20 +2349,53 @@ function displayScenarios(scenarios) {
     renderScenarioContent(keys[0], scenarios[keys[0]], container);
 }
 
-// Helper to render HTML table for matrix
+// Helper to render HTML table for matrix (UPDATED STYLING)
 function generateMatrixHTML(title, rows, headers, colTotals) {
-    let html = `<h4 style="margin:20px 0 10px;">${title}</h4><table style="width:100%; border-collapse:collapse; text-align:center;"><thead><tr>` + headers.map(h => `<th style="border:1px solid #ddd; padding:8px; background:#f2f2f2;">${h}</th>`).join('') + '</tr></thead><tbody>';
+    // Aesthetic Palette
+    const styleTable = 'width:100%; border-collapse:collapse; font-size:13px; font-family:sans-serif; min-width:100%;';
+    const styleTh = 'padding:12px 8px; background-color:#f8f9fa; color:#495057; font-weight:600; border-bottom:2px solid #e9ecef; text-align:center;';
+    const styleTd = 'padding:10px 8px; border-bottom:1px solid #e9ecef; text-align:center; color:#333;';
+    const styleRowLabel = 'padding:10px 8px; border-bottom:1px solid #e9ecef; text-align:left; font-weight:600; color:#333; background-color:#fff; position:sticky; left:0;';
+    const styleTotalRow = 'background-color:#f1f3f5; font-weight:bold;';
+
+    // Helper for cell color
+    const getCellColor = (val) => {
+        if (val < 0) return 'background-color:#ffebee; color:#c62828; font-weight:bold;'; // Red
+        if (val < 3) return 'background-color:#fff3e0; color:#ef6c00;'; // Orange/Yellow
+        return 'background-color:#e8f5e9; color:#2e7d32;'; // Green
+    };
+
+    let html = `
+        <div style="background:white; border-radius:8px; box-shadow:0 2px 4px rgba(0,0,0,0.05); overflow:hidden; margin-bottom:25px; border:1px solid #eee;">
+            <div style="padding:15px; border-bottom:1px solid #eee; background:#fff;">
+                <h4 style="margin:0; color:#4343FF; font-size:16px;">${title}</h4>
+            </div>
+            <div style="overflow-x:auto;">
+                <table style="${styleTable}">
+                    <thead>
+                        <tr>
+                            ${headers.map(h => `<th style="${styleTh}">${h}</th>`).join('')}
+                        </tr>
+                    </thead>
+                    <tbody>
+    `;
+
     rows.forEach(row => {
-        html += `<tr><td style="border:1px solid #ddd; padding:8px; font-weight:bold;">${row.roomCode}</td>`;
+        html += `<tr><td style="${styleRowLabel}">${row.roomCode}</td>`;
         row.data.forEach(avail => {
-            let color = avail < 0 ? '#ffcccc' : (avail >= 3 ? '#ccffcc' : '#ffffcc'); 
-            html += `<td style="border:1px solid #ddd; padding:8px; background-color:${color};">${avail}</td>`;
+            html += `<td style="${styleTd} ${getCellColor(avail)}">${avail}</td>`;
         });
         html += '</tr>';
     });
-    html += '<tr style="background-color:#f8f9fa; border-top:2px solid #ccc;"><td><strong>TOTAL</strong></td>';
-    colTotals.forEach(total => html += `<td style="border:1px solid #ddd; padding:8px;"><strong>${total}</strong></td>`);
-    html += '</tr></tbody></table>';
+
+    // Totals Row
+    html += `<tr style="${styleTotalRow}">
+                <td style="${styleRowLabel} background-color:#f1f3f5;">TOTAL</td>`;
+    colTotals.forEach(total => {
+        html += `<td style="${styleTd}">${total}</td>`;
+    });
+    html += '</tr></tbody></table></div></div>';
+
     return html;
 }
 
@@ -2379,7 +2410,7 @@ function renderScenarioContent(name, recs, parent) {
     
     const btn = document.createElement('button');
     btn.textContent = "Accept Entire Path";
-    btn.style.cssText = 'background:#4361ee; color:white; border:none; padding:10px 20px; border-radius:5px; cursor:pointer;';
+    btn.style.cssText = 'background:#28a745; color:white; border:none; padding:10px 20px; border-radius:5px; cursor:pointer;';
     btn.addEventListener('click', () => handleAcceptScenario(name));
     head.appendChild(btn); wrapper.appendChild(head);
 
