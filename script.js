@@ -1609,11 +1609,12 @@ let currentFileName = null;
 let currentRules = null;
 let currentScenarios = {}; 
 let currentAllReservations = []; 
-let originalAllReservations = []; // NEW: To calculate deltas
 let acceptedUpgrades = [];
 let completedUpgrades = [];
 let oooRecords = [];
 let currentInventoryMap = null; 
+// NEW: Store the inventory matrix from the selected scenario for accurate display
+let currentPostAcceptanceInventory = null; 
 
 // --- FUNCTIONS ---
 function resetAppState() {
@@ -1622,10 +1623,10 @@ function resetAppState() {
     currentRules = null;
     currentScenarios = {};
     currentAllReservations = [];
-    originalAllReservations = [];
     acceptedUpgrades = [];
     currentInventoryMap = null; 
-    
+    currentPostAcceptanceInventory = null;
+
     document.getElementById('csv-file').value = '';
 
     const outputEl = document.getElementById('output');
@@ -1668,6 +1669,7 @@ function handleRefresh() {
         setTimeout(() => {
             try {
                 if (acceptedUpgrades.length > 0) {
+                     // If upgrades accepted, just regenerate view
                      const results = applyUpgradesAndRecalculate(acceptedUpgrades, currentCsvContent, currentRules, currentFileName);
                      displayMatrixOnlyView(results); 
                 } else {
@@ -1711,6 +1713,7 @@ function parseInventoryInput(inputText) {
 function parseSynxisInventory(csvContent) {
     const lines = csvContent.trim().split('\n');
     const headers = lines[0].split(',').map(h => h.trim());
+    
     const dateIndex = headers.indexOf('Cal_Dt');
     const roomIndex = headers.indexOf('Rm_Typ_Nm');
     const availIndex = headers.indexOf('Avail_Qty');
@@ -1722,9 +1725,11 @@ function parseSynxisInventory(csvContent) {
     for (let i = 1; i < lines.length; i++) {
         const row = lines[i].split(','); 
         if (row.length < headers.length) continue;
+
         const dateRaw = row[dateIndex]; 
         const roomRaw = row[roomIndex];
         const availRaw = row[availIndex];
+
         if (!dateRaw || !roomRaw) continue;
 
         const dateObj = new Date(dateRaw);
@@ -1733,11 +1738,13 @@ function parseSynxisInventory(csvContent) {
 
         const codeMatch = roomRaw.match(/\(([^)]+)\)$/);
         const roomCode = codeMatch ? codeMatch[1].trim().toUpperCase() : roomRaw.trim().toUpperCase();
+
         const qty = parseInt(availRaw, 10);
 
         if (!inventoryMap[dateKey]) inventoryMap[dateKey] = {};
         inventoryMap[dateKey][roomCode] = (isNaN(qty) ? 0 : qty);
     }
+
     return inventoryMap;
 }
 
@@ -2354,11 +2361,25 @@ function handleAcceptScenario(scenarioName) {
     if(!confirm(`Accept all ${scenario.length} upgrades in ${scenarioName}?`)) return;
 
     acceptedUpgrades.push(...scenario);
+    
+    // CAPTURE THE MATRIX FROM THIS SCENARIO
+    // We stored the simulation inventory (matrix) inside the scenario object? No, we didn't.
+    // We need to re-run the calculation OR return it from runSimulation.
+    // Let's modify runSimulation to return { upgrades: [], matrix: {} } 
+    // BUT since we can't easily change the return signature everywhere without breaking things, 
+    // let's re-calculate it or store it in currentScenarios.
+    // Actually, `currentScenarios[scenarioName]` is just the array of upgrades.
+    
+    // NEW STRATEGY: We will let the "Post Acceptance" view simply re-render the matrix based on 
+    // the accepted upgrades. We rely on the `displayMatrixOnlyView` logic which calculates 
+    // the final state.
+    
     currentScenarios = {}; 
 
     showLoader(true, "Processing...");
     setTimeout(() => {
         try {
+            // Apply upgrades to refresh the data state
             const results = applyUpgradesAndRecalculate(acceptedUpgrades, currentCsvContent, currentRules, currentFileName);
             displayMatrixOnlyView(results); 
         } catch (err) { showError(err); }
@@ -2374,7 +2395,7 @@ function displayMatrixOnlyView(results) {
     if(acceptedContainer) acceptedContainer.style.display = 'block';
     displayAcceptedUpgrades(); 
 
-    // 2. Target Container
+    // 2. Target Container (Clear current content)
     const container = document.getElementById('recommendations-container');
     container.innerHTML = ''; 
 
@@ -2389,59 +2410,14 @@ function displayMatrixOnlyView(results) {
     const numCols = dates.length;
     const colTotals = new Array(numCols).fill(0);
     
-    // DELTA CALCULATION LOGIC FOR MATRIX
-    // To ensure consistency, we use the BASE matrix (before upgrades) and apply deltas 
-    // This handles static PMS reports correctly by updating them
-    
-    const hierarchy = currentRules.hierarchy.toUpperCase().split(',').map(r => r.trim()).filter(Boolean);
-    const baseReservations = buildReservationsByDate(originalAllReservations); // Use original snapshot
-    const masterInv = getMasterInventory(currentRules.profile);
-    
-    const projectedRows = [];
-    
-    hierarchy.forEach(roomCode => {
-        const pRow = { roomCode, data: [] };
-        
-        dates.forEach((date, i) => {
-            const dateString = date.toISOString().split('T')[0];
-            
-            // Base Calculation
-            let finalAvail = 0;
-            if (currentInventoryMap && currentInventoryMap[dateString] && currentInventoryMap[dateString][roomCode] !== undefined) {
-                 finalAvail = currentInventoryMap[dateString][roomCode];
-            } else {
-                 const dTime = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate())).getTime();
-                 const oooCount = oooRecords.reduce((total, rec) => { 
-                     const rS=rec.startDate.getTime(); const rE=rec.endDate.getTime(); 
-                     if(rec.roomType===roomCode && dTime>=rS && dTime<=rE) return total+(rec.count||1); 
-                     return total; 
-                 }, 0);
-                 finalAvail = (masterInv[roomCode] || 0) - (baseReservations[dateString]?.[roomCode] || 0) - oooCount;
-            }
-
-            // Apply Deltas from Accepted Upgrades
-            acceptedUpgrades.forEach(upgrade => {
-                 // Dates in upgrade objects are MM/DD/YYYY strings, convert safely
-                 const arr = new Date(upgrade.arrivalDate);
-                 const dep = new Date(upgrade.departureDate);
-                 // Need UTC timestamps for comparison
-                 const uArrTime = Date.UTC(arr.getFullYear(), arr.getMonth(), arr.getDate());
-                 const uDepTime = Date.UTC(dep.getFullYear(), dep.getMonth(), dep.getDate());
-                 const dTime = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate())).getTime();
-                 
-                 if (dTime >= uArrTime && dTime < uDepTime) {
-                     if (upgrade.room === roomCode) finalAvail += 1; // Free up old room
-                     if (upgrade.upgradeTo === roomCode) finalAvail -= 1; // Occupy new room
-                 }
-            });
-
-            pRow.data.push(finalAvail);
-            colTotals[i] += finalAvail;
-        });
-        projectedRows.push(pRow);
+    // Use the rows directly from results.matrixData (which are already updated)
+    // This removes the duplicate subtraction bug
+    const rowsForHelper = results.matrixData.rows.map(row => {
+        row.availability.forEach((val, i) => colTotals[i] += val);
+        return { roomCode: row.roomCode, data: row.availability };
     });
 
-    matDiv.innerHTML = generateMatrixHTML("Updated Availability (Post-Acceptance)", projectedRows, headers, colTotals);
+    matDiv.innerHTML = generateMatrixHTML("Updated Availability (Post-Acceptance)", rowsForHelper, headers, colTotals);
     container.appendChild(matDiv);
 
     // 4. "Continue Reviewing" Button to restore view
@@ -2503,7 +2479,10 @@ function displayResults(data) {
     if(accCont) accCont.style.display = 'block';
 
     displayAcceptedUpgrades();
-    displayScenarios(currentScenarios); 
+    
+    // Use data.inventory and data.matrixData (optional, but mainly scenario display now does matrix)
+    // Pass matrixData to displayScenarios so we can show "Current" state below options
+    displayScenarios(currentScenarios, data.matrixData); 
     
     document.getElementById('output').style.display = 'block';
     const messageEl = document.getElementById('message');
@@ -2520,7 +2499,7 @@ function displayInventory(inventory) {
 }
 
 // NEW: Display Scenario Tabs + Double Matrix (Projected & Current)
-function displayScenarios(scenarios) {
+function displayScenarios(scenarios, currentMatrix) {
     const container = document.getElementById('recommendations-container');
     container.innerHTML = '';
     const keys = Object.keys(scenarios);
@@ -2537,12 +2516,12 @@ function displayScenarios(scenarios) {
         tab.addEventListener('click', () => {
             container.querySelectorAll('.scenario-tab').forEach(b => { b.style.background='#f0f0f0'; b.style.color='#333'; });
             tab.style.background='#4343FF'; tab.style.color='white';
-            renderScenarioContent(key, scenarios[key], container);
+            renderScenarioContent(key, scenarios[key], container, currentMatrix);
         });
         header.appendChild(tab);
     });
     container.appendChild(header);
-    renderScenarioContent(keys[0], scenarios[keys[0]], container);
+    renderScenarioContent(keys[0], scenarios[keys[0]], container, currentMatrix);
 }
 
 // Helper to render HTML table for matrix (UPDATED STYLING)
@@ -2595,7 +2574,7 @@ function generateMatrixHTML(title, rows, headers, colTotals) {
     return html;
 }
 
-function renderScenarioContent(name, recs, parent) {
+function renderScenarioContent(name, recs, parent, currentMatrix) {
     const old = parent.querySelector('.scenario-content'); if(old) old.remove();
     const wrapper = document.createElement('div'); wrapper.className = 'scenario-content';
     
@@ -2606,63 +2585,45 @@ function renderScenarioContent(name, recs, parent) {
     
     const btn = document.createElement('button');
     btn.textContent = "Accept Entire Path";
-    btn.style.cssText = 'background:#4361ee; color:white; border:none; padding:10px 20px; border-radius:5px; cursor:pointer;';
+    btn.style.cssText = 'background:#28a745; color:white; border:none; padding:10px 20px; border-radius:5px; cursor:pointer;';
     btn.addEventListener('click', () => handleAcceptScenario(name));
     head.appendChild(btn); wrapper.appendChild(head);
 
     // --- CALC MATRICES ---
-    const startDate = parseDate(currentRules.selectedDate);
-    const hierarchy = currentRules.hierarchy.toUpperCase().split(',').map(r => r.trim()).filter(Boolean);
-    const baseReservations = buildReservationsByDate(currentAllReservations);
-    const masterInv = getMasterInventory(currentRules.profile);
+    // 1. Current (Base) Matrix - from parameter
+    const currentRows = currentMatrix ? currentMatrix.rows.map(r => ({roomCode: r.roomCode, data: r.availability})) : [];
     
+    const startDate = parseDate(currentRules.selectedDate);
     const dates = Array.from({ length: 14 }, (_, i) => { const d = new Date(startDate); d.setUTCDate(d.getUTCDate() + i); return d; });
     const headers = ['Room Type', ...dates.map(date => `${date.toLocaleDateString('en-US', { weekday: 'short', timeZone: 'UTC' })}<br>${date.getUTCMonth() + 1}/${date.getUTCDate()}`)];
-
-    const projectedRows = [];
-    const currentRows = [];
+    
     const numCols = dates.length;
-    const projColTotals = new Array(numCols).fill(0);
     const currColTotals = new Array(numCols).fill(0);
+    currentRows.forEach(r => r.data.forEach((v,i) => currColTotals[i]+=v));
 
-    hierarchy.forEach(roomCode => {
-        const pRow = { roomCode, data: [] };
-        const cRow = { roomCode, data: [] };
-
+    // 2. Projected Matrix (Apply delta to Current)
+    const projectedRows = JSON.parse(JSON.stringify(currentRows)); // Deep copy
+    const projColTotals = new Array(numCols).fill(0);
+    
+    recs.forEach(upgrade => {
+        // Find row indices
+        const oldRow = projectedRows.find(r => r.roomCode === upgrade.room);
+        const newRow = projectedRows.find(r => r.roomCode === upgrade.upgradeTo);
+        
+        const uArr = new Date(upgrade.arrivalDate).getTime();
+        const uDep = new Date(upgrade.departureDate).getTime();
+        
         dates.forEach((date, i) => {
-            const dateString = date.toISOString().split('T')[0];
-            
-            // BASE CALC
-            let baseAvail = 0;
-            if (currentInventoryMap && currentInventoryMap[dateString] && currentInventoryMap[dateString][roomCode] !== undefined) {
-                baseAvail = currentInventoryMap[dateString][roomCode];
-            } else {
-                const dTime = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate())).getTime();
-                const oooCount = oooRecords.reduce((t, r) => { const rS=r.startDate.getTime(); const rE=r.endDate.getTime(); if(r.roomType===roomCode && dTime>=rS && dTime<=rE) return t+(r.count||1); return t; }, 0);
-                baseAvail = (masterInv[roomCode] || 0) - (baseReservations[dateString]?.[roomCode] || 0) - oooCount;
-            }
-
-            // PROJECTED DELTA
-            let projAvail = baseAvail;
-            recs.forEach(upgrade => {
-                const uArr = new Date(upgrade.arrivalDate).getTime();
-                const uDep = new Date(upgrade.departureDate).getTime();
-                const dTime = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate())).getTime();
-
-                if (dTime >= uArr && dTime < uDep) {
-                    if (upgrade.room === roomCode) projAvail += 1; 
-                    if (upgrade.upgradeTo === roomCode) projAvail -= 1;
-                }
-            });
-
-            pRow.data.push(projAvail);
-            cRow.data.push(baseAvail);
-            projColTotals[i] += projAvail;
-            currColTotals[i] += baseAvail;
+             const dTime = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate())).getTime();
+             if (dTime >= uArr && dTime < uDep) {
+                 if(oldRow) oldRow.data[i] += 1;
+                 if(newRow) newRow.data[i] -= 1;
+             }
         });
-        projectedRows.push(pRow);
-        currentRows.push(cRow);
     });
+    
+    // Recalc totals
+    projectedRows.forEach(r => r.data.forEach((v,i) => projColTotals[i]+=v));
 
     // --- RENDER MATRICES ---
     const matrixContainer = document.createElement('div');
@@ -2734,8 +2695,6 @@ function processUpgradeData(csvContent, rules, fileName) {
 
     // Save to global state for matrix recalculation in displayScenarios
     currentAllReservations = allReservations;
-    // Capture BASELINE from the raw file load
-    originalAllReservations = JSON.parse(JSON.stringify(allReservations)); 
 
     return generateScenariosFromData(allReservations, rules);
 }
@@ -2961,8 +2920,8 @@ function runSimulation(strategy, allReservations, masterInv, rules, completedIds
                         score: cand.score,
                         arrivalDate: cand.resObj.arrival.toLocaleDateString('en-US', { timeZone: 'UTC' }),
                         departureDate: cand.resObj.departure.toLocaleDateString('en-US', { timeZone: 'UTC' }),
-                        isoArrival: cand.resObj.arrival.toISOString().split('T')[0],
-                        isoDeparture: cand.resObj.departure.toISOString().split('T')[0],
+                        isoArrival: cand.resObj.arrival.toISOString().split('T')[0], // Store for Matrix calc
+                        isoDeparture: cand.resObj.departure.toISOString().split('T')[0], // Store for Matrix calc
                         vipStatus: cand.resObj.vipStatus
                     };
                 } else {
@@ -2990,6 +2949,7 @@ function downloadAcceptedUpgradesCsv() {
     const csvContent = [headers.join(','), ...rows].join('\n');
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' }); const link = document.createElement('a'); const url = URL.createObjectURL(blob); const dateStr = new Date().toISOString().slice(0, 10); link.setAttribute('href', url); link.setAttribute('download', `accepted_upgrades_${dateStr}.csv`); link.style.visibility = 'hidden'; document.body.appendChild(link); link.click(); document.body.removeChild(link);
 }
+
 
 
 
