@@ -1600,6 +1600,7 @@ const MASTER_INVENTORIES = {
     ]
 
 };
+
 // ... (Your existing Config, ADMIN_UIDS, SNT_PROPERTY_MAP, DOM References, profiles, and MASTER_INVENTORIES remain above this) ...
 
 // --- STATE MANAGEMENT ---
@@ -1642,6 +1643,9 @@ function resetAppState() {
     const messageEl = document.getElementById('message');
     if (messageEl) messageEl.innerHTML = '';
 
+    const acceptedContainer = document.getElementById('accepted-container');
+    if(acceptedContainer) acceptedContainer.style.display = 'block';
+    
     displayAcceptedUpgrades();
 }
 
@@ -1661,8 +1665,14 @@ function handleRefresh() {
         
         setTimeout(() => {
             try {
-                const results = processUpgradeData(currentCsvContent, currentRules, currentFileName);
-                displayResults(results);
+                // If we have accepted upgrades, we need to re-apply them to the fresh data
+                if (acceptedUpgrades.length > 0) {
+                     const results = applyUpgradesAndRecalculate(acceptedUpgrades, currentCsvContent, currentRules, currentFileName);
+                     displayMatrixOnlyView(results); // Stay in Matrix view if accepted
+                } else {
+                    const results = processUpgradeData(currentCsvContent, currentRules, currentFileName);
+                    displayResults(results); // Standard view
+                }
             } catch (err) {
                 console.error("Refresh error:", err);
                 showLoader(false);
@@ -2035,7 +2045,7 @@ document.addEventListener('DOMContentLoaded', function() {
     if (saveNewPropBtn) saveNewPropBtn.addEventListener('click', handleSaveNewProperty);
     window.addEventListener('click', (e) => { if (e.target === addPropModal) addPropModal.classList.add('hidden'); });
 
-    // --- NEW: SETUP MANUAL UPLOAD WRAPPERS FOR MOVING ---
+    // --- SETUP MANUAL UPLOAD WRAPPERS ---
     const fileInput = document.getElementById('csv-file');
     const genBtnRef = document.getElementById('generate-btn');
     
@@ -2066,16 +2076,13 @@ document.addEventListener('DOMContentLoaded', function() {
         const isSnt = !!SNT_PROPERTY_MAP[currentProfile];
         const autoLoadBtn = document.getElementById('auto-load-btn');
         
-        if (autoLoadBtn) {
-            autoLoadBtn.style.display = isSnt ? 'inline-block' : 'none';
-        }
+        if (autoLoadBtn) autoLoadBtn.style.display = isSnt ? 'inline-block' : 'none';
 
         if (isSnt) {
             const settingsContent = settingsModal.firstElementChild; 
             if (settingsContent && manualUploadWrapper.parentNode !== settingsContent) {
                 settingsContent.appendChild(manualUploadWrapper);
             }
-
             manualUploadWrapper.style.marginTop = '20px';
             manualUploadWrapper.style.padding = '15px';
             manualUploadWrapper.style.border = '1px solid #eee';
@@ -2097,7 +2104,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 fileInput.style.width = 'auto';
                 fileInput.style.border = '1px solid #ccc';
             }
-
             if (genBtnRef) {
                 genBtnRef.style.width = 'auto';
                 genBtnRef.style.display = 'inline-block';
@@ -2105,12 +2111,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 genBtnRef.style.fontSize = '14px';
                 genBtnRef.style.padding = '8px 15px';
             }
-
         } else {
             if (mainPagePlaceholder && mainPagePlaceholder.parentNode) {
                 mainPagePlaceholder.parentNode.insertBefore(manualUploadWrapper, mainPagePlaceholder.nextSibling);
             }
-
             manualUploadWrapper.style.marginTop = '20px';
             manualUploadWrapper.style.marginBottom = '20px';
             manualUploadWrapper.style.padding = '25px 30px'; 
@@ -2119,7 +2123,6 @@ document.addEventListener('DOMContentLoaded', function() {
             manualUploadWrapper.style.backgroundColor = '#f8f9fa';
             manualUploadWrapper.style.background = 'linear-gradient(to right, #ffffff, #f4f6f8)'; 
             manualUploadWrapper.style.boxShadow = '0 4px 6px rgba(0,0,0,0.05)';
-            
             manualUploadWrapper.style.display = 'flex';
             manualUploadWrapper.style.flexDirection = 'row';
             manualUploadWrapper.style.alignItems = 'center';
@@ -2141,7 +2144,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 fileInput.style.borderRadius = '6px';
                 fileInput.style.backgroundColor = '#fff';
             }
-
             if (genBtnRef) {
                 genBtnRef.style.width = 'auto';
                 genBtnRef.style.maxWidth = 'none';
@@ -2362,7 +2364,7 @@ function handleAcceptScenario(scenarioName) {
     setTimeout(() => {
         try {
             const results = applyUpgradesAndRecalculate(acceptedUpgrades, currentCsvContent, currentRules, currentFileName);
-            displayMatrixOnlyView(results); // New function to show just the matrix
+            displayMatrixOnlyView(results); 
         } catch (err) { showError(err); }
     }, 50);
 }
@@ -2377,28 +2379,16 @@ function displayMatrixOnlyView(results) {
 
     // Target Container
     const container = document.getElementById('recommendations-container');
-    container.innerHTML = ''; // Clear tabs and cards
+    container.innerHTML = ''; 
 
-    // Render Matrix using the helper
-    // Note: results.matrixData holds the CURRENT state (after acceptance)
-    
     const matDiv = document.createElement('div');
     matDiv.style.marginTop = '20px';
     
-    // Using the same helper to render the single result matrix
-    // We treat 'Projected' as 'Current Status' now
+    // Calculate Matrix based on results.matrixData (which is already correct Post-Upgrade)
     const startDate = parseDate(currentRules.selectedDate);
-    const hierarchy = currentRules.hierarchy.toUpperCase().split(',').map(r => r.trim()).filter(Boolean);
     const dates = Array.from({ length: 14 }, (_, i) => { const d = new Date(startDate); d.setUTCDate(d.getUTCDate() + i); return d; });
     const headers = ['Room Type', ...dates.map(date => `${date.toLocaleDateString('en-US', { weekday: 'short', timeZone: 'UTC' })}<br>${date.getUTCMonth() + 1}/${date.getUTCDate()}`)];
     
-    // Transform matrixData into rows format for the helper if needed, 
-    // BUT results.matrixData from generateMatrixData is already in {headers, rows} format.
-    // However, our generateMatrixHTML helper expects a slightly different structure {roomCode, data[]} 
-    // Let's use results.matrixData directly if it matches, or re-calculate.
-    // results.matrixData.rows has {roomCode, availability[]} which matches perfectly.
-
-    // Calculate totals for the footer
     const numCols = dates.length;
     const colTotals = new Array(numCols).fill(0);
     const rowsForHelper = results.matrixData.rows.map(row => {
@@ -2407,19 +2397,30 @@ function displayMatrixOnlyView(results) {
     });
 
     matDiv.innerHTML = generateMatrixHTML("Updated Availability (Post-Acceptance)", rowsForHelper, headers, colTotals);
-    
     container.appendChild(matDiv);
 
-    // Add "Continue" Button to restore view
-    const continueBtn = document.createElement('button');
-    continueBtn.textContent = "Continue / Review More";
-    continueBtn.style.cssText = "margin-top: 20px; padding: 12px 24px; background: #4343FF; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 16px; display: block; margin-left: auto; margin-right: auto;";
-    continueBtn.addEventListener('click', () => {
-        // Restore standard view
+    // "Undo & Restart" Button
+    const undoBtn = document.createElement('button');
+    undoBtn.textContent = "Undo & Restart";
+    undoBtn.style.cssText = "margin-top: 20px; margin-right: 10px; padding: 12px 24px; background: #dc3545; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 16px;";
+    undoBtn.addEventListener('click', () => {
+        // Simple Reset for now - or implement full undo logic
+        acceptedUpgrades = [];
         if(acceptedContainer) acceptedContainer.style.display = 'block';
-        displayResults(results); // Go back to standard results view
+        handleRefresh(); // Re-run initial simulation
     });
-    container.appendChild(continueBtn);
+    
+    // "Download CSV" Button (Since list is hidden)
+    const dlBtn = document.createElement('button');
+    dlBtn.textContent = "Download CSV";
+    dlBtn.style.cssText = "margin-top: 20px; padding: 12px 24px; background: #4343FF; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 16px;";
+    dlBtn.addEventListener('click', downloadAcceptedUpgradesCsv);
+
+    const btnContainer = document.createElement('div');
+    btnContainer.style.textAlign = 'center';
+    btnContainer.appendChild(undoBtn);
+    btnContainer.appendChild(dlBtn);
+    container.appendChild(btnContainer);
 }
 
 function handlePmsUpdateClick(event) {
@@ -2790,187 +2791,89 @@ function runSimulation(strategy, allReservations, masterInv, rules, completedIds
     const ineligible = rules.ineligibleUpgrades.toUpperCase().split(',');
     const otaRates = rules.otaRates.toLowerCase().split(',');
 
-    // 1. Build Dynamic Inventory
+    // Build Dynamic Inventory Map for 14 Days (Extended for robust checking)
     const simInventory = {};
-    for (let i = 0; i < 14; i++) {
-        const d = new Date(startDate); d.setUTCDate(d.getUTCDate() + i);
+    for(let i=0; i<14; i++) {
+        const d = new Date(startDate); d.setUTCDate(d.getUTCDate()+i);
         const dStr = d.toISOString().split('T')[0];
         simInventory[dStr] = {};
-        for (let room in masterInv) {
+        for(let room in masterInv) {
             const dTime = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate())).getTime();
-            const existingCount = allReservations.reduce((acc, res) => {
-                if (res.roomType === room && res.arrival <= d && res.departure > d) return acc + 1;
-                return acc;
-            }, 0);
-            const oooCount = oooRecords.reduce((acc, rec) => {
-                const rStart = rec.startDate.getTime(); const rEnd = rec.endDate.getTime();
-                if (rec.roomType === room && dTime >= rStart && dTime <= rEnd) return acc + (rec.count || 1);
-                return acc;
-            }, 0);
-
-            if (currentInventoryMap && currentInventoryMap[dStr] && currentInventoryMap[dStr][room] !== undefined) {
-                simInventory[dStr][room] = currentInventoryMap[dStr][room];
-            } else {
-                simInventory[dStr][room] = (masterInv[room] || 0) - existingCount - oooCount;
-            }
+            const existingCount = allReservations.reduce((acc, res) => { if(res.roomType === room && res.arrival <= d && res.departure > d) return acc + 1; return acc; }, 0);
+            const oooCount = oooRecords.reduce((acc, rec) => { const rStart = rec.startDate.getTime(); const rEnd = rec.endDate.getTime(); if(rec.roomType === room && dTime >= rStart && dTime <= rEnd) return acc + (rec.count || 1); return acc; }, 0);
+            if (currentInventoryMap && currentInventoryMap[dStr] && currentInventoryMap[dStr][room] !== undefined) simInventory[dStr][room] = currentInventoryMap[dStr][room]; 
+            else simInventory[dStr][room] = (masterInv[room] || 0) - existingCount - oooCount;
         }
     }
 
-    // 2. Track State
-    // Map resId -> currentSimulatedRoom (starts as original)
-    const guestState = {};
-    allReservations.forEach(r => guestState[r.resId] = r.roomType);
-    
-    // Map resId -> Upgrade Object (to keep updating)
-    const pendingUpgrades = {}; 
+    let candidates = [];
+    for(let i=0; i<7; i++) {
+        const d = new Date(startDate); d.setUTCDate(d.getUTCDate()+i);
+        const dTime = d.getTime();
+        const dailyArrivals = allReservations.filter(r => r.arrival && r.arrival.getTime() === dTime && r.status === 'RESERVATION');
+        
+        dailyArrivals.forEach(res => {
+            if (completedIds.has(res.resId)) return;
+            if (ineligible.includes(res.roomType)) return;
+            if (otaRates.some(ota => res.rate.toLowerCase().includes(ota))) return;
+            if (rules.profile === 'sts' && res.marketCode === 'Internet Merchant Model') return;
 
-    // 3. Iterative Passes
-    for (let pass = 0; pass < 20; pass++) { 
-        let activity = false;
-        let candidates = [];
+            const currentIdx = hierarchy.indexOf(res.roomType);
+            if (currentIdx === -1) return;
+            const bedType = getBedType(res.roomType);
+            if (bedType === 'OTHER') return;
 
-        // Generate Candidates based on CURRENT Simulated Room
-        for (let i = 0; i < 7; i++) {
-            const d = new Date(startDate); d.setUTCDate(d.getUTCDate() + i);
-            const dTime = d.getTime();
-            
-            // Arrivals for this day
-            const dailyArrivals = allReservations.filter(r => r.arrival && r.arrival.getTime() === dTime && r.status === 'RESERVATION');
-
-            dailyArrivals.forEach(res => {
-                if (completedIds.has(res.resId)) return;
-                
-                // Use CURRENT state, not original
-                const currentRoom = guestState[res.resId];
-                
-                // Safety: Don't upgrade if current room is already invalid/unknown or top of hierarchy
-                const currentIdx = hierarchy.indexOf(currentRoom);
-                if (currentIdx === -1) return;
-
-                // Check original bed type rules (always based on original booking to preserve preference)
-                const originalBed = getBedType(res.roomType); 
-                if (originalBed === 'OTHER') return;
-
-                // Rules checks
-                if (rules.profile === 'sts' && res.marketCode === 'Internet Merchant Model') return;
-                if (otaRates.some(ota => res.rate.toLowerCase().includes(ota))) return;
-                
-                // Note: We don't block 'ineligible' source rooms here, because they might have moved INTO an eligible room in previous pass.
-                // Actually, 'ineligibleUpgrades' usually means "Don't upgrade people OUT of this room" OR "Don't put people INTO this room".
-                // Usually it implies the latter (targets). If it means source, we check res.roomType.
-                // Let's stick to standard logic: Can't upgrade INTO ineligible.
-                
-                // Find next immediate valid step? Or all steps?
-                // To allow "Go all the way", we should look at higher rooms.
-                // Since we loop, finding just the *next* available room is sufficient to eventually bubble up.
-                // However, finding the *best* available room immediately is faster.
-                
-                for (let u = currentIdx + 1; u < hierarchy.length; u++) {
-                    const targetRoom = hierarchy[u];
-                    if (ineligible.includes(targetRoom)) continue;
-                    if (getBedType(targetRoom) !== originalBed) continue;
-
-                    candidates.push({
-                        resObj: res, // Ref to original
-                        currentRoom: currentRoom,
-                        targetRoom: targetRoom,
-                        score: parseFloat(res.revenue.replace(/[$,]/g, '')) || 0,
-                        vip: res.vipStatus ? 1 : 0,
-                        nights: res.nights,
-                        rank: u // Higher is better?
-                    });
-                }
-            });
-        }
-
-        // Sort Candidates
-        if (strategy === 'Revenue Focus') {
-            candidates.sort((a, b) => {
-                if (b.score !== a.score) return b.score - a.score; // High Rev
-                return b.rank - a.rank; // Then highest room category
-            });
-        } else if (strategy === 'VIP Focus') {
-            candidates.sort((a, b) => {
-                if (b.vip !== a.vip) return b.vip - a.vip;
-                if (b.score !== a.score) return b.score - a.score;
-                return b.rank - a.rank;
-            });
-        } else {
-            // Efficiency: Shortest stays first, fill gaps
-            candidates.sort((a, b) => a.nights - b.nights);
-        }
-
-        // Apply Upgrades for this pass
-        // We need to be careful: one guest might appear multiple times in candidates (for different target rooms).
-        // We should take the *best* valid move for each guest in this pass.
-        const processedResIdsThisPass = new Set();
-
-        candidates.forEach(cand => {
-            if (processedResIdsThisPass.has(cand.resObj.resId)) return;
-
-            // Check availability
-            let canMove = true;
-            let checkDate = new Date(cand.resObj.arrival);
-            while (checkDate < cand.resObj.departure) {
-                const dStr = checkDate.toISOString().split('T')[0];
-                if (!simInventory[dStr] || (simInventory[dStr][cand.targetRoom] || 0) <= 0) {
-                    canMove = false;
-                    break;
-                }
-                checkDate.setUTCDate(checkDate.getUTCDate() + 1);
-            }
-
-            if (canMove) {
-                // EXECUTE MOVE
-                activity = true;
-                processedResIdsThisPass.add(cand.resObj.resId);
-
-                // 1. Update Inventory
-                checkDate = new Date(cand.resObj.arrival);
-                while (checkDate < cand.resObj.departure) {
-                    const dStr = checkDate.toISOString().split('T')[0];
-                    if (simInventory[dStr]) {
-                        simInventory[dStr][cand.targetRoom]--; // Take new
-                        // Free old room
-                        if (simInventory[dStr][cand.currentRoom] !== undefined) {
-                            simInventory[dStr][cand.currentRoom]++;
-                        }
-                    }
-                    checkDate.setUTCDate(checkDate.getUTCDate() + 1);
-                }
-
-                // 2. Update Guest State
-                guestState[cand.resObj.resId] = cand.targetRoom;
-
-                // 3. Update Result Object
-                if (!pendingUpgrades[cand.resObj.resId]) {
-                    // First move
-                    pendingUpgrades[cand.resObj.resId] = {
-                        name: cand.resObj.name,
-                        resId: cand.resObj.resId,
-                        revenue: cand.resObj.revenue,
-                        room: cand.resObj.roomType, // Original Room
-                        rate: cand.resObj.rate,
-                        nights: cand.resObj.nights,
-                        upgradeTo: cand.targetRoom, // Current Target
-                        score: cand.score,
-                        arrivalDate: cand.resObj.arrival.toLocaleDateString('en-US', { timeZone: 'UTC' }),
-                        departureDate: cand.resObj.departure.toLocaleDateString('en-US', { timeZone: 'UTC' }),
-                        isoArrival: cand.resObj.arrival.toISOString().split('T')[0],
-                        isoDeparture: cand.resObj.departure.toISOString().split('T')[0],
-                        vipStatus: cand.resObj.vipStatus
-                    };
-                } else {
-                    // Subsequent move: just update the target
-                    pendingUpgrades[cand.resObj.resId].upgradeTo = cand.targetRoom;
-                }
+            for(let u=currentIdx+1; u<hierarchy.length; u++) {
+                const upRoom = hierarchy[u];
+                if (ineligible.includes(upRoom)) continue;
+                if (getBedType(upRoom) !== bedType) continue;
+                candidates.push({
+                    reservation: res, upgradeTo: upRoom, score: parseFloat(res.revenue.replace(/[$,]/g, '')) || 0,
+                    vip: res.vipStatus ? 1 : 0, nights: res.nights, distance: u - currentIdx, dateStr: d.toISOString().split('T')[0]
+                });
             }
         });
-
-        if (!activity) break; // Stop if no moves made in this pass
     }
 
-    return Object.values(pendingUpgrades);
+    if (strategy === 'Revenue Focus') candidates.sort((a, b) => b.score - a.score);
+    else if (strategy === 'VIP Focus') candidates.sort((a, b) => { if (b.vip !== a.vip) return b.vip - a.vip; return b.score - a.score; });
+    else candidates.sort((a, b) => a.nights - b.nights); 
+
+    const processedResIds = new Set();
+    const recommendations = [];
+
+    candidates.forEach(cand => {
+        if (processedResIds.has(cand.reservation.resId)) return;
+        let canUpgrade = true;
+        let checkDate = new Date(cand.reservation.arrival);
+        while(checkDate < cand.reservation.departure) {
+            const dStr = checkDate.toISOString().split('T')[0];
+            if (!simInventory[dStr] || (simInventory[dStr][cand.upgradeTo] || 0) <= 0) { canUpgrade = false; break; }
+            checkDate.setUTCDate(checkDate.getUTCDate()+1);
+        }
+
+        if (canUpgrade) {
+            recommendations.push({
+                name: cand.reservation.name, resId: cand.reservation.resId, revenue: cand.reservation.revenue,
+                room: cand.reservation.roomType, rate: cand.reservation.rate, nights: cand.reservation.nights,
+                upgradeTo: cand.upgradeTo, score: cand.score,
+                arrivalDate: cand.reservation.arrival.toLocaleDateString('en-US', { timeZone: 'UTC' }),
+                departureDate: cand.reservation.departure.toLocaleDateString('en-US', { timeZone: 'UTC' }),
+                isoArrival: cand.reservation.arrival.toISOString().split('T')[0], // Store for Matrix calc
+                isoDeparture: cand.reservation.departure.toISOString().split('T')[0], // Store for Matrix calc
+                vipStatus: cand.reservation.vipStatus
+            });
+            processedResIds.add(cand.reservation.resId);
+            checkDate = new Date(cand.reservation.arrival);
+            while(checkDate < cand.reservation.departure) {
+                const dStr = checkDate.toISOString().split('T')[0];
+                if (simInventory[dStr]) simInventory[dStr][cand.upgradeTo]--;
+                checkDate.setUTCDate(checkDate.getUTCDate()+1);
+            }
+        }
+    });
+
+    return recommendations;
 }
 
 function buildReservationsByDate(allReservations) { const reservationsByDate = {}; allReservations.forEach(res => { if (!res.arrival || !res.departure) return; let currentDate = new Date(res.arrival); while (currentDate < res.departure) { const dateString = currentDate.toISOString().split('T')[0]; if (!reservationsByDate[dateString]) reservationsByDate[dateString] = {}; reservationsByDate[dateString][res.roomType] = (reservationsByDate[dateString][res.roomType] || 0) + 1; currentDate.setUTCDate(currentDate.getUTCDate() + 1); } }); return reservationsByDate; }
@@ -2986,6 +2889,7 @@ function downloadAcceptedUpgradesCsv() {
     const csvContent = [headers.join(','), ...rows].join('\n');
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' }); const link = document.createElement('a'); const url = URL.createObjectURL(blob); const dateStr = new Date().toISOString().slice(0, 10); link.setAttribute('href', url); link.setAttribute('download', `accepted_upgrades_${dateStr}.csv`); link.style.visibility = 'hidden'; document.body.appendChild(link); link.click(); document.body.removeChild(link);
 }
+
 
 
 
