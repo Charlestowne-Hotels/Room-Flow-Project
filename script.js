@@ -1600,7 +1600,6 @@ const MASTER_INVENTORIES = {
     ]
 
 };
-
 // ... (Your existing Config, ADMIN_UIDS, SNT_PROPERTY_MAP, DOM References, profiles, and MASTER_INVENTORIES remain above this) ...
 
 // --- STATE MANAGEMENT ---
@@ -2040,7 +2039,6 @@ document.addEventListener('DOMContentLoaded', function() {
     const fileInput = document.getElementById('csv-file');
     const genBtnRef = document.getElementById('generate-btn');
     
-    // Create wrapper for the manual controls
     const manualUploadWrapper = document.createElement('div');
     manualUploadWrapper.id = 'manual-upload-wrapper';
     
@@ -2051,41 +2049,33 @@ document.addEventListener('DOMContentLoaded', function() {
     uploadTitle.style.color = '#333';
     manualUploadWrapper.appendChild(uploadTitle);
 
-    // Insert wrapper where input currently is
     if (fileInput && fileInput.parentNode) {
         fileInput.parentNode.insertBefore(manualUploadWrapper, fileInput);
         manualUploadWrapper.appendChild(fileInput);
         if (genBtnRef) manualUploadWrapper.appendChild(genBtnRef);
     }
 
-    // Create placeholder to remember location on Main Page
     const mainPagePlaceholder = document.createElement('div');
     mainPagePlaceholder.id = 'manual-upload-placeholder';
     if (manualUploadWrapper.parentNode) {
         manualUploadWrapper.parentNode.insertBefore(mainPagePlaceholder, manualUploadWrapper);
     }
 
-    // Function to Switch UI Layout & Styles
     const updateUIForProfile = () => {
         const currentProfile = document.getElementById('profile-dropdown').value;
         const isSnt = !!SNT_PROPERTY_MAP[currentProfile];
         const autoLoadBtn = document.getElementById('auto-load-btn');
         
-        // 1. Toggle Auto-Load Button
         if (autoLoadBtn) {
             autoLoadBtn.style.display = isSnt ? 'inline-block' : 'none';
         }
 
-        // 2. Move Manual Upload Controls & Apply Specific Styles
         if (isSnt) {
-            // --- MODE: COMPACT (Inside Settings) ---
-            const settingsContent = settingsModal.firstElementChild; // The .modal-content div
+            const settingsContent = settingsModal.firstElementChild; 
             if (settingsContent && manualUploadWrapper.parentNode !== settingsContent) {
-                // Move elements after the last child of modal content
                 settingsContent.appendChild(manualUploadWrapper);
             }
 
-            // Apply Compact Styles
             manualUploadWrapper.style.marginTop = '20px';
             manualUploadWrapper.style.padding = '15px';
             manualUploadWrapper.style.border = '1px solid #eee';
@@ -2094,7 +2084,7 @@ document.addEventListener('DOMContentLoaded', function() {
             manualUploadWrapper.style.textAlign = 'left';
             manualUploadWrapper.style.display = 'block';
             manualUploadWrapper.style.minHeight = 'auto';
-            manualUploadWrapper.style.background = '#fafafa'; // Reset background
+            manualUploadWrapper.style.background = '#fafafa'; 
             manualUploadWrapper.style.boxShadow = 'none';
             manualUploadWrapper.style.gap = '0';
             
@@ -2117,12 +2107,10 @@ document.addEventListener('DOMContentLoaded', function() {
             }
 
         } else {
-            // --- MODE: HERO (Main Page) ---
             if (mainPagePlaceholder && mainPagePlaceholder.parentNode) {
                 mainPagePlaceholder.parentNode.insertBefore(manualUploadWrapper, mainPagePlaceholder.nextSibling);
             }
 
-            // Apply Hero Styles - Shorter & Wider Toolbar
             manualUploadWrapper.style.marginTop = '20px';
             manualUploadWrapper.style.marginBottom = '20px';
             manualUploadWrapper.style.padding = '25px 30px'; 
@@ -2132,7 +2120,6 @@ document.addEventListener('DOMContentLoaded', function() {
             manualUploadWrapper.style.background = 'linear-gradient(to right, #ffffff, #f4f6f8)'; 
             manualUploadWrapper.style.boxShadow = '0 4px 6px rgba(0,0,0,0.05)';
             
-            // Flex Layout: Row (Horizontal)
             manualUploadWrapper.style.display = 'flex';
             manualUploadWrapper.style.flexDirection = 'row';
             manualUploadWrapper.style.alignItems = 'center';
@@ -2140,14 +2127,12 @@ document.addEventListener('DOMContentLoaded', function() {
             manualUploadWrapper.style.gap = '20px';
             manualUploadWrapper.style.minHeight = 'auto'; 
             
-            // Title Styling
             uploadTitle.style.fontSize = '18px';
             uploadTitle.style.fontWeight = '600';
             uploadTitle.style.color = '#333';
             uploadTitle.style.margin = '0'; 
             uploadTitle.style.whiteSpace = 'nowrap'; 
 
-            // Input Styling (Make it fill space)
             if (fileInput) {
                 fileInput.style.flexGrow = '1';
                 fileInput.style.maxWidth = 'none';
@@ -2157,7 +2142,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 fileInput.style.backgroundColor = '#fff';
             }
 
-            // Button Styling
             if (genBtnRef) {
                 genBtnRef.style.width = 'auto';
                 genBtnRef.style.maxWidth = 'none';
@@ -2200,7 +2184,6 @@ document.addEventListener('DOMContentLoaded', function() {
         settingsTriggerBtn.addEventListener('click', () => { settingsModal.classList.remove('hidden'); populateOooDropdown(); });
     }
 
-    // CLOSE SETTINGS -> REFRESH DATA
     if(closeSettingsBtn) {
         closeSettingsBtn.addEventListener('click', () => {
             settingsModal.classList.add('hidden');
@@ -2366,22 +2349,77 @@ function handleGenerateClick() {
     reader.readAsText(fileInput.files[0]);
 }
 
-// NEW: Accept Scenario Logic
+// NEW: Accept Scenario Logic - UPDATED TO SHOW MATRIX ONLY VIEW
 function handleAcceptScenario(scenarioName) {
     const scenario = currentScenarios[scenarioName];
     if (!scenario || !scenario.length) { alert("No upgrades available."); return; }
     if(!confirm(`Accept all ${scenario.length} upgrades in ${scenarioName}?`)) return;
 
     acceptedUpgrades.push(...scenario);
-    currentScenarios = {}; // Clear scenarios to force re-gen
+    currentScenarios = {}; 
 
     showLoader(true, "Processing...");
     setTimeout(() => {
         try {
             const results = applyUpgradesAndRecalculate(acceptedUpgrades, currentCsvContent, currentRules, currentFileName);
-            displayResults(results);
+            displayMatrixOnlyView(results); // New function to show just the matrix
         } catch (err) { showError(err); }
     }, 50);
+}
+
+// NEW: Function to render ONLY the matrix (Post-Acceptance View)
+function displayMatrixOnlyView(results) {
+    showLoader(false);
+    
+    // Hide Accepted List
+    const acceptedContainer = document.getElementById('accepted-container');
+    if(acceptedContainer) acceptedContainer.style.display = 'none';
+
+    // Target Container
+    const container = document.getElementById('recommendations-container');
+    container.innerHTML = ''; // Clear tabs and cards
+
+    // Render Matrix using the helper
+    // Note: results.matrixData holds the CURRENT state (after acceptance)
+    
+    const matDiv = document.createElement('div');
+    matDiv.style.marginTop = '20px';
+    
+    // Using the same helper to render the single result matrix
+    // We treat 'Projected' as 'Current Status' now
+    const startDate = parseDate(currentRules.selectedDate);
+    const hierarchy = currentRules.hierarchy.toUpperCase().split(',').map(r => r.trim()).filter(Boolean);
+    const dates = Array.from({ length: 14 }, (_, i) => { const d = new Date(startDate); d.setUTCDate(d.getUTCDate() + i); return d; });
+    const headers = ['Room Type', ...dates.map(date => `${date.toLocaleDateString('en-US', { weekday: 'short', timeZone: 'UTC' })}<br>${date.getUTCMonth() + 1}/${date.getUTCDate()}`)];
+    
+    // Transform matrixData into rows format for the helper if needed, 
+    // BUT results.matrixData from generateMatrixData is already in {headers, rows} format.
+    // However, our generateMatrixHTML helper expects a slightly different structure {roomCode, data[]} 
+    // Let's use results.matrixData directly if it matches, or re-calculate.
+    // results.matrixData.rows has {roomCode, availability[]} which matches perfectly.
+
+    // Calculate totals for the footer
+    const numCols = dates.length;
+    const colTotals = new Array(numCols).fill(0);
+    const rowsForHelper = results.matrixData.rows.map(row => {
+        row.availability.forEach((val, i) => colTotals[i] += val);
+        return { roomCode: row.roomCode, data: row.availability };
+    });
+
+    matDiv.innerHTML = generateMatrixHTML("Updated Availability (Post-Acceptance)", rowsForHelper, headers, colTotals);
+    
+    container.appendChild(matDiv);
+
+    // Add "Continue" Button to restore view
+    const continueBtn = document.createElement('button');
+    continueBtn.textContent = "Continue / Review More";
+    continueBtn.style.cssText = "margin-top: 20px; padding: 12px 24px; background: #4343FF; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 16px; display: block; margin-left: auto; margin-right: auto;";
+    continueBtn.addEventListener('click', () => {
+        // Restore standard view
+        if(acceptedContainer) acceptedContainer.style.display = 'block';
+        displayResults(results); // Go back to standard results view
+    });
+    container.appendChild(continueBtn);
 }
 
 function handlePmsUpdateClick(event) {
@@ -2428,8 +2466,11 @@ function displayResults(data) {
     
     currentScenarios = data.scenarios || {};
     
+    // Ensure Accepted Container is visible (in case coming back from Matrix View)
+    const accCont = document.getElementById('accepted-container');
+    if(accCont) accCont.style.display = 'block';
+
     displayAcceptedUpgrades();
-    // Use data.inventory and data.matrixData (optional, but mainly scenario display now does matrix)
     displayScenarios(currentScenarios); 
     
     document.getElementById('output').style.display = 'block';
@@ -2474,14 +2515,12 @@ function displayScenarios(scenarios) {
 
 // Helper to render HTML table for matrix (UPDATED STYLING)
 function generateMatrixHTML(title, rows, headers, colTotals) {
-    // Aesthetic Palette
     const styleTable = 'width:100%; border-collapse:collapse; font-size:13px; font-family:sans-serif; min-width:100%;';
     const styleTh = 'padding:12px 8px; background-color:#f8f9fa; color:#495057; font-weight:600; border-bottom:2px solid #e9ecef; text-align:center;';
     const styleTd = 'padding:10px 8px; border-bottom:1px solid #e9ecef; text-align:center; color:#333;';
     const styleRowLabel = 'padding:10px 8px; border-bottom:1px solid #e9ecef; text-align:left; font-weight:600; color:#333; background-color:#fff; position:sticky; left:0;';
     const styleTotalRow = 'background-color:#f1f3f5; font-weight:bold;';
 
-    // Helper for cell color
     const getCellColor = (val) => {
         if (val < 0) return 'background-color:#ffebee; color:#c62828; font-weight:bold;'; // Red
         if (val < 3) return 'background-color:#fff3e0; color:#ef6c00;'; // Orange/Yellow
@@ -2511,7 +2550,6 @@ function generateMatrixHTML(title, rows, headers, colTotals) {
         html += '</tr>';
     });
 
-    // Totals Row
     html += `<tr style="${styleTotalRow}">
                 <td style="${styleRowLabel} background-color:#f1f3f5;">TOTAL</td>`;
     colTotals.forEach(total => {
@@ -2533,7 +2571,7 @@ function renderScenarioContent(name, recs, parent) {
     
     const btn = document.createElement('button');
     btn.textContent = "Accept Entire Path";
-    btn.style.cssText = 'background:#4361ee; color:white; border:none; padding:10px 20px; border-radius:5px; cursor:pointer;';
+    btn.style.cssText = 'background:#28a745; color:white; border:none; padding:10px 20px; border-radius:5px; cursor:pointer;';
     btn.addEventListener('click', () => handleAcceptScenario(name));
     head.appendChild(btn); wrapper.appendChild(head);
 
@@ -2570,7 +2608,6 @@ function renderScenarioContent(name, recs, parent) {
             }
 
             // PROJECTED DELTA
-            // Strict ISO string comparison to avoid TZ issues
             let projAvail = baseAvail;
             recs.forEach(upgrade => {
                 const uArr = new Date(upgrade.arrivalDate).getTime();
@@ -2949,6 +2986,8 @@ function downloadAcceptedUpgradesCsv() {
     const csvContent = [headers.join(','), ...rows].join('\n');
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' }); const link = document.createElement('a'); const url = URL.createObjectURL(blob); const dateStr = new Date().toISOString().slice(0, 10); link.setAttribute('href', url); link.setAttribute('download', `accepted_upgrades_${dateStr}.csv`); link.style.visibility = 'hidden'; document.body.appendChild(link); link.click(); document.body.removeChild(link);
 }
+
+
 
 
 
