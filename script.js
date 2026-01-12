@@ -2227,7 +2227,7 @@ document.addEventListener('DOMContentLoaded', function() {
         displayCompletedUpgrades();
         displayDemandInsights(); 
         loadOooRecords(); 
-        updateUIForProfile(); // Switch UI on profile change
+        updateUIForProfile(); // Trigger UI switch on dropdown change
     });
     
     updateRulesForm('fqi'); 
@@ -2597,6 +2597,8 @@ function renderScenarioContent(name, recs, parent) {
                                 generateMatrixHTML("Current Availability (Base)", currentRows, headers, currColTotals);
     
     wrapper.appendChild(matrixContainer);
+    
+    // Note: Individual cards are intentionally NOT added here.
     parent.appendChild(wrapper);
 }
 
@@ -2803,36 +2805,70 @@ function runSimulation(strategy, allReservations, masterInv, rules, completedIds
     const processedResIds = new Set();
     const recommendations = [];
 
-    candidates.forEach(cand => {
-        if (processedResIds.has(cand.reservation.resId)) return;
-        let canUpgrade = true;
-        let checkDate = new Date(cand.reservation.arrival);
-        while(checkDate < cand.reservation.departure) {
-            const dStr = checkDate.toISOString().split('T')[0];
-            if (!simInventory[dStr] || (simInventory[dStr][cand.upgradeTo] || 0) <= 0) { canUpgrade = false; break; }
-            checkDate.setUTCDate(checkDate.getUTCDate()+1);
-        }
+    // --- ITERATIVE UPGRADE LOOP (Cascading) ---
+    // We run multiple passes. If someone moves A->B, Room A becomes free.
+    // In the next pass, someone else might move C->A.
+    
+    // We limit to 10 passes to prevent infinite loops (though hierarchy prevents cycles)
+    for(let pass = 0; pass < 10; pass++) {
+        let upgradesThisPass = 0;
+        
+        // Re-evaluate candidates against current simInventory
+        // Note: candidates array remains static, but availability changes.
+        // We filter out already processed candidates inside the loop.
 
-        if (canUpgrade) {
-            recommendations.push({
-                name: cand.reservation.name, resId: cand.reservation.resId, revenue: cand.reservation.revenue,
-                room: cand.reservation.roomType, rate: cand.reservation.rate, nights: cand.reservation.nights,
-                upgradeTo: cand.upgradeTo, score: cand.score,
-                arrivalDate: cand.reservation.arrival.toLocaleDateString('en-US', { timeZone: 'UTC' }),
-                departureDate: cand.reservation.departure.toLocaleDateString('en-US', { timeZone: 'UTC' }),
-                isoArrival: cand.reservation.arrival.toISOString().split('T')[0], // Store for Matrix calc
-                isoDeparture: cand.reservation.departure.toISOString().split('T')[0], // Store for Matrix calc
-                vipStatus: cand.reservation.vipStatus
-            });
-            processedResIds.add(cand.reservation.resId);
-            checkDate = new Date(cand.reservation.arrival);
+        candidates.forEach(cand => {
+            if (processedResIds.has(cand.reservation.resId)) return;
+
+            let canUpgrade = true;
+            let checkDate = new Date(cand.reservation.arrival);
+            
+            // Check availability for full stay in TARGET room
+            // Note: We use ISO string for consistent date keys
             while(checkDate < cand.reservation.departure) {
                 const dStr = checkDate.toISOString().split('T')[0];
-                if (simInventory[dStr]) simInventory[dStr][cand.upgradeTo]--;
+                if (!simInventory[dStr] || (simInventory[dStr][cand.upgradeTo] || 0) <= 0) { 
+                    canUpgrade = false; 
+                    break; 
+                }
                 checkDate.setUTCDate(checkDate.getUTCDate()+1);
             }
-        }
-    });
+
+            if (canUpgrade) {
+                // Apply Upgrade
+                recommendations.push({
+                    name: cand.reservation.name, resId: cand.reservation.resId, revenue: cand.reservation.revenue,
+                    room: cand.reservation.roomType, rate: cand.reservation.rate, nights: cand.reservation.nights,
+                    upgradeTo: cand.upgradeTo, score: cand.score,
+                    arrivalDate: cand.reservation.arrival.toLocaleDateString('en-US', { timeZone: 'UTC' }),
+                    departureDate: cand.reservation.departure.toLocaleDateString('en-US', { timeZone: 'UTC' }),
+                    isoArrival: cand.reservation.arrival.toISOString().split('T')[0], // Store for Matrix calc
+                    isoDeparture: cand.reservation.departure.toISOString().split('T')[0], // Store for Matrix calc
+                    vipStatus: cand.reservation.vipStatus
+                });
+                
+                processedResIds.add(cand.reservation.resId);
+                upgradesThisPass++;
+
+                // Adjust Inventory: Decrement Target, Increment Source
+                checkDate = new Date(cand.reservation.arrival);
+                while(checkDate < cand.reservation.departure) {
+                    const dStr = checkDate.toISOString().split('T')[0];
+                    if (simInventory[dStr]) {
+                        simInventory[dStr][cand.upgradeTo]--; // Consume new room
+                        // BACKFILL LOGIC: Free up the old room immediately for this pass or next
+                        if (simInventory[dStr][cand.reservation.roomType] !== undefined) {
+                            simInventory[dStr][cand.reservation.roomType]++; 
+                        }
+                    }
+                    checkDate.setUTCDate(checkDate.getUTCDate()+1);
+                }
+            }
+        });
+
+        // If no upgrades happened in this pass, no new rooms opened up. We are done.
+        if (upgradesThisPass === 0) break;
+    }
 
     return recommendations;
 }
@@ -2850,6 +2886,7 @@ function downloadAcceptedUpgradesCsv() {
     const csvContent = [headers.join(','), ...rows].join('\n');
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' }); const link = document.createElement('a'); const url = URL.createObjectURL(blob); const dateStr = new Date().toISOString().slice(0, 10); link.setAttribute('href', url); link.setAttribute('download', `accepted_upgrades_${dateStr}.csv`); link.style.visibility = 'hidden'; document.body.appendChild(link); link.click(); document.body.removeChild(link);
 }
+
 
 
 
