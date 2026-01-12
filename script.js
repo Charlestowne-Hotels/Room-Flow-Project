@@ -1605,6 +1605,9 @@ const MASTER_INVENTORIES = {
 // ... (Your existing Config, ADMIN_UIDS, SNT_PROPERTY_MAP, DOM References, profiles, and MASTER_INVENTORIES remain above this) ...
 
 // --- STATE MANAGEMENT ---
+// ... (Your existing Config, ADMIN_UIDS, SNT_PROPERTY_MAP, DOM References, profiles, and MASTER_INVENTORIES remain above this) ...
+
+// --- STATE MANAGEMENT ---
 let currentCsvContent = null;
 let currentFileName = null; 
 let currentRules = null;
@@ -1645,6 +1648,36 @@ function resetAppState() {
     if (messageEl) messageEl.innerHTML = '';
 
     displayAcceptedUpgrades();
+}
+
+// NEW: Refresh function to re-process data (used when Settings/OOO changes)
+function handleRefresh() {
+    if (currentCsvContent) {
+        // Update rules from DOM elements to capture any changes 
+        // (OOO records are global and already updated by the modal logic)
+        currentRules = {
+            hierarchy: document.getElementById('hierarchy').value,
+            targetRooms: document.getElementById('target-rooms').value,
+            prioritizedRates: document.getElementById('prioritized-rates').value,
+            otaRates: document.getElementById('ota-rates').value,
+            ineligibleUpgrades: document.getElementById('ineligible-upgrades').value,
+            selectedDate: document.getElementById('selected-date').value,
+            profile: document.getElementById('profile-dropdown').value 
+        };
+
+        showLoader(true, 'Refreshing Data...');
+        
+        setTimeout(() => {
+            try {
+                // Re-calculate results using current data, rules, and (importantly) updated OOO records
+                const results = applyUpgradesAndRecalculate(acceptedUpgrades, currentCsvContent, currentRules, currentFileName);
+                displayResults(results);
+            } catch (err) {
+                console.error("Refresh error:", err);
+                showLoader(false);
+            }
+        }, 50);
+    }
 }
 
 function updateRulesForm(profileName) {
@@ -1700,12 +1733,10 @@ function parseSynxisInventory(csvContent) {
 
         if (!dateRaw || !roomRaw) continue;
 
-        // Parse Date: "05 Jan 2026"
         const dateObj = new Date(dateRaw);
         if (isNaN(dateObj)) continue;
         const dateKey = dateObj.toISOString().split('T')[0];
 
-        // Parse Room Code: "King Suite (KS)" -> "KS"
         const codeMatch = roomRaw.match(/\(([^)]+)\)$/);
         const roomCode = codeMatch ? codeMatch[1].trim().toUpperCase() : roomRaw.trim().toUpperCase();
 
@@ -2204,15 +2235,19 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
+    // UPDATED: Close button for Settings Modal - Trigger Refresh
     if(closeSettingsBtn) {
         closeSettingsBtn.addEventListener('click', () => {
             settingsModal.classList.add('hidden');
+            handleRefresh(); // Refresh app when settings close
         });
     }
 
+    // UPDATED: Window click for Settings Modal - Trigger Refresh
     window.addEventListener('click', (e) => {
         if (e.target === settingsModal) {
             settingsModal.classList.add('hidden');
+            handleRefresh(); // Refresh app when settings close
         }
     });
 
@@ -3630,6 +3665,7 @@ function downloadAcceptedUpgradesCsv() {
     link.click();
     document.body.removeChild(link);
 }
+
 
 
 
