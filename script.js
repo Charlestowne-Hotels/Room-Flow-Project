@@ -1601,6 +1601,7 @@ const MASTER_INVENTORIES = {
 
 };
 
+
 // ... (Your existing Config, ADMIN_UIDS, SNT_PROPERTY_MAP, DOM References, profiles, and MASTER_INVENTORIES remain above this) ...
 
 // --- STATE MANAGEMENT ---
@@ -2806,27 +2807,22 @@ function runSimulation(strategy, allReservations, masterInv, rules, completedIds
     const recommendations = [];
 
     // --- ITERATIVE UPGRADE LOOP (Cascading) ---
-    // We run multiple passes. If someone moves A->B, Room A becomes free.
-    // In the next pass, someone else might move C->A.
-    
-    // We limit to 10 passes to prevent infinite loops (though hierarchy prevents cycles)
+    // Runs multiple passes to allow ripple effect (A->B, then B->C)
+    // Limits negative inventory by re-checking availability in every pass
     for(let pass = 0; pass < 10; pass++) {
         let upgradesThisPass = 0;
         
-        // Re-evaluate candidates against current simInventory
-        // Note: candidates array remains static, but availability changes.
-        // We filter out already processed candidates inside the loop.
-
         candidates.forEach(cand => {
+            // Skip already processed in this simulation
             if (processedResIds.has(cand.reservation.resId)) return;
 
             let canUpgrade = true;
             let checkDate = new Date(cand.reservation.arrival);
             
             // Check availability for full stay in TARGET room
-            // Note: We use ISO string for consistent date keys
             while(checkDate < cand.reservation.departure) {
                 const dStr = checkDate.toISOString().split('T')[0];
+                // Strict check: must have at least 1 room available
                 if (!simInventory[dStr] || (simInventory[dStr][cand.upgradeTo] || 0) <= 0) { 
                     canUpgrade = false; 
                     break; 
@@ -2866,7 +2862,6 @@ function runSimulation(strategy, allReservations, masterInv, rules, completedIds
             }
         });
 
-        // If no upgrades happened in this pass, no new rooms opened up. We are done.
         if (upgradesThisPass === 0) break;
     }
 
