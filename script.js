@@ -1601,35 +1601,33 @@ const MASTER_INVENTORIES = {
 
 };
 
-// ... (Your existing Config, ADMIN_UIDS, SNT_PROPERTY_MAP, DOM References, profiles, and MASTER_INVENTORIES remain above this) ...
-
 // --- STATE MANAGEMENT ---
 let currentCsvContent = null;
-let currentFileName = null; 
+let currentFileName = null;
 let currentRules = null;
-let currentScenarios = {}; 
-let currentAllReservations = []; 
-let originalAllReservations = []; 
+let currentScenarios = {};
+let currentAllReservations = [];
+let originalAllReservations = [];
 let acceptedUpgrades = [];
 let completedUpgrades = [];
 let oooRecords = [];
-let currentInventoryMap = null; 
+let currentInventoryMap = null;
 
 // --- FUNCTIONS ---
 function resetAppState() {
     currentCsvContent = null;
-    currentFileName = null; 
+    currentFileName = null;
     currentRules = null;
     currentScenarios = {};
     currentAllReservations = [];
     originalAllReservations = [];
     acceptedUpgrades = [];
-    currentInventoryMap = null; 
-    
+    currentInventoryMap = null;
+
     document.getElementById('csv-file').value = '';
 
     const outputEl = document.getElementById('output');
-    if (outputEl) outputEl.style.display = 'block'; 
+    if (outputEl) outputEl.style.display = 'block';
 
     const placeholderMsg = '<p style="padding: 20px; text-align: center; color: #666; font-style: italic;">Please upload and generate a PMS file to view data.</p>';
 
@@ -1637,17 +1635,17 @@ function resetAppState() {
     if (recContainer) recContainer.innerHTML = placeholderMsg;
 
     const matrixContainer = document.getElementById('matrix-container');
-    if (matrixContainer) matrixContainer.innerHTML = ''; 
+    if (matrixContainer) matrixContainer.innerHTML = '';
 
     const inventoryContainer = document.getElementById('inventory');
-    if (inventoryContainer) inventoryContainer.innerHTML = ''; 
+    if (inventoryContainer) inventoryContainer.innerHTML = '';
 
     const messageEl = document.getElementById('message');
     if (messageEl) messageEl.innerHTML = '';
 
     const acceptedContainer = document.getElementById('accepted-container');
-    if(acceptedContainer) acceptedContainer.style.display = 'block';
-    
+    if (acceptedContainer) acceptedContainer.style.display = 'block';
+
     displayAcceptedUpgrades();
 }
 
@@ -1660,19 +1658,19 @@ function handleRefresh() {
             otaRates: document.getElementById('ota-rates').value,
             ineligibleUpgrades: document.getElementById('ineligible-upgrades').value,
             selectedDate: document.getElementById('selected-date').value,
-            profile: document.getElementById('profile-dropdown').value 
+            profile: document.getElementById('profile-dropdown').value
         };
 
         showLoader(true, 'Refreshing Data...');
-        
+
         setTimeout(() => {
             try {
                 if (acceptedUpgrades.length > 0) {
-                     const results = applyUpgradesAndRecalculate(acceptedUpgrades, currentCsvContent, currentRules, currentFileName);
-                     displayMatrixOnlyView(results); 
+                    const results = applyUpgradesAndRecalculate(acceptedUpgrades, currentCsvContent, currentRules, currentFileName);
+                    displayMatrixOnlyView(results);
                 } else {
                     const results = processUpgradeData(currentCsvContent, currentRules, currentFileName);
-                    displayResults(results); 
+                    displayResults(results);
                 }
             } catch (err) {
                 console.error("Refresh error:", err);
@@ -1690,7 +1688,7 @@ function updateRulesForm(profileName) {
     document.getElementById('prioritized-rates').value = profile.prioritizedRates;
     document.getElementById('ota-rates').value = profile.otaRates;
     document.getElementById('ineligible-upgrades').value = profile.ineligibleUpgrades;
-    populateOooDropdown(); 
+    populateOooDropdown();
 }
 
 function parseInventoryInput(inputText) {
@@ -1698,11 +1696,14 @@ function parseInventoryInput(inputText) {
     if (!inputText) return inventoryList;
     const groups = inputText.split(',');
     groups.forEach(group => {
-        const parts = group.trim().split(/\s+/); 
-        if (parts.length < 2) return; 
-        const code = parts.pop(); 
+        const parts = group.trim().split(/\s+/);
+        if (parts.length < 2) return;
+        const code = parts.pop();
         parts.forEach(roomNum => {
-            if (roomNum) inventoryList.push({ roomNumber: roomNum, code: code });
+            if (roomNum) inventoryList.push({
+                roomNumber: roomNum,
+                code: code
+            });
         });
     });
     return inventoryList;
@@ -1711,20 +1712,20 @@ function parseInventoryInput(inputText) {
 function parseSynxisInventory(csvContent) {
     const lines = csvContent.trim().split('\n');
     const headers = lines[0].split(',').map(h => h.trim());
-    
+
     const dateIndex = headers.indexOf('Cal_Dt');
     const roomIndex = headers.indexOf('Rm_Typ_Nm');
     const availIndex = headers.indexOf('Avail_Qty');
 
     if (dateIndex === -1 || roomIndex === -1 || availIndex === -1) return null;
 
-    const inventoryMap = {}; 
+    const inventoryMap = {};
 
     for (let i = 1; i < lines.length; i++) {
-        const row = lines[i].split(','); 
+        const row = lines[i].split(',');
         if (row.length < headers.length) continue;
 
-        const dateRaw = row[dateIndex]; 
+        const dateRaw = row[dateIndex];
         const roomRaw = row[roomIndex];
         const availRaw = row[availIndex];
 
@@ -1750,13 +1751,17 @@ async function handleSaveNewProperty() {
     const codeInput = document.getElementById('new-prop-code');
     const hierarchyInput = document.getElementById('new-prop-hierarchy');
     const inventoryInput = document.getElementById('new-prop-inventory');
-    const ineligibleInput = document.getElementById('new-prop-ineligible'); 
+    const ineligibleInput = document.getElementById('new-prop-ineligible');
     const btn = document.getElementById('save-new-prop-btn');
     const code = codeInput.value.trim().toLowerCase();
-    
-    if (!code || !hierarchyInput.value || !inventoryInput.value) { alert("Please fill in Code, Hierarchy, and Inventory."); return; }
 
-    btn.disabled = true; btn.textContent = "Parsing & Saving...";
+    if (!code || !hierarchyInput.value || !inventoryInput.value) {
+        alert("Please fill in Code, Hierarchy, and Inventory.");
+        return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = "Parsing & Saving...";
 
     try {
         const parsedInventory = parseInventoryInput(inventoryInput.value);
@@ -1770,8 +1775,8 @@ async function handleSaveNewProperty() {
                 hierarchy: hierarchyInput.value,
                 targetRooms: document.getElementById('new-prop-target').value,
                 prioritizedRates: document.getElementById('new-prop-rates').value,
-                otaRates: 'Expedia, Booking.com, Priceline, GDS', 
-                ineligibleUpgrades: ineligibleInput ? ineligibleInput.value : '' 
+                otaRates: 'Expedia, Booking.com, Priceline, GDS',
+                ineligibleUpgrades: ineligibleInput ? ineligibleInput.value : ''
             }
         };
 
@@ -1785,15 +1790,18 @@ async function handleSaveNewProperty() {
 
         alert(`Property ${code.toUpperCase()} saved successfully!`);
         document.getElementById('add-property-modal').classList.add('hidden');
-        
-        codeInput.value = ''; hierarchyInput.value = ''; inventoryInput.value = '';
-        if(ineligibleInput) ineligibleInput.value = '';
+
+        codeInput.value = '';
+        hierarchyInput.value = '';
+        inventoryInput.value = '';
+        if (ineligibleInput) ineligibleInput.value = '';
 
     } catch (error) {
         console.error("Error saving property:", error);
         alert("Error saving: " + error.message);
     } finally {
-        btn.disabled = false; btn.textContent = "Save Property to Cloud";
+        btn.disabled = false;
+        btn.textContent = "Save Property to Cloud";
     }
 }
 
@@ -1807,7 +1815,9 @@ async function loadCustomProperties() {
             if (data.inventory) MASTER_INVENTORIES[code] = data.inventory;
         });
         rebuildProfileDropdown();
-    } catch (error) { console.error("Error loading custom properties:", error); }
+    } catch (error) {
+        console.error("Error loading custom properties:", error);
+    }
 }
 
 function rebuildProfileDropdown() {
@@ -1816,7 +1826,8 @@ function rebuildProfileDropdown() {
     dropdown.innerHTML = '';
     Object.keys(profiles).sort().forEach(key => {
         const option = document.createElement('option');
-        option.value = key; option.textContent = key.toUpperCase();
+        option.value = key;
+        option.textContent = key.toUpperCase();
         dropdown.appendChild(option);
     });
     if (profiles[currentVal]) dropdown.value = currentVal;
@@ -1829,9 +1840,10 @@ function rebuildProfileDropdown() {
 async function loadOooRecords() {
     const currentProfile = document.getElementById('profile-dropdown').value;
     const listContainer = document.getElementById('ooo-list');
-    oooRecords = []; 
-    if(listContainer) listContainer.innerHTML = '<p>Loading...</p>';
-    const today = new Date(); today.setHours(0, 0, 0, 0);
+    oooRecords = [];
+    if (listContainer) listContainer.innerHTML = '<p>Loading...</p>';
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
 
     try {
         const snapshot = await db.collection('ooo_logs').where('profile', '==', currentProfile).get();
@@ -1840,15 +1852,20 @@ async function loadOooRecords() {
             const endDate = data.endDate.toDate();
             if (endDate >= today) {
                 oooRecords.push({
-                    id: doc.id, roomType: data.roomType, count: data.count || 1, 
-                    startDate: data.startDate.toDate(), endDate: endDate, profile: data.profile
+                    id: doc.id,
+                    roomType: data.roomType,
+                    count: data.count || 1,
+                    startDate: data.startDate.toDate(),
+                    endDate: endDate,
+                    profile: data.profile
                 });
             }
         });
-        renderOooList(); populateOooDropdown(); 
+        renderOooList();
+        populateOooDropdown();
     } catch (error) {
         console.error("Error loading OOO:", error);
-        if(listContainer) listContainer.innerHTML = '<p style="color:red">Error.</p>';
+        if (listContainer) listContainer.innerHTML = '<p style="color:red">Error.</p>';
     }
 }
 
@@ -1861,43 +1878,69 @@ async function handleAddOoo() {
     const count = parseInt(countInput.value, 10);
 
     if (!roomType || !startStr || !endStr || isNaN(count) || count < 1) {
-        alert("Please fill in all OOO fields correctly."); return;
+        alert("Please fill in all OOO fields correctly.");
+        return;
     }
 
-    const startDate = new Date(startStr); 
+    const startDate = new Date(startStr);
     const utcStart = new Date(Date.UTC(startDate.getFullYear(), startDate.getMonth(), startDate.getDate(), 12, 0, 0));
     const endDate = new Date(endStr);
     const utcEnd = new Date(Date.UTC(endDate.getFullYear(), endDate.getMonth(), endDate.getDate(), 12, 0, 0));
 
-    if (utcEnd < utcStart) { alert("End date cannot be before start date."); return; }
+    if (utcEnd < utcStart) {
+        alert("End date cannot be before start date.");
+        return;
+    }
 
-    const newRecord = { profile, roomType, count, startDate: utcStart, endDate: utcEnd };
+    const newRecord = {
+        profile,
+        roomType,
+        count,
+        startDate: utcStart,
+        endDate: utcEnd
+    };
     const btn = document.getElementById('add-ooo-btn');
-    btn.disabled = true; btn.textContent = "Adding...";
+    btn.disabled = true;
+    btn.textContent = "Adding...";
 
     try {
         const docRef = await db.collection('ooo_logs').add(newRecord);
-        oooRecords.push({ ...newRecord, id: docRef.id });
+        oooRecords.push({ ...newRecord,
+            id: docRef.id
+        });
         renderOooList();
-        document.getElementById('ooo-room-type').value = ""; countInput.value = "1";
-        document.getElementById('ooo-start-date').value = ""; document.getElementById('ooo-end-date').value = "";
-    } catch (error) { console.error("Error adding OOO:", error); alert("Failed to save."); } 
-    finally { btn.disabled = false; btn.textContent = "Add"; }
+        document.getElementById('ooo-room-type').value = "";
+        countInput.value = "1";
+        document.getElementById('ooo-start-date').value = "";
+        document.getElementById('ooo-end-date').value = "";
+    } catch (error) {
+        console.error("Error adding OOO:", error);
+        alert("Failed to save.");
+    } finally {
+        btn.disabled = false;
+        btn.textContent = "Add";
+    }
 }
 
 async function handleDeleteOoo(id) {
-    if(!confirm("Remove this OOO record?")) return;
+    if (!confirm("Remove this OOO record?")) return;
     try {
         await db.collection('ooo_logs').doc(id).delete();
         oooRecords = oooRecords.filter(r => r.id !== id);
         renderOooList();
-    } catch (error) { console.error("Error deleting OOO:", error); alert("Failed to delete."); }
+    } catch (error) {
+        console.error("Error deleting OOO:", error);
+        alert("Failed to delete.");
+    }
 }
 
 function renderOooList() {
     const container = document.getElementById('ooo-list');
-    if(!container) return;
-    if (oooRecords.length === 0) { container.innerHTML = '<p style="color: #888; font-size: 13px;">No active OOO records.</p>'; return; }
+    if (!container) return;
+    if (oooRecords.length === 0) {
+        container.innerHTML = '<p style="color: #888; font-size: 13px;">No active OOO records.</p>';
+        return;
+    }
     oooRecords.sort((a, b) => a.startDate - b.startDate);
     let html = '<ul style="list-style: none; padding: 0; margin: 0;">';
     oooRecords.forEach(rec => {
@@ -1909,19 +1952,23 @@ function renderOooList() {
                 <button onclick="handleDeleteOoo('${rec.id}')" style="color: red; background: none; border: none; cursor: pointer; font-weight: bold; font-size: 14px;">&times;</button>
             </li>`;
     });
-    html += '</ul>'; container.innerHTML = html;
+    html += '</ul>';
+    container.innerHTML = html;
 }
 
 function populateOooDropdown() {
     const dropdown = document.getElementById('ooo-room-type');
     const hierarchyVal = document.getElementById('hierarchy').value;
-    if(!dropdown || !hierarchyVal) return;
+    if (!dropdown || !hierarchyVal) return;
     const hierarchy = hierarchyVal.split(',');
     dropdown.innerHTML = '<option value="">Select Room</option>';
     hierarchy.forEach(code => {
         const cleanCode = code.trim().toUpperCase();
-        if(cleanCode) {
-            const opt = document.createElement('option'); opt.value = cleanCode; opt.textContent = cleanCode; dropdown.appendChild(opt);
+        if (cleanCode) {
+            const opt = document.createElement('option');
+            opt.value = cleanCode;
+            opt.textContent = cleanCode;
+            dropdown.appendChild(opt);
         }
     });
 }
@@ -1935,9 +1982,11 @@ function setAdminControls(isAdmin) {
         document.getElementById('ooo-end-date'), document.getElementById('ooo-room-type'),
         document.getElementById('ooo-count'), document.getElementById('add-ooo-btn')
     ];
-    elements.forEach(el => { if (el) el.disabled = shouldBeDisabled; });
+    elements.forEach(el => {
+        if (el) el.disabled = shouldBeDisabled;
+    });
     const rulesContainer = document.getElementById('admin-rules-container');
-    if(rulesContainer) rulesContainer.style.display = isAdmin ? 'block' : 'none';
+    if (rulesContainer) rulesContainer.style.display = isAdmin ? 'block' : 'none';
 }
 
 async function loadRemoteProfiles() {
@@ -1947,11 +1996,15 @@ async function loadRemoteProfiles() {
         if (doc.exists) {
             const savedData = doc.data();
             Object.keys(savedData).forEach(key => {
-                if (profiles[key]) profiles[key] = { ...profiles[key], ...savedData[key] };
+                if (profiles[key]) profiles[key] = { ...profiles[key],
+                    ...savedData[key]
+                };
             });
         }
         updateRulesForm(document.getElementById('profile-dropdown').value);
-    } catch (error) { console.error("Error loading remote profiles:", error); }
+    } catch (error) {
+        console.error("Error loading remote profiles:", error);
+    }
 }
 
 async function handleSaveRules() {
@@ -1966,17 +2019,28 @@ async function handleSaveRules() {
         ineligibleUpgrades: document.getElementById('ineligible-upgrades').value
     };
     if (profiles[currentProfile]) Object.assign(profiles[currentProfile], newRules);
-    
-    btn.disabled = true; btn.textContent = "Saving..."; status.textContent = "";
+
+    btn.disabled = true;
+    btn.textContent = "Saving...";
+    status.textContent = "";
     try {
-        await db.collection('app_settings').doc('profile_rules').set({ [currentProfile]: newRules }, { merge: true });
-        status.textContent = "Saved successfully!"; status.style.color = "green";
-        setTimeout(() => { status.textContent = ""; }, 3000);
+        await db.collection('app_settings').doc('profile_rules').set({
+            [currentProfile]: newRules
+        }, {
+            merge: true
+        });
+        status.textContent = "Saved successfully!";
+        status.style.color = "green";
+        setTimeout(() => {
+            status.textContent = "";
+        }, 3000);
     } catch (error) {
         console.error("Error saving rules:", error);
-        status.textContent = "Error saving."; status.style.color = "red";
+        status.textContent = "Error saving.";
+        status.style.color = "red";
     } finally {
-        btn.disabled = false; btn.textContent = "Save Rules";
+        btn.disabled = false;
+        btn.textContent = "Save Rules";
     }
 }
 
@@ -1992,15 +2056,24 @@ async function loadCompletedUpgrades(userId) {
             if (upgrade.completedTimestamp?.toDate) upgrade.completedTimestamp = upgrade.completedTimestamp.toDate();
             completedUpgrades.push(upgrade);
         });
-        displayCompletedUpgrades(); displayDemandInsights(); 
-    } catch (error) { console.error("Error loading completed upgrades: ", error); }
+        displayCompletedUpgrades();
+        displayDemandInsights();
+    } catch (error) {
+        console.error("Error loading completed upgrades: ", error);
+    }
 }
 
 const handleSignIn = () => {
-    const email = emailInput.value; const password = passwordInput.value;
+    const email = emailInput.value;
+    const password = passwordInput.value;
     errorMessage.textContent = '';
-    if (!email || !password) { errorMessage.textContent = "Please enter both email and password."; return; }
-    auth.signInWithEmailAndPassword(email, password).catch(error => { errorMessage.textContent = error.message; });
+    if (!email || !password) {
+        errorMessage.textContent = "Please enter both email and password.";
+        return;
+    }
+    auth.signInWithEmailAndPassword(email, password).catch(error => {
+        errorMessage.textContent = error.message;
+    });
 };
 
 const handleSignOut = () => auth.signOut();
@@ -2015,22 +2088,35 @@ async function handleClearAnalytics() {
     const query = upgradesRef.where('profile', '==', currentProfile);
     try {
         const snapshot = await query.get();
-        if (snapshot.empty) { alert("No data to clear."); showLoader(false); return; }
+        if (snapshot.empty) {
+            alert("No data to clear.");
+            showLoader(false);
+            return;
+        }
         const batch = db.batch();
         snapshot.docs.forEach(doc => batch.delete(doc.ref));
         await batch.commit();
         alert(`Deleted ${snapshot.size} records.`);
         await loadCompletedUpgrades(user.uid);
-    } catch (error) { console.error(error); alert("Failed to clear."); } 
-    finally { showLoader(false); }
+    } catch (error) {
+        console.error(error);
+        alert("Failed to clear.");
+    } finally {
+        showLoader(false);
+    }
 }
 
 document.addEventListener('DOMContentLoaded', function() {
-    loginContainer = document.getElementById('login-container'); appContainer = document.getElementById('app-container');
-    signinBtn = document.getElementById('signin-btn'); signoutBtn = document.getElementById('signout-btn');
-    emailInput = document.getElementById('email-input'); passwordInput = document.getElementById('password-input');
-    errorMessage = document.getElementById('error-message'); clearAnalyticsBtn = document.getElementById('clear-analytics-btn');
-    saveRulesBtn = document.getElementById('save-rules-btn'); saveStatus = document.getElementById('save-status');
+    loginContainer = document.getElementById('login-container');
+    appContainer = document.getElementById('app-container');
+    signinBtn = document.getElementById('signin-btn');
+    signoutBtn = document.getElementById('signout-btn');
+    emailInput = document.getElementById('email-input');
+    passwordInput = document.getElementById('password-input');
+    errorMessage = document.getElementById('error-message');
+    clearAnalyticsBtn = document.getElementById('clear-analytics-btn');
+    saveRulesBtn = document.getElementById('save-rules-btn');
+    saveStatus = document.getElementById('save-status');
 
     const settingsModal = document.getElementById('settings-modal');
     const settingsTriggerBtn = document.getElementById('settings-trigger-btn');
@@ -2044,15 +2130,17 @@ document.addEventListener('DOMContentLoaded', function() {
     if (addPropBtn) addPropBtn.addEventListener('click', () => addPropModal.classList.remove('hidden'));
     if (closeAddPropBtn) closeAddPropBtn.addEventListener('click', () => addPropModal.classList.add('hidden'));
     if (saveNewPropBtn) saveNewPropBtn.addEventListener('click', handleSaveNewProperty);
-    window.addEventListener('click', (e) => { if (e.target === addPropModal) addPropModal.classList.add('hidden'); });
+    window.addEventListener('click', (e) => {
+        if (e.target === addPropModal) addPropModal.classList.add('hidden');
+    });
 
     // --- SETUP MANUAL UPLOAD WRAPPERS ---
     const fileInput = document.getElementById('csv-file');
     const genBtnRef = document.getElementById('generate-btn');
-    
+
     const manualUploadWrapper = document.createElement('div');
     manualUploadWrapper.id = 'manual-upload-wrapper';
-    
+
     const uploadTitle = document.createElement('h3');
     uploadTitle.id = 'manual-upload-title';
     uploadTitle.textContent = "Manual PMS Upload";
@@ -2076,11 +2164,11 @@ document.addEventListener('DOMContentLoaded', function() {
         const currentProfile = document.getElementById('profile-dropdown').value;
         const isSnt = !!SNT_PROPERTY_MAP[currentProfile];
         const autoLoadBtn = document.getElementById('auto-load-btn');
-        
+
         if (autoLoadBtn) autoLoadBtn.style.display = isSnt ? 'inline-block' : 'none';
 
         if (isSnt) {
-            const settingsContent = settingsModal.firstElementChild; 
+            const settingsContent = settingsModal.firstElementChild;
             if (settingsContent && manualUploadWrapper.parentNode !== settingsContent) {
                 settingsContent.appendChild(manualUploadWrapper);
             }
@@ -2092,14 +2180,14 @@ document.addEventListener('DOMContentLoaded', function() {
             manualUploadWrapper.style.textAlign = 'left';
             manualUploadWrapper.style.display = 'block';
             manualUploadWrapper.style.minHeight = 'auto';
-            manualUploadWrapper.style.background = '#fafafa'; 
+            manualUploadWrapper.style.background = '#fafafa';
             manualUploadWrapper.style.boxShadow = 'none';
             manualUploadWrapper.style.gap = '0';
-            
+
             uploadTitle.style.fontSize = '16px';
             uploadTitle.style.textAlign = 'left';
             uploadTitle.style.margin = '0 0 10px 0';
-            
+
             if (fileInput) {
                 fileInput.style.flexGrow = '0';
                 fileInput.style.width = 'auto';
@@ -2118,24 +2206,24 @@ document.addEventListener('DOMContentLoaded', function() {
             }
             manualUploadWrapper.style.marginTop = '20px';
             manualUploadWrapper.style.marginBottom = '20px';
-            manualUploadWrapper.style.padding = '25px 30px'; 
-            manualUploadWrapper.style.border = '2px dashed #ccc'; 
+            manualUploadWrapper.style.padding = '25px 30px';
+            manualUploadWrapper.style.border = '2px dashed #ccc';
             manualUploadWrapper.style.borderRadius = '12px';
             manualUploadWrapper.style.backgroundColor = '#f8f9fa';
-            manualUploadWrapper.style.background = 'linear-gradient(to right, #ffffff, #f4f6f8)'; 
+            manualUploadWrapper.style.background = 'linear-gradient(to right, #ffffff, #f4f6f8)';
             manualUploadWrapper.style.boxShadow = '0 4px 6px rgba(0,0,0,0.05)';
             manualUploadWrapper.style.display = 'flex';
             manualUploadWrapper.style.flexDirection = 'row';
             manualUploadWrapper.style.alignItems = 'center';
             manualUploadWrapper.style.justifyContent = 'space-between';
             manualUploadWrapper.style.gap = '20px';
-            manualUploadWrapper.style.minHeight = 'auto'; 
-            
+            manualUploadWrapper.style.minHeight = 'auto';
+
             uploadTitle.style.fontSize = '18px';
             uploadTitle.style.fontWeight = '600';
             uploadTitle.style.color = '#333';
-            uploadTitle.style.margin = '0'; 
-            uploadTitle.style.whiteSpace = 'nowrap'; 
+            uploadTitle.style.margin = '0';
+            uploadTitle.style.whiteSpace = 'nowrap';
 
             if (fileInput) {
                 fileInput.style.flexGrow = '1';
@@ -2150,44 +2238,51 @@ document.addEventListener('DOMContentLoaded', function() {
                 genBtnRef.style.maxWidth = 'none';
                 genBtnRef.style.fontSize = '15px';
                 genBtnRef.style.padding = '10px 25px';
-                genBtnRef.style.marginTop = '0'; 
+                genBtnRef.style.marginTop = '0';
             }
         }
     };
 
     auth.onAuthStateChanged(async user => {
         const adminButton = document.getElementById('clear-analytics-btn');
-        const saveBtn = document.getElementById('save-rules-btn'); 
+        const saveBtn = document.getElementById('save-rules-btn');
         if (user) {
-            loginContainer.classList.add('hidden'); appContainer.classList.remove('hidden');
-            await loadCustomProperties(); await loadRemoteProfiles(); await loadOooRecords(); 
+            loginContainer.classList.add('hidden');
+            appContainer.classList.remove('hidden');
+            await loadCustomProperties();
+            await loadRemoteProfiles();
+            await loadOooRecords();
             const isUserAdmin = ADMIN_UIDS.includes(user.uid);
             if (isUserAdmin) {
-                if(adminButton) adminButton.classList.remove('hidden');
-                if(saveBtn) saveBtn.classList.remove('hidden');
-                if(settingsTriggerBtn) settingsTriggerBtn.classList.remove('hidden');
-                if(addPropBtn) addPropBtn.classList.remove('hidden'); 
+                if (adminButton) adminButton.classList.remove('hidden');
+                if (saveBtn) saveBtn.classList.remove('hidden');
+                if (settingsTriggerBtn) settingsTriggerBtn.classList.remove('hidden');
+                if (addPropBtn) addPropBtn.classList.remove('hidden');
             } else {
-                if(saveBtn) saveBtn.classList.add('hidden');
-                if(adminButton) adminButton.classList.add('hidden');
-                if(settingsTriggerBtn) settingsTriggerBtn.classList.add('hidden');
-                if(addPropBtn) addPropBtn.classList.add('hidden'); 
+                if (saveBtn) saveBtn.classList.add('hidden');
+                if (adminButton) adminButton.classList.add('hidden');
+                if (settingsTriggerBtn) settingsTriggerBtn.classList.add('hidden');
+                if (addPropBtn) addPropBtn.classList.add('hidden');
             }
             setAdminControls(isUserAdmin);
             loadCompletedUpgrades(user.uid);
             resetAppState();
             updateUIForProfile(); // Ensure correct UI state on login
         } else {
-            loginContainer.classList.remove('hidden'); appContainer.classList.add('hidden');
+            loginContainer.classList.remove('hidden');
+            appContainer.classList.add('hidden');
             setAdminControls(false);
         }
     });
 
-    if(settingsTriggerBtn) {
-        settingsTriggerBtn.addEventListener('click', () => { settingsModal.classList.remove('hidden'); populateOooDropdown(); });
+    if (settingsTriggerBtn) {
+        settingsTriggerBtn.addEventListener('click', () => {
+            settingsModal.classList.remove('hidden');
+            populateOooDropdown();
+        });
     }
 
-    if(closeSettingsBtn) {
+    if (closeSettingsBtn) {
         closeSettingsBtn.addEventListener('click', () => {
             settingsModal.classList.add('hidden');
             handleRefresh();
@@ -2200,43 +2295,49 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    if(generateBtn) generateBtn.addEventListener('click', handleGenerateClick);
+    if (generateBtn) generateBtn.addEventListener('click', handleGenerateClick);
 
     const autoLoadBtn = document.getElementById('auto-load-btn');
     if (autoLoadBtn) autoLoadBtn.addEventListener('click', handleAutoLoad);
 
     const profileDropdown = document.getElementById('profile-dropdown');
-    
+
     profileDropdown.addEventListener('change', (event) => {
         updateRulesForm(event.target.value);
         resetAppState();
         displayCompletedUpgrades();
-        displayDemandInsights(); 
-        loadOooRecords(); 
+        displayDemandInsights();
+        loadOooRecords();
         updateUIForProfile(); // Trigger UI switch on dropdown change
     });
-    
-    updateRulesForm('fqi'); 
+
+    updateRulesForm('fqi');
     updateUIForProfile(); // Initial check
 
-    if(saveRulesBtn) saveRulesBtn.addEventListener('click', handleSaveRules);
+    if (saveRulesBtn) saveRulesBtn.addEventListener('click', handleSaveRules);
     const addOooBtn = document.getElementById('add-ooo-btn');
     if (addOooBtn) addOooBtn.addEventListener('click', handleAddOoo);
 
-    if (emailInput) emailInput.addEventListener('keydown', (e) => { if(e.key==='Enter') handleSignIn(); });
-    if (passwordInput) passwordInput.addEventListener('keydown', (e) => { if(e.key==='Enter') handleSignIn(); });
+    if (emailInput) emailInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') handleSignIn();
+    });
+    if (passwordInput) passwordInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') handleSignIn();
+    });
 
     signinBtn.addEventListener('click', handleSignIn);
     signoutBtn.addEventListener('click', handleSignOut);
     clearAnalyticsBtn.addEventListener('click', handleClearAnalytics);
 
-    const futureDate = new Date(); futureDate.setDate(futureDate.getDate() + 3);
+    const futureDate = new Date();
+    futureDate.setDate(futureDate.getDate() + 3);
     document.getElementById('selected-date').value = futureDate.toISOString().slice(0, 10);
-    
+
     document.getElementById('sort-date-dropdown').addEventListener('change', () => {
-        displayCompletedUpgrades(); displayDemandInsights();
+        displayCompletedUpgrades();
+        displayDemandInsights();
     });
-    
+
     const tabs = document.querySelectorAll('[data-tab-target]');
     const tabContents = document.querySelectorAll('.tab-content');
     tabs.forEach(tab => {
@@ -2257,10 +2358,10 @@ document.addEventListener('DOMContentLoaded', function() {
             subTabs.forEach(t => t.classList.remove('active'));
             const completedView = document.querySelector('#completed-container')?.parentElement;
             const demandView = document.querySelector('#demand-insights-container')?.parentElement;
-            if(document.querySelector('#completed-container')) document.querySelector('#completed-container').style.display = 'none';
-            if(document.querySelector('#demand-insights-container')) document.querySelector('#demand-insights-container').style.display = 'none';
+            if (document.querySelector('#completed-container')) document.querySelector('#completed-container').style.display = 'none';
+            if (document.querySelector('#demand-insights-container')) document.querySelector('#demand-insights-container').style.display = 'none';
             tab.classList.add('active');
-            if(target) {
+            if (target) {
                 target.style.display = 'block';
                 if (target.id === 'demand-insights-container') displayDemandInsights();
                 else if (target.id === 'completed-container') displayCompletedUpgrades();
@@ -2275,13 +2376,18 @@ async function handleAutoLoad() {
     const currentProfile = document.getElementById('profile-dropdown').value;
     const requiredPrefix = SNT_PROPERTY_MAP[currentProfile];
 
-    if (!requiredPrefix) { alert("This property is not configured for Auto-Load."); return; }
+    if (!requiredPrefix) {
+        alert("This property is not configured for Auto-Load.");
+        return;
+    }
 
-    btn.disabled = true; btn.textContent = "Loading..."; showLoader(true, `Fetching ${requiredPrefix}...`);
+    btn.disabled = true;
+    btn.textContent = "Loading...";
+    showLoader(true, `Fetching ${requiredPrefix}...`);
     currentInventoryMap = null;
 
     try {
-        const docRef = db.collection('SNTData').doc(`${requiredPrefix}_latest`); 
+        const docRef = db.collection('SNTData').doc(`${requiredPrefix}_latest`);
         const doc = await docRef.get();
         if (!doc.exists) throw new Error("No report found.");
         const data = doc.data();
@@ -2293,11 +2399,13 @@ async function handleAutoLoad() {
             if (invDoc.exists && invDoc.data().csv_content) {
                 currentInventoryMap = parseSynxisInventory(invDoc.data().csv_content);
             }
-        } catch (invError) { console.warn("Inv load fail", invError); }
+        } catch (invError) {
+            console.warn("Inv load fail", invError);
+        }
 
         currentCsvContent = data.csv_content;
         currentFileName = data.filename || "Unknown.csv";
-        
+
         currentRules = {
             hierarchy: document.getElementById('hierarchy').value,
             targetRooms: document.getElementById('target-rooms').value,
@@ -2305,7 +2413,7 @@ async function handleAutoLoad() {
             otaRates: document.getElementById('ota-rates').value,
             ineligibleUpgrades: document.getElementById('ineligible-upgrades').value,
             selectedDate: document.getElementById('selected-date').value,
-            profile: currentProfile 
+            profile: currentProfile
         };
 
         setTimeout(() => {
@@ -2313,18 +2421,32 @@ async function handleAutoLoad() {
                 const results = processUpgradeData(currentCsvContent, currentRules, currentFileName);
                 displayResults(results);
                 alert(`Loaded: ${currentFileName}\nInventory: ${currentInventoryMap ? "SynXis" : "Calculated"}`);
-            } catch (err) { showError(err); } finally { btn.disabled = false; btn.textContent = originalText; }
+            } catch (err) {
+                showError(err);
+            } finally {
+                btn.disabled = false;
+                btn.textContent = originalText;
+            }
         }, 50);
 
-    } catch (error) { console.error("Auto-load error:", error); showLoader(false); btn.disabled = false; btn.textContent = originalText; alert(error.message); }
+    } catch (error) {
+        console.error("Auto-load error:", error);
+        showLoader(false);
+        btn.disabled = false;
+        btn.textContent = originalText;
+        alert(error.message);
+    }
 }
 
 function handleGenerateClick() {
     const fileInput = document.getElementById('csv-file');
-    if (!fileInput.files.length) { alert('Select file.'); return; }
-    
+    if (!fileInput.files.length) {
+        alert('Select file.');
+        return;
+    }
+
     currentFileName = fileInput.files[0].name;
-    currentInventoryMap = null; 
+    currentInventoryMap = null;
     acceptedUpgrades = [];
     displayAcceptedUpgrades();
 
@@ -2335,7 +2457,7 @@ function handleGenerateClick() {
         otaRates: document.getElementById('ota-rates').value,
         ineligibleUpgrades: document.getElementById('ineligible-upgrades').value,
         selectedDate: document.getElementById('selected-date').value,
-        profile: document.getElementById('profile-dropdown').value 
+        profile: document.getElementById('profile-dropdown').value
     };
     const reader = new FileReader();
     reader.onload = function(e) {
@@ -2346,7 +2468,9 @@ function handleGenerateClick() {
             try {
                 const results = processUpgradeData(currentCsvContent, currentRules, currentFileName);
                 displayResults(results);
-            } catch (err) { showError(err); }
+            } catch (err) {
+                showError(err);
+            }
         }, 50);
     };
     reader.readAsText(fileInput.files[0]);
@@ -2355,50 +2479,64 @@ function handleGenerateClick() {
 // NEW: Accept Scenario Logic - UPDATED TO SHOW MATRIX ONLY VIEW
 function handleAcceptScenario(scenarioName) {
     const scenario = currentScenarios[scenarioName];
-    if (!scenario || !scenario.length) { alert("No upgrades available."); return; }
-    if(!confirm(`Accept all ${scenario.length} upgrades in ${scenarioName}?`)) return;
+    if (!scenario || !scenario.length) {
+        alert("No upgrades available.");
+        return;
+    }
+    if (!confirm(`Accept all ${scenario.length} upgrades in ${scenarioName}?`)) return;
 
     acceptedUpgrades.push(...scenario);
-    currentScenarios = {}; 
+    currentScenarios = {};
 
     showLoader(true, "Processing...");
     setTimeout(() => {
         try {
             const results = applyUpgradesAndRecalculate(acceptedUpgrades, currentCsvContent, currentRules, currentFileName);
-            displayMatrixOnlyView(results); 
-        } catch (err) { showError(err); }
+            displayMatrixOnlyView(results);
+        } catch (err) {
+            showError(err);
+        }
     }, 50);
 }
 
 // NEW: Function to render ONLY the matrix (Post-Acceptance View)
 function displayMatrixOnlyView(results) {
     showLoader(false);
-    
+
     // 1. Show Accepted List
     const acceptedContainer = document.getElementById('accepted-container');
-    if(acceptedContainer) acceptedContainer.style.display = 'block';
-    displayAcceptedUpgrades(); 
+    if (acceptedContainer) acceptedContainer.style.display = 'block';
+    displayAcceptedUpgrades();
 
     // 2. Target Container (Clear current content)
     const container = document.getElementById('recommendations-container');
-    container.innerHTML = ''; 
+    container.innerHTML = '';
 
     // 3. Render Matrix - Using ONLY the recalculated results (No manual delta)
     const matDiv = document.createElement('div');
     matDiv.style.marginTop = '20px';
-    
+
     const startDate = parseDate(currentRules.selectedDate);
-    const dates = Array.from({ length: 14 }, (_, i) => { const d = new Date(startDate); d.setUTCDate(d.getUTCDate() + i); return d; });
+    const dates = Array.from({
+        length: 14
+    }, (_, i) => {
+        const d = new Date(startDate);
+        d.setUTCDate(d.getUTCDate() + i);
+        return d;
+    });
     const headers = ['Room Type', ...dates.map(date => `${date.toLocaleDateString('en-US', { weekday: 'short', timeZone: 'UTC' })}<br>${date.getUTCMonth() + 1}/${date.getUTCDate()}`)];
-    
+
     const numCols = dates.length;
     const colTotals = new Array(numCols).fill(0);
-    
+
     // Use the rows directly from results.matrixData (which are already updated)
     // This removes the duplicate subtraction bug
     const rowsForHelper = results.matrixData.rows.map(row => {
         row.availability.forEach((val, i) => colTotals[i] += val);
-        return { roomCode: row.roomCode, data: row.availability };
+        return {
+            roomCode: row.roomCode,
+            data: row.availability
+        };
     });
 
     matDiv.innerHTML = generateMatrixHTML("Updated Availability (Post-Acceptance)", rowsForHelper, headers, colTotals);
@@ -2415,7 +2553,13 @@ function displayMatrixOnlyView(results) {
 }
 
 function handlePmsUpdateClick(event) {
-    const user = auth.currentUser; if (!user) { showError({message:"Login req"}); return; }
+    const user = auth.currentUser;
+    if (!user) {
+        showError({
+            message: "Login req"
+        });
+        return;
+    }
     const recIndex = event.target.dataset.index;
     const item = acceptedUpgrades[recIndex];
     if (item) {
@@ -2424,58 +2568,82 @@ function handlePmsUpdateClick(event) {
         toComplete.profile = document.getElementById('profile-dropdown').value;
         completedUpgrades.push(toComplete);
         db.collection('users').doc(user.uid).collection('completedUpgrades').add(toComplete)
-            .then((doc) => { toComplete.firestoreId = doc.id; displayCompletedUpgrades(); displayDemandInsights(); })
-            .catch((e) => { completedUpgrades.pop(); acceptedUpgrades.splice(recIndex, 0, toComplete); showError({message:"Save failed"}); });
-        displayAcceptedUpgrades(); displayCompletedUpgrades();
+            .then((doc) => {
+                toComplete.firestoreId = doc.id;
+                displayCompletedUpgrades();
+                displayDemandInsights();
+            })
+            .catch((e) => {
+                completedUpgrades.pop();
+                acceptedUpgrades.splice(recIndex, 0, toComplete);
+                showError({
+                    message: "Save failed"
+                });
+            });
+        displayAcceptedUpgrades();
+        displayCompletedUpgrades();
     }
 }
 
 async function handleUndoCompletedClick(event) {
-    const user = auth.currentUser; if (!user) return;
+    const user = auth.currentUser;
+    if (!user) return;
     if (!confirm("Undo?")) return;
     const fid = event.target.dataset.firestoreId;
     const idx = completedUpgrades.findIndex(u => u.firestoreId === fid);
     if (idx === -1) return;
     const item = completedUpgrades[idx];
-    event.target.disabled = true; 
+    event.target.disabled = true;
     try {
         await db.collection('users').doc(user.uid).collection('completedUpgrades').doc(fid).delete();
         completedUpgrades.splice(idx, 1);
-        delete item.completedTimestamp; delete item.firestoreId;
+        delete item.completedTimestamp;
+        delete item.firestoreId;
         acceptedUpgrades.push(item);
-        displayCompletedUpgrades(); displayDemandInsights(); displayAcceptedUpgrades();
+        displayCompletedUpgrades();
+        displayDemandInsights();
+        displayAcceptedUpgrades();
         if (currentCsvContent) {
-             const results = applyUpgradesAndRecalculate(acceptedUpgrades, currentCsvContent, currentRules, currentFileName);
-             displayResults(results);
+            const results = applyUpgradesAndRecalculate(acceptedUpgrades, currentCsvContent, currentRules, currentFileName);
+            displayResults(results);
         }
-    } catch (e) { alert("Undo failed."); }
+    } catch (e) {
+        alert("Undo failed.");
+    }
 }
 
 function displayResults(data) {
     showLoader(false);
-    if (data.error) { showError({ message: data.error }); return; }
+    if (data.error) {
+        showError({
+            message: data.error
+        });
+        return;
+    }
     if (data.acceptedUpgrades) acceptedUpgrades = data.acceptedUpgrades;
-    
+
     currentScenarios = data.scenarios || {};
-    
+
     // Ensure Accepted Container is visible 
     const accCont = document.getElementById('accepted-container');
-    if(accCont) accCont.style.display = 'block';
+    if (accCont) accCont.style.display = 'block';
 
     displayAcceptedUpgrades();
-    displayScenarios(currentScenarios); 
-    
+    displayScenarios(currentScenarios);
+
     document.getElementById('output').style.display = 'block';
     const messageEl = document.getElementById('message');
     messageEl.style.display = data.message ? 'block' : 'none';
     messageEl.innerHTML = data.message || '';
-    
+
     displayInventory(data.inventory);
 }
 
 function displayInventory(inventory) {
     const container = document.getElementById('inventory');
-    let rooms = []; for (const r in inventory) if (inventory[r]>0) rooms.push(`<strong>${r}:</strong> ${inventory[r]}`);
+    let rooms = [];
+    for (const r in inventory)
+        if (inventory[r] > 0) rooms.push(`<strong>${r}:</strong> ${inventory[r]}`);
     container.innerHTML = '<h3>Available Rooms</h3>' + (rooms.length ? rooms.join(' | ') : '<p>None.</p>');
 }
 
@@ -2484,25 +2652,55 @@ function displayScenarios(scenarios) {
     const container = document.getElementById('recommendations-container');
     container.innerHTML = '';
     const keys = Object.keys(scenarios);
-    if (!keys.length) { container.innerHTML = '<p>No upgrade paths.</p>'; return; }
 
+    // Create Tab Header
     const header = document.createElement('div');
-    header.style.cssText = 'display:flex; gap:10px; margin-bottom:20px; border-bottom:2px solid #eee; padding-bottom:10px;';
+    header.style.cssText = 'display:flex; gap:10px; margin-bottom:20px; border-bottom:2px solid #eee; padding-bottom:10px; overflow-x:auto;';
 
+    // Helper to reset button styles
+    const resetTabs = () => {
+        header.querySelectorAll('.scenario-tab').forEach(b => {
+            b.style.background = '#f0f0f0';
+            b.style.color = '#333';
+        });
+    };
+
+    // Generate Existing Strategy Tabs (Revenue, VIP, etc.)
     keys.forEach((key, i) => {
         const tab = document.createElement('button');
         tab.textContent = key;
-        tab.style.cssText = `padding:10px 20px; border:none; cursor:pointer; border-radius:5px; background:${i===0?'#4343FF':'#f0f0f0'}; color:${i===0?'white':'#333'};`;
+        tab.style.cssText = `padding:10px 20px; border:none; cursor:pointer; border-radius:5px; background:${i===0?'#4343FF':'#f0f0f0'}; color:${i===0?'white':'#333'}; white-space:nowrap;`;
         tab.className = 'scenario-tab';
         tab.addEventListener('click', () => {
-            container.querySelectorAll('.scenario-tab').forEach(b => { b.style.background='#f0f0f0'; b.style.color='#333'; });
-            tab.style.background='#4343FF'; tab.style.color='white';
+            resetTabs();
+            tab.style.background = '#4343FF';
+            tab.style.color = 'white';
             renderScenarioContent(key, scenarios[key], container);
         });
         header.appendChild(tab);
     });
+
+    // Add "Manual Upgrades" Tab
+    const manualTab = document.createElement('button');
+    manualTab.textContent = "Manual Upgrades";
+    manualTab.style.cssText = `padding:10px 20px; border:none; cursor:pointer; border-radius:5px; background:#f0f0f0; color:#333; white-space:nowrap; margin-left:auto; border: 1px solid #4343FF; color: #4343FF;`;
+    manualTab.className = 'scenario-tab';
+    manualTab.addEventListener('click', () => {
+        resetTabs();
+        manualTab.style.background = '#4343FF';
+        manualTab.style.color = 'white';
+        renderManualMode(container);
+    });
+    header.appendChild(manualTab);
+
     container.appendChild(header);
-    renderScenarioContent(keys[0], scenarios[keys[0]], container);
+
+    // Default load first scenario, or manual if no scenarios exist
+    if (keys.length > 0) {
+        renderScenarioContent(keys[0], scenarios[keys[0]], container);
+    } else {
+        manualTab.click();
+    }
 }
 
 // Helper to render HTML table for matrix (UPDATED STYLING)
@@ -2652,41 +2850,389 @@ function renderScenarioContent(name, recs, parent) {
     parent.appendChild(wrapper);
 }
 
-function displayAcceptedUpgrades() {
-    const container = document.getElementById('accepted-container'); container.innerHTML = '';
-    if (acceptedUpgrades.length > 0) {
-        const c = document.createElement('div'); c.style.cssText='display:flex;justify-content:flex-end;margin-bottom:20px;padding:10px;background:#f8f9fa;border-radius:5px;';
-        const b = document.createElement('button'); b.textContent='Download CSV'; b.style.cssText='background:#4343FF;color:white;border:none;padding:10px 15px;border-radius:4px;cursor:pointer;';
-        b.addEventListener('click', downloadAcceptedUpgradesCsv); c.appendChild(b); container.appendChild(c);
+function renderManualMode(parent) {
+    // Clear previous content
+    const old = parent.querySelector('.scenario-content');
+    if (old) old.remove();
 
-        acceptedUpgrades.forEach((rec, i) => {
-            const card = document.createElement('div'); card.className = 'rec-card';
-            // VIP RED TEXT
-            const vipHtml = rec.vipStatus ? `<div style="color: red; font-weight: bold; margin-bottom: 4px; font-size: 14px;">${rec.vipStatus}</div>` : '';
-            card.innerHTML = `<div class="rec-info"><h3>${rec.name} (${rec.resId})</h3>${vipHtml}<div class="rec-details">Original: <b>${rec.room}</b> | Upgraded To: <strong>${rec.upgradeTo}</strong><br>Value: <strong>${rec.revenue}</strong></div></div><div class="rec-actions"><button class="pms-btn" data-index="${i}" style="margin-right:5px;">Mark as PMS Updated</button></div>`;
-            container.appendChild(card);
+    const wrapper = document.createElement('div');
+    wrapper.className = 'scenario-content';
+    wrapper.style.padding = "10px";
+
+    // Get Calculation Basics
+    const startDate = parseDate(currentRules.selectedDate);
+    const hierarchy = currentRules.hierarchy.toUpperCase().split(',').map(r => r.trim()).filter(Boolean);
+    const ineligible = currentRules.ineligibleUpgrades.toUpperCase().split(',');
+    const masterInv = getMasterInventory(currentRules.profile);
+
+    // Build Live Inventory (Master - Base - OOO)
+    // Note: acceptedUpgrades are already reflected in currentAllReservations if applying logic flow correctly,
+    // otherwise we calculate base.
+    const liveInventory = {};
+    const daysToCheck = 14;
+
+    // Initialize dates and calculate availability per day
+    const baseReservations = buildReservationsByDate(currentAllReservations);
+
+    for (let i = 0; i < daysToCheck; i++) {
+        const d = new Date(startDate);
+        d.setUTCDate(d.getUTCDate() + i);
+        const dStr = d.toISOString().split('T')[0];
+        liveInventory[dStr] = {};
+
+        for (let room in masterInv) {
+            let baseAvail = 0;
+            if (currentInventoryMap && currentInventoryMap[dStr] && currentInventoryMap[dStr][room] !== undefined) {
+                baseAvail = currentInventoryMap[dStr][room];
+            } else {
+                const dTime = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate())).getTime();
+                const reservedCount = (baseReservations[dStr]?.[room] || 0);
+                const oooCount = oooRecords.reduce((t, r) => {
+                    const rS = r.startDate.getTime();
+                    const rE = r.endDate.getTime();
+                    if (r.roomType === room && dTime >= rS && dTime <= rE) return t + (r.count || 1);
+                    return t;
+                }, 0);
+                baseAvail = (masterInv[room] || 0) - reservedCount - oooCount;
+            }
+            // Ensure we account for accepted upgrades if they haven't been applied to 'currentAllReservations' yet in this context
+            // In the current flow, applyUpgradesAndRecalculate updates currentAllReservations, so this is safe.
+            liveInventory[dStr][room] = baseAvail;
+        }
+    }
+
+    // Find Eligible Guests
+    // Look at everyone arriving in the next 7 days not yet upgraded in this session
+    const eligibleGuests = [];
+    const completedIds = new Set(acceptedUpgrades.map(u => u.resId));
+
+    for (let i = 0; i < 7; i++) {
+        const d = new Date(startDate);
+        d.setUTCDate(d.getUTCDate() + i);
+        const dTime = d.getTime();
+
+        const dailyArrivals = currentAllReservations.filter(r =>
+            r.arrival &&
+            r.arrival.getTime() === dTime &&
+            r.status === 'RESERVATION' &&
+            !completedIds.has(r.resId)
+        );
+
+        dailyArrivals.forEach(res => {
+            const currentRoom = res.roomType;
+            const currentIdx = hierarchy.indexOf(currentRoom);
+            if (currentIdx === -1) return;
+
+            let possibleUpgrade = null;
+            const originalBed = getBedType(currentRoom);
+
+            // Find FIRST available upgrade in hierarchy
+            for (let u = currentIdx + 1; u < hierarchy.length; u++) {
+                const targetRoom = hierarchy[u];
+                if (ineligible.includes(targetRoom)) continue;
+                if (getBedType(targetRoom) !== originalBed && originalBed !== 'OTHER') continue;
+
+                // Check availability for full stay
+                let available = true;
+                let checkDate = new Date(res.arrival);
+                while (checkDate < res.departure) {
+                    const cdStr = checkDate.toISOString().split('T')[0];
+                    // Check if date exists in our 14 day window and has inventory
+                    if (!liveInventory[cdStr] || (liveInventory[cdStr][targetRoom] || 0) <= 0) {
+                        available = false;
+                        break;
+                    }
+                    checkDate.setUTCDate(checkDate.getUTCDate() + 1);
+                }
+
+                if (available) {
+                    possibleUpgrade = targetRoom;
+                    break;
+                }
+            }
+
+            if (possibleUpgrade) {
+                eligibleGuests.push({
+                    res,
+                    upgradeTo: possibleUpgrade,
+                    dateStr: d.toISOString().split('T')[0],
+                    displayDate: d.toLocaleDateString('en-US', {
+                        weekday: 'short',
+                        month: 'numeric',
+                        day: 'numeric',
+                        timeZone: 'UTC'
+                    })
+                });
+            }
         });
-        container.querySelectorAll('.pms-btn').forEach(btn => btn.addEventListener('click', handlePmsUpdateClick));
-    } else container.innerHTML = '<p>No accepted upgrades.</p>';
+    }
+
+    // Render the UI
+    if (eligibleGuests.length === 0) {
+        wrapper.innerHTML = `<div style="text-align:center; padding:30px; color:#666;">No manual upgrade candidates found based on current availability.</div>`;
+        parent.appendChild(wrapper);
+        return;
+    }
+
+    // Group by Date
+    const grouped = {};
+    eligibleGuests.forEach(item => {
+        if (!grouped[item.dateStr]) grouped[item.dateStr] = {
+            display: item.displayDate,
+            items: []
+        };
+        grouped[item.dateStr].items.push(item);
+    });
+
+    let html = '';
+    Object.keys(grouped).sort().forEach(dateKey => {
+        const group = grouped[dateKey];
+        html += `<h4 style="margin-top:20px; border-bottom:1px solid #ddd; padding-bottom:5px; color:#4343FF;">${group.display}</h4>`;
+        html += `<div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap:10px;">`;
+
+        group.items.forEach((item) => {
+            const revenue = item.res.revenue;
+            const vipBadge = item.res.vipStatus ? `<span style="background:red; color:white; padding:2px 6px; border-radius:4px; font-size:10px; margin-left:5px;">${item.res.vipStatus}</span>` : '';
+
+            html += `
+            <div style="background:white; border:1px solid #eee; border-radius:5px; padding:15px; box-shadow:0 2px 4px rgba(0,0,0,0.05);">
+                <div style="display:flex; justify-content:space-between; align-items:start;">
+                    <div>
+                        <strong style="font-size:14px;">${item.res.name}</strong> ${vipBadge}<br>
+                        <span style="font-size:12px; color:#666;">${item.res.resId}</span>
+                    </div>
+                    <div style="font-weight:bold; color:#28a745;">${revenue}</div>
+                </div>
+                <div style="margin:10px 0; font-size:13px; display:flex; align-items:center; gap:5px;">
+                    <span style="background:#f8f9fa; padding:3px 6px; border-radius:3px;">${item.res.roomType}</span>
+                    <span>→</span>
+                    <span style="background:#e8f5e9; padding:3px 6px; border-radius:3px; font-weight:bold; color:#1b5e20;">${item.upgradeTo}</span>
+                </div>
+                <button 
+                    onclick="handleSingleUpgrade('${item.res.resId}', '${item.upgradeTo}')"
+                    style="width:100%; padding:8px; background:#4343FF; color:white; border:none; border-radius:4px; cursor:pointer; font-size:13px;">
+                    Apply Upgrade
+                </button>
+            </div>
+            `;
+        });
+        html += `</div>`;
+    });
+
+    wrapper.innerHTML = html;
+    parent.appendChild(wrapper);
+}
+
+function handleSingleUpgrade(resId, targetRoom) {
+    if (!confirm("Apply this single upgrade?")) return;
+
+    // Find the original reservation object from currentAllReservations
+    const res = currentAllReservations.find(r => r.resId === resId);
+    if (!res) {
+        alert("Reservation not found.");
+        return;
+    }
+
+    const upgradeObj = {
+        name: res.name,
+        resId: res.resId,
+        revenue: res.revenue,
+        room: res.roomType,
+        rate: res.rate,
+        nights: res.nights,
+        upgradeTo: targetRoom,
+        score: parseFloat(res.revenue.replace(/[$,]/g, '')) || 0,
+        arrivalDate: res.arrival.toLocaleDateString('en-US', {
+            timeZone: 'UTC'
+        }),
+        departureDate: res.departure.toLocaleDateString('en-US', {
+            timeZone: 'UTC'
+        }),
+        isoArrival: res.arrival.toISOString().split('T')[0],
+        isoDeparture: res.departure.toISOString().split('T')[0],
+        vipStatus: res.vipStatus
+    };
+
+    acceptedUpgrades.push(upgradeObj);
+
+    showLoader(true, "Processing Upgrade...");
+    setTimeout(() => {
+        try {
+            // Apply logic and show matrix view
+            const results = applyUpgradesAndRecalculate(acceptedUpgrades, currentCsvContent, currentRules, currentFileName);
+            displayMatrixOnlyView(results);
+        } catch (err) {
+            showError(err);
+        }
+    }, 50);
 }
 
 // ... (Display Demand Insights, Completed Upgrades, Matrix, Loader, ShowError, ParseCSV remain same) ...
-function displayDemandInsights() { 
-    const container = document.getElementById('demand-insights-container'); const profileDropdown = document.getElementById('profile-dropdown'); if (!container || !profileDropdown) return; const currentProfile = profileDropdown.value; const profileUpgrades = completedUpgrades.filter(rec => rec.profile === currentProfile); container.innerHTML = ''; if (profileUpgrades.length === 0) { container.innerHTML = '<p style="text-align:center; color:#888;">No completed upgrade data available for Demand Insights.</p>'; return; } const roomTypeCounts = {}; let totalRevenue = 0; profileUpgrades.forEach(rec => { const type = rec.upgradeTo; roomTypeCounts[type] = (roomTypeCounts[type] || 0) + 1; const val = parseFloat(rec.revenue.replace(/[$,]/g, '')) || 0; totalRevenue += val; }); const sortedRooms = Object.entries(roomTypeCounts).sort((a, b) => b[1] - a[1]); const avgRevenue = profileUpgrades.length > 0 ? (totalRevenue / profileUpgrades.length) : 0; let html = ` <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 25px;"> <div style="background: #f0f7ff; padding: 15px; border-radius: 8px; text-align: center;"> <h4 style="margin:0; color:#555;">Total Completed Upgrades</h4> <div style="font-size: 24px; font-weight: bold; color: #4343FF;">${profileUpgrades.length}</div> </div> <div style="background: #f0fff4; padding: 15px; border-radius: 8px; text-align: center;"> <h4 style="margin:0; color:#555;">Total Revenue Value</h4> <div style="font-size: 24px; font-weight: bold; color: #28a745;">${totalRevenue.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</div> </div> <div style="background: #fff8f0; padding: 15px; border-radius: 8px; text-align: center;"> <h4 style="margin:0; color:#555;">Avg. Upgrade Value</h4> <div style="font-size: 24px; font-weight: bold; color: #fd7e14;">${avgRevenue.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</div> </div> </div> <h3>Top Performing Upgrade Rooms</h3> <table style="width: 100%; border-collapse: collapse; margin-top: 10px;"> <thead> <tr style="background: #f8f9fa; text-align: left;"> <th style="padding: 10px; border-bottom: 2px solid #ddd;">Room Type</th> <th style="padding: 10px; border-bottom: 2px solid #ddd;">Upgrade Count</th> <th style="padding: 10px; border-bottom: 2px solid #ddd;">% of Total</th> </tr> </thead> <tbody> `; sortedRooms.forEach(([room, count]) => { const percentage = ((count / profileUpgrades.length) * 100).toFixed(1); html += ` <tr> <td style="padding: 10px; border-bottom: 1px solid #eee;"><strong>${room}</strong></td> <td style="padding: 10px; border-bottom: 1px solid #eee;">${count}</td> <td style="padding: 10px; border-bottom: 1px solid #eee;"> <div style="display: flex; align-items: center;"> <span style="width: 40px;">${percentage}%</span> <div style="flex-grow: 1; height: 6px; background: #eee; border-radius: 3px; margin-left: 10px;"> <div style="width: ${percentage}%; height: 100%; background: #4343FF; border-radius: 3px;"></div> </div> </div> </td> </tr> `; }); html += ` </tbody> </table> `; container.innerHTML = html;
+function displayDemandInsights() {
+    const container = document.getElementById('demand-insights-container');
+    const profileDropdown = document.getElementById('profile-dropdown');
+    if (!container || !profileDropdown) return;
+    const currentProfile = profileDropdown.value;
+    const profileUpgrades = completedUpgrades.filter(rec => rec.profile === currentProfile);
+    container.innerHTML = '';
+    if (profileUpgrades.length === 0) {
+        container.innerHTML = '<p style="text-align:center; color:#888;">No completed upgrade data available for Demand Insights.</p>';
+        return;
+    }
+    const roomTypeCounts = {};
+    let totalRevenue = 0;
+    profileUpgrades.forEach(rec => {
+        const type = rec.upgradeTo;
+        roomTypeCounts[type] = (roomTypeCounts[type] || 0) + 1;
+        const val = parseFloat(rec.revenue.replace(/[$,]/g, '')) || 0;
+        totalRevenue += val;
+    });
+    const sortedRooms = Object.entries(roomTypeCounts).sort((a, b) => b[1] - a[1]);
+    const avgRevenue = profileUpgrades.length > 0 ? (totalRevenue / profileUpgrades.length) : 0;
+    let html = ` <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 25px;"> <div style="background: #f0f7ff; padding: 15px; border-radius: 8px; text-align: center;"> <h4 style="margin:0; color:#555;">Total Completed Upgrades</h4> <div style="font-size: 24px; font-weight: bold; color: #4343FF;">${profileUpgrades.length}</div> </div> <div style="background: #f0fff4; padding: 15px; border-radius: 8px; text-align: center;"> <h4 style="margin:0; color:#555;">Total Revenue Value</h4> <div style="font-size: 24px; font-weight: bold; color: #28a745;">${totalRevenue.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</div> </div> <div style="background: #fff8f0; padding: 15px; border-radius: 8px; text-align: center;"> <h4 style="margin:0; color:#555;">Avg. Upgrade Value</h4> <div style="font-size: 24px; font-weight: bold; color: #fd7e14;">${avgRevenue.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</div> </div> </div> <h3>Top Performing Upgrade Rooms</h3> <table style="width: 100%; border-collapse: collapse; margin-top: 10px;"> <thead> <tr style="background: #f8f9fa; text-align: left;"> <th style="padding: 10px; border-bottom: 2px solid #ddd;">Room Type</th> <th style="padding: 10px; border-bottom: 2px solid #ddd;">Upgrade Count</th> <th style="padding: 10px; border-bottom: 2px solid #ddd;">% of Total</th> </tr> </thead> <tbody> `;
+    sortedRooms.forEach(([room, count]) => {
+        const percentage = ((count / profileUpgrades.length) * 100).toFixed(1);
+        html += ` <tr> <td style="padding: 10px; border-bottom: 1px solid #eee;"><strong>${room}</strong></td> <td style="padding: 10px; border-bottom: 1px solid #eee;">${count}</td> <td style="padding: 10px; border-bottom: 1px solid #eee;"> <div style="display: flex; align-items: center;"> <span style="width: 40px;">${percentage}%</span> <div style="flex-grow: 1; height: 6px; background: #eee; border-radius: 3px; margin-left: 10px;"> <div style="width: ${percentage}%; height: 100%; background: #4343FF; border-radius: 3px;"></div> </div> </div> </td> </tr> `;
+    });
+    html += ` </tbody> </table> `;
+    container.innerHTML = html;
 }
+
 function displayCompletedUpgrades() {
-    const container = document.getElementById('completed-container'); const dateDropdown = document.getElementById('sort-date-dropdown'); const profileDropdown = document.getElementById('profile-dropdown'); if (!container || !dateDropdown || !profileDropdown) return; const selectedDate = dateDropdown.value; const currentProfile = profileDropdown.value; let totalValue = 0; const profileUpgrades = completedUpgrades.filter(rec => rec.profile === currentProfile); while (dateDropdown.options.length > 1) { dateDropdown.remove(1); } const existingOptions = new Set(Array.from(dateDropdown.options).map(opt => opt.value)); const uniqueDates = new Set(profileUpgrades.map(rec => rec.completedTimestamp.toLocaleDateString())); uniqueDates.forEach(date => { if (!existingOptions.has(date)) { const option = document.createElement('option'); option.value = date; option.textContent = date; dateDropdown.appendChild(option); } }); container.innerHTML = ''; const dateFilteredUpgrades = selectedDate === 'all' ? profileUpgrades : profileUpgrades.filter(rec => rec.completedTimestamp.toLocaleDateString() === selectedDate); if (dateFilteredUpgrades && dateFilteredUpgrades.length > 0) { dateFilteredUpgrades.sort((a, b) => b.completedTimestamp - a.completedTimestamp); dateFilteredUpgrades.forEach(rec => { totalValue += parseFloat(rec.revenue.replace(/[$,]/g, '')) || 0; const card = document.createElement('div'); card.className = 'rec-card completed'; card.innerHTML = ` <div class="rec-info"> <h3>${rec.name} (${rec.resId})</h3> <div class="rec-details"> Original: <b>${rec.room}</b> | Upgraded To: <strong>${rec.upgradeTo}</strong><br> Value of Reservation: <strong>${rec.revenue}</strong><br> Completed On: <strong>${rec.completedTimestamp.toLocaleDateString()}</strong> </div> </div> <div class="rec-actions" style="flex-direction: column; align-items: flex-end;"> <div style="color: var(--success-color); margin-bottom: 5px;"> <strong style="color: #4343FF;">✓ Completed</strong> </div> <button class="undo-completed-btn" data-firestore-id="${rec.firestoreId}" style="background-color: #dc3545; color: white; padding: 5px 10px; font-size: 12px; border: none; border-radius: 4px; cursor: pointer;">Undo</button> </div> `; container.appendChild(card); }); const totalHeader = document.createElement('h3'); totalHeader.style.textAlign = 'right'; totalHeader.style.marginTop = '20px'; totalHeader.textContent = `Total Value: ${totalValue.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}`; container.appendChild(totalHeader); container.querySelectorAll('.undo-completed-btn').forEach(btn => { btn.addEventListener('click', handleUndoCompletedClick); }); } else { container.innerHTML = '<p>No upgrades have been marked as completed for this profile and date.</p>'; }
+    const container = document.getElementById('completed-container');
+    const dateDropdown = document.getElementById('sort-date-dropdown');
+    const profileDropdown = document.getElementById('profile-dropdown');
+    if (!container || !dateDropdown || !profileDropdown) return;
+    const selectedDate = dateDropdown.value;
+    const currentProfile = profileDropdown.value;
+    let totalValue = 0;
+    const profileUpgrades = completedUpgrades.filter(rec => rec.profile === currentProfile);
+    while (dateDropdown.options.length > 1) {
+        dateDropdown.remove(1);
+    }
+    const existingOptions = new Set(Array.from(dateDropdown.options).map(opt => opt.value));
+    const uniqueDates = new Set(profileUpgrades.map(rec => rec.completedTimestamp.toLocaleDateString()));
+    uniqueDates.forEach(date => {
+        if (!existingOptions.has(date)) {
+            const option = document.createElement('option');
+            option.value = date;
+            option.textContent = date;
+            dateDropdown.appendChild(option);
+        }
+    });
+    container.innerHTML = '';
+    const dateFilteredUpgrades = selectedDate === 'all' ? profileUpgrades : profileUpgrades.filter(rec => rec.completedTimestamp.toLocaleDateString() === selectedDate);
+    if (dateFilteredUpgrades && dateFilteredUpgrades.length > 0) {
+        dateFilteredUpgrades.sort((a, b) => b.completedTimestamp - a.completedTimestamp);
+        dateFilteredUpgrades.forEach(rec => {
+            totalValue += parseFloat(rec.revenue.replace(/[$,]/g, '')) || 0;
+            const card = document.createElement('div');
+            card.className = 'rec-card completed';
+            card.innerHTML = ` <div class="rec-info"> <h3>${rec.name} (${rec.resId})</h3> <div class="rec-details"> Original: <b>${rec.room}</b> | Upgraded To: <strong>${rec.upgradeTo}</strong><br> Value of Reservation: <strong>${rec.revenue}</strong><br> Completed On: <strong>${rec.completedTimestamp.toLocaleDateString()}</strong> </div> </div> <div class="rec-actions" style="flex-direction: column; align-items: flex-end;"> <div style="color: var(--success-color); margin-bottom: 5px;"> <strong style="color: #4343FF;">✓ Completed</strong> </div> <button class="undo-completed-btn" data-firestore-id="${rec.firestoreId}" style="background-color: #dc3545; color: white; padding: 5px 10px; font-size: 12px; border: none; border-radius: 4px; cursor: pointer;">Undo</button> </div> `;
+            container.appendChild(card);
+        });
+        const totalHeader = document.createElement('h3');
+        totalHeader.style.textAlign = 'right';
+        totalHeader.style.marginTop = '20px';
+        totalHeader.textContent = `Total Value: ${totalValue.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}`;
+        container.appendChild(totalHeader);
+        container.querySelectorAll('.undo-completed-btn').forEach(btn => {
+            btn.addEventListener('click', handleUndoCompletedClick);
+        });
+    } else {
+        container.innerHTML = '<p>No upgrades have been marked as completed for this profile and date.</p>';
+    }
 }
+
 function displayMatrix(matrix) {
-    const container = document.getElementById('matrix-container'); if (!matrix || !matrix.headers || !matrix.rows) { container.innerHTML = '<p>Could not generate the availability matrix.</p>'; return; } const numDateColumns = matrix.headers.length - 1; const columnTotals = new Array(numDateColumns).fill(0); let html = '<table><thead><tr>' + matrix.headers.map(h => `<th>${h}</th>`).join('') + '</tr></thead><tbody>'; matrix.rows.forEach(row => { html += `<tr><td><strong>${row.roomCode}</strong></td>`; row.availability.forEach((avail, index) => { html += `<td>${avail}</td>`; columnTotals[index] += (typeof avail === 'number' ? avail : 0); }); html += '</tr>'; }); html += '<tr style="background-color: #f8f9fa; border-top: 2px solid #ccc;">'; html += '<td><strong>TOTAL AVAILABLE</strong></td>'; columnTotals.forEach(total => { html += `<td><strong>${total}</strong></td>`; }); html += '</tr>'; html += '</tbody></table>'; container.innerHTML = html; colorMatrixCells();
+    const container = document.getElementById('matrix-container');
+    if (!matrix || !matrix.headers || !matrix.rows) {
+        container.innerHTML = '<p>Could not generate the availability matrix.</p>';
+        return;
+    }
+    const numDateColumns = matrix.headers.length - 1;
+    const columnTotals = new Array(numDateColumns).fill(0);
+    let html = '<table><thead><tr>' + matrix.headers.map(h => `<th>${h}</th>`).join('') + '</tr></thead><tbody>';
+    matrix.rows.forEach(row => {
+        html += `<tr><td><strong>${row.roomCode}</strong></td>`;
+        row.availability.forEach((avail, index) => {
+            html += `<td>${avail}</td>`;
+            columnTotals[index] += (typeof avail === 'number' ? avail : 0);
+        });
+        html += '</tr>';
+    });
+    html += '<tr style="background-color: #f8f9fa; border-top: 2px solid #ccc;">';
+    html += '<td><strong>TOTAL AVAILABLE</strong></td>';
+    columnTotals.forEach(total => {
+        html += `<td><strong>${total}</strong></td>`;
+    });
+    html += '</tr>';
+    html += '</tbody></table>';
+    container.innerHTML = html;
+    colorMatrixCells();
 }
-function colorMatrixCells() { const cells = document.querySelectorAll("#matrix-container td:not(:first-child)"); cells.forEach(cell => { const value = parseInt(cell.textContent, 10); if (isNaN(value)) return; cell.classList.remove('matrix-neg', 'matrix-low', 'matrix-high'); if (value < 0) cell.classList.add('matrix-neg'); else if (value >= 3) cell.classList.add('matrix-high'); else cell.classList.add('matrix-low'); }); }
-function showError(error) { showLoader(false); alert(error.message || 'Error'); console.error(error); }
-function showLoader(show, text = 'Loading...') { const l=document.getElementById('loader'), o=document.getElementById('output'), g=document.getElementById('generate-btn'); if(l) l.style.display=show?'block':'none'; if(l) l.innerHTML=`<div class="spinner"></div>${text}`; if(o) o.style.display=show?'none':'block'; if(g) g.disabled=show; }
-function parseCsv(csvContent) { const lines = csvContent.trim().split('\n'); const headerLine = lines.shift(); const header = headerLine.split(',').map(h => h.trim().replace(/"/g, '')); const data = lines.map(line => { const row = []; let currentField = ''; let inQuotes = false; for (let i = 0; i < line.length; i++) { const char = line[i]; if (char === '"') { inQuotes = !inQuotes; } else if (char === ',' && !inQuotes) { row.push(currentField); currentField = ''; } else { currentField += char; } } row.push(currentField); return row; }); return { data, header }; }
+
+function colorMatrixCells() {
+    const cells = document.querySelectorAll("#matrix-container td:not(:first-child)");
+    cells.forEach(cell => {
+        const value = parseInt(cell.textContent, 10);
+        if (isNaN(value)) return;
+        cell.classList.remove('matrix-neg', 'matrix-low', 'matrix-high');
+        if (value < 0) cell.classList.add('matrix-neg');
+        else if (value >= 3) cell.classList.add('matrix-high');
+        else cell.classList.add('matrix-low');
+    });
+}
+
+function showError(error) {
+    showLoader(false);
+    alert(error.message || 'Error');
+    console.error(error);
+}
+
+function showLoader(show, text = 'Loading...') {
+    const l = document.getElementById('loader'),
+        o = document.getElementById('output'),
+        g = document.getElementById('generate-btn');
+    if (l) l.style.display = show ? 'block' : 'none';
+    if (l) l.innerHTML = `<div class="spinner"></div>${text}`;
+    if (o) o.style.display = show ? 'none' : 'block';
+    if (g) g.disabled = show;
+}
+
+function parseCsv(csvContent) {
+    const lines = csvContent.trim().split('\n');
+    const headerLine = lines.shift();
+    const header = headerLine.split(',').map(h => h.trim().replace(/"/g, ''));
+    const data = lines.map(line => {
+        const row = [];
+        let currentField = '';
+        let inQuotes = false;
+        for (let i = 0; i < line.length; i++) {
+            const char = line[i];
+            if (char === '"') {
+                inQuotes = !inQuotes;
+            } else if (char === ',' && !inQuotes) {
+                row.push(currentField);
+                currentField = '';
+            } else {
+                currentField += char;
+            }
+        }
+        row.push(currentField);
+        return row;
+    });
+    return {
+        data,
+        header
+    };
+}
 
 function applyUpgradesAndRecalculate(currentAcceptedList, csvContent, rules, fileName) {
-    const { data, header } = parseCsv(csvContent);
+    const {
+        data,
+        header
+    } = parseCsv(csvContent);
     let allReservations = [];
     const isSynxisArrivals = header.includes('Guest_Nm');
     if (isSynxisArrivals) allReservations = parseSynxisArrivals(data, header);
@@ -2703,9 +3249,12 @@ function applyUpgradesAndRecalculate(currentAcceptedList, csvContent, rules, fil
 }
 
 function processUpgradeData(csvContent, rules, fileName) {
-    const { data, header } = parseCsv(csvContent);
+    const {
+        data,
+        header
+    } = parseCsv(csvContent);
     if (!data || !data.length) throw new Error('Empty CSV');
-    
+
     const isSynxisArrivals = header.includes('Guest_Nm');
     let allReservations = [];
     if (isSynxisArrivals) allReservations = parseSynxisArrivals(data, header);
@@ -2714,7 +3263,7 @@ function processUpgradeData(csvContent, rules, fileName) {
     // Save to global state for matrix recalculation in displayScenarios
     currentAllReservations = allReservations;
     // Capture BASELINE from the raw file load
-    originalAllReservations = JSON.parse(JSON.stringify(allReservations)); 
+    originalAllReservations = JSON.parse(JSON.stringify(allReservations));
 
     return generateScenariosFromData(allReservations, rules);
 }
@@ -2733,19 +3282,38 @@ function parseSynxisArrivals(data, header) {
     return data.map(values => {
         if (values.length < header.length) return null;
         const resId = values[resIdIndex]?.trim();
-        if (!resId || ids.has(resId)) return null; 
+        if (!resId || ids.has(resId)) return null;
         ids.add(resId);
 
         const arrival = values[arrivalIndex] ? parseDate(values[arrivalIndex]) : null;
         const departure = values[departureIndex] ? parseDate(values[departureIndex]) : null;
-        let nights = 0; if (arrival && departure) nights = Math.max(1, Math.ceil((departure - arrival) / (1000 * 60 * 60 * 24)));
+        let nights = 0;
+        if (arrival && departure) nights = Math.max(1, Math.ceil((departure - arrival) / (1000 * 60 * 60 * 24)));
         const dailyRate = parseFloat(values[rateIndex]) || 0;
         let fullName = values[nameIndex] || "";
-        if (fullName.includes(',')) { const parts = fullName.split(','); if (parts.length >= 2) fullName = `${parts[1].trim()} ${parts[0].trim()}`; }
+        if (fullName.includes(',')) {
+            const parts = fullName.split(',');
+            if (parts.length >= 2) fullName = `${parts[1].trim()} ${parts[0].trim()}`;
+        }
         let status = values[statusIndex]?.trim().toUpperCase() || 'RESERVATION';
-        if (status === 'CONFIRMED') status = 'RESERVATION'; if (status === 'CANCELLED') status = 'CANCELED';
+        if (status === 'CONFIRMED') status = 'RESERVATION';
+        if (status === 'CANCELLED') status = 'CANCELED';
 
-        return { name: fullName, resId, roomType: values[roomTypeIndex]?.trim().toUpperCase(), rate: values[rateNameIndex]?.trim(), nights, arrival, departure, status, revenue: (dailyRate*nights).toLocaleString('en-US',{style:'currency',currency:'USD'}), marketCode: '' };
+        return {
+            name: fullName,
+            resId,
+            roomType: values[roomTypeIndex]?.trim().toUpperCase(),
+            rate: values[rateNameIndex]?.trim(),
+            nights,
+            arrival,
+            departure,
+            status,
+            revenue: (dailyRate * nights).toLocaleString('en-US', {
+                style: 'currency',
+                currency: 'USD'
+            }),
+            marketCode: ''
+        };
     }).filter(r => r && r.roomType && r.arrival && r.departure && r.nights > 0);
 }
 
@@ -2754,10 +3322,28 @@ function parseAllReservations(data, header, fileName) {
     let nameIndex, resIdIndex, roomTypeIndex, rateNameIndex, arrivalIndex, departureIndex, statusIndex, rateIndex, firstNameIndex, lastNameIndex, marketCodeIndex, vipIndex = -1;
 
     if (isSnt) {
-        firstNameIndex = header.indexOf('First Name'); lastNameIndex = header.indexOf('Last Name'); resIdIndex = header.indexOf('Reservation Id'); roomTypeIndex = header.indexOf('Arrival Room Type'); rateNameIndex = header.indexOf('Arrival Rate Code'); arrivalIndex = header.indexOf('Arrival Date'); departureIndex = header.indexOf('Departure Date'); statusIndex = header.indexOf('Reservation Status'); rateIndex = header.indexOf('Adr'); marketCodeIndex = header.indexOf('Market Code'); vipIndex = header.indexOf('VIPDescription');
+        firstNameIndex = header.indexOf('First Name');
+        lastNameIndex = header.indexOf('Last Name');
+        resIdIndex = header.indexOf('Reservation Id');
+        roomTypeIndex = header.indexOf('Arrival Room Type');
+        rateNameIndex = header.indexOf('Arrival Rate Code');
+        arrivalIndex = header.indexOf('Arrival Date');
+        departureIndex = header.indexOf('Departure Date');
+        statusIndex = header.indexOf('Reservation Status');
+        rateIndex = header.indexOf('Adr');
+        marketCodeIndex = header.indexOf('Market Code');
+        vipIndex = header.indexOf('VIPDescription');
         if (firstNameIndex === -1 || resIdIndex === -1 || roomTypeIndex === -1) throw new Error("Missing SNT columns.");
     } else {
-        nameIndex = header.indexOf('Guest Name'); resIdIndex = header.indexOf('Res ID'); roomTypeIndex = header.indexOf('Room Type'); rateNameIndex = header.indexOf('Rate Name'); arrivalIndex = header.indexOf('Arrival Date'); departureIndex = header.indexOf('Departure Date'); statusIndex = header.indexOf('Status'); rateIndex = header.indexOf('Rate'); vipIndex = header.indexOf('VIPDescription');
+        nameIndex = header.indexOf('Guest Name');
+        resIdIndex = header.indexOf('Res ID');
+        roomTypeIndex = header.indexOf('Room Type');
+        rateNameIndex = header.indexOf('Rate Name');
+        arrivalIndex = header.indexOf('Arrival Date');
+        departureIndex = header.indexOf('Departure Date');
+        statusIndex = header.indexOf('Status');
+        rateIndex = header.indexOf('Rate');
+        vipIndex = header.indexOf('VIPDescription');
         if (nameIndex === -1 || resIdIndex === -1 || roomTypeIndex === -1) throw new Error("Missing CSV columns.");
     }
 
@@ -2765,7 +3351,8 @@ function parseAllReservations(data, header, fileName) {
         if (values.length < header.length) return null;
         const arrival = values[arrivalIndex] ? parseDate(values[arrivalIndex]) : null;
         const departure = values[departureIndex] ? parseDate(values[departureIndex]) : null;
-        let nights = 0; if (arrival && departure) nights = Math.max(1, Math.ceil((departure - arrival) / (1000 * 60 * 60 * 24)));
+        let nights = 0;
+        if (arrival && departure) nights = Math.max(1, Math.ceil((departure - arrival) / (1000 * 60 * 60 * 24)));
         const dailyRate = parseFloat(values[rateIndex]) || 0;
         let fullName = isSnt ? `${values[firstNameIndex] || ''} ${values[lastNameIndex] || ''}`.trim() : values[nameIndex];
         let status = values[statusIndex] ? values[statusIndex].trim().toUpperCase() : '';
@@ -2773,18 +3360,35 @@ function parseAllReservations(data, header, fileName) {
         let marketCode = (isSnt && marketCodeIndex > -1) ? values[marketCodeIndex] : '';
         let vipStatus = (vipIndex > -1 && values[vipIndex]) ? values[vipIndex].trim() : "";
 
-        return { name: fullName, resId: values[resIdIndex]?.trim(), roomType: values[roomTypeIndex]?.trim().toUpperCase(), rate: values[rateNameIndex]?.trim(), nights, arrival, departure, status, revenue: (dailyRate * nights).toLocaleString('en-US', {style:'currency',currency:'USD'}), marketCode, vipStatus };
+        return {
+            name: fullName,
+            resId: values[resIdIndex]?.trim(),
+            roomType: values[roomTypeIndex]?.trim().toUpperCase(),
+            rate: values[rateNameIndex]?.trim(),
+            nights,
+            arrival,
+            departure,
+            status,
+            revenue: (dailyRate * nights).toLocaleString('en-US', {
+                style: 'currency',
+                currency: 'USD'
+            }),
+            marketCode,
+            vipStatus
+        };
     }).filter(r => r && r.roomType && r.arrival && r.departure && r.nights > 0);
 }
 
 // --- GENERATE SCENARIOS (SIMULATION) ---
 function generateScenariosFromData(allReservations, rules) {
     const masterInventory = getMasterInventory(rules.profile);
-    if (!Object.keys(masterInventory).length) return { error: `No inventory for ${rules.profile}` };
+    if (!Object.keys(masterInventory).length) return {
+        error: `No inventory for ${rules.profile}`
+    };
 
     const activeReservations = allReservations.filter(res => res.status !== 'CANCELED' && res.status !== 'CANCELLED' && res.status !== 'NO SHOW');
     const completedResIds = new Set(completedUpgrades.filter(up => up.profile === rules.profile).map(up => up.resId));
-    
+
     const startDate = parseDate(rules.selectedDate);
     const reservationsByDate = buildReservationsByDate(activeReservations);
     const todayInventory = getInventoryForDate(masterInventory, reservationsByDate, startDate);
@@ -2797,7 +3401,12 @@ function generateScenariosFromData(allReservations, rules) {
         scenarios[strategy] = runSimulation(strategy, activeReservations, masterInventory, rules, completedResIds);
     });
 
-    return { scenarios, inventory: todayInventory, matrixData, message: null };
+    return {
+        scenarios,
+        inventory: todayInventory,
+        matrixData,
+        message: null
+    };
 }
 
 function runSimulation(strategy, allReservations, masterInv, rules, completedIds) {
@@ -2809,7 +3418,8 @@ function runSimulation(strategy, allReservations, masterInv, rules, completedIds
     // 1. Build Dynamic Inventory
     const simInventory = {};
     for (let i = 0; i < 14; i++) {
-        const d = new Date(startDate); d.setUTCDate(d.getUTCDate() + i);
+        const d = new Date(startDate);
+        d.setUTCDate(d.getUTCDate() + i);
         const dStr = d.toISOString().split('T')[0];
         simInventory[dStr] = {};
         for (let room in masterInv) {
@@ -2819,7 +3429,8 @@ function runSimulation(strategy, allReservations, masterInv, rules, completedIds
                 return acc;
             }, 0);
             const oooCount = oooRecords.reduce((acc, rec) => {
-                const rStart = rec.startDate.getTime(); const rEnd = rec.endDate.getTime();
+                const rStart = rec.startDate.getTime();
+                const rEnd = rec.endDate.getTime();
                 if (rec.roomType === room && dTime >= rStart && dTime <= rEnd) return acc + (rec.count || 1);
                 return acc;
             }, 0);
@@ -2835,45 +3446,46 @@ function runSimulation(strategy, allReservations, masterInv, rules, completedIds
     // 2. Track State
     const guestState = {};
     allReservations.forEach(r => guestState[r.resId] = r.roomType);
-    
-    const pendingUpgrades = {}; 
+
+    const pendingUpgrades = {};
 
     // 3. Iterative Passes (Up to 20 for cascading)
-    for (let pass = 0; pass < 20; pass++) { 
+    for (let pass = 0; pass < 20; pass++) {
         let activity = false;
         let candidates = [];
 
         for (let i = 0; i < 7; i++) {
-            const d = new Date(startDate); d.setUTCDate(d.getUTCDate() + i);
+            const d = new Date(startDate);
+            d.setUTCDate(d.getUTCDate() + i);
             const dTime = d.getTime();
             const dailyArrivals = allReservations.filter(r => r.arrival && r.arrival.getTime() === dTime && r.status === 'RESERVATION');
 
             dailyArrivals.forEach(res => {
                 if (completedIds.has(res.resId)) return;
-                
+
                 const currentRoom = guestState[res.resId];
                 const currentIdx = hierarchy.indexOf(currentRoom);
                 if (currentIdx === -1) return;
 
-                const originalBed = getBedType(res.roomType); 
+                const originalBed = getBedType(res.roomType);
                 if (originalBed === 'OTHER') return;
 
                 if (rules.profile === 'sts' && res.marketCode === 'Internet Merchant Model') return;
                 if (otaRates.some(ota => res.rate.toLowerCase().includes(ota))) return;
-                
+
                 for (let u = currentIdx + 1; u < hierarchy.length; u++) {
                     const targetRoom = hierarchy[u];
                     if (ineligible.includes(targetRoom)) continue;
                     if (getBedType(targetRoom) !== originalBed) continue;
 
                     candidates.push({
-                        resObj: res, 
+                        resObj: res,
                         currentRoom: currentRoom,
                         targetRoom: targetRoom,
                         score: parseFloat(res.revenue.replace(/[$,]/g, '')) || 0,
                         vip: res.vipStatus ? 1 : 0,
                         nights: res.nights,
-                        rank: u 
+                        rank: u
                     });
                 }
             });
@@ -2881,8 +3493,8 @@ function runSimulation(strategy, allReservations, masterInv, rules, completedIds
 
         if (strategy === 'Revenue Focus') {
             candidates.sort((a, b) => {
-                if (b.score !== a.score) return b.score - a.score; 
-                return b.rank - a.rank; 
+                if (b.score !== a.score) return b.score - a.score;
+                return b.rank - a.rank;
             });
         } else if (strategy === 'VIP Focus') {
             candidates.sort((a, b) => {
@@ -2918,7 +3530,7 @@ function runSimulation(strategy, allReservations, masterInv, rules, completedIds
                 while (checkDate < cand.resObj.departure) {
                     const dStr = checkDate.toISOString().split('T')[0];
                     if (simInventory[dStr]) {
-                        simInventory[dStr][cand.targetRoom]--; 
+                        simInventory[dStr][cand.targetRoom]--;
                         if (simInventory[dStr][cand.currentRoom] !== undefined) {
                             simInventory[dStr][cand.currentRoom]++;
                         }
@@ -2933,13 +3545,17 @@ function runSimulation(strategy, allReservations, masterInv, rules, completedIds
                         name: cand.resObj.name,
                         resId: cand.resObj.resId,
                         revenue: cand.resObj.revenue,
-                        room: cand.resObj.roomType, 
+                        room: cand.resObj.roomType,
                         rate: cand.resObj.rate,
                         nights: cand.resObj.nights,
-                        upgradeTo: cand.targetRoom, 
+                        upgradeTo: cand.targetRoom,
                         score: cand.score,
-                        arrivalDate: cand.resObj.arrival.toLocaleDateString('en-US', { timeZone: 'UTC' }),
-                        departureDate: cand.resObj.departure.toLocaleDateString('en-US', { timeZone: 'UTC' }),
+                        arrivalDate: cand.resObj.arrival.toLocaleDateString('en-US', {
+                            timeZone: 'UTC'
+                        }),
+                        departureDate: cand.resObj.departure.toLocaleDateString('en-US', {
+                            timeZone: 'UTC'
+                        }),
                         isoArrival: cand.resObj.arrival.toISOString().split('T')[0], // Store for Matrix calc
                         isoDeparture: cand.resObj.departure.toISOString().split('T')[0], // Store for Matrix calc
                         vipStatus: cand.resObj.vipStatus
@@ -2950,25 +3566,210 @@ function runSimulation(strategy, allReservations, masterInv, rules, completedIds
             }
         });
 
-        if (!activity) break; 
+        if (!activity) break;
     }
 
     return Object.values(pendingUpgrades);
 }
 
-function buildReservationsByDate(allReservations) { const reservationsByDate = {}; allReservations.forEach(res => { if (!res.arrival || !res.departure) return; let currentDate = new Date(res.arrival); while (currentDate < res.departure) { const dateString = currentDate.toISOString().split('T')[0]; if (!reservationsByDate[dateString]) reservationsByDate[dateString] = {}; reservationsByDate[dateString][res.roomType] = (reservationsByDate[dateString][res.roomType] || 0) + 1; currentDate.setUTCDate(currentDate.getUTCDate() + 1); } }); return reservationsByDate; }
-function getInventoryForDate(masterInventory, reservationsByDate, date) { const inventory = {}; const dateString = date.toISOString().split('T')[0]; for (const roomCode in masterInventory) { const totalPhysical = masterInventory[roomCode]; const reservedCount = reservationsByDate[dateString]?.[roomCode] || 0; const oooDeduction = oooRecords.reduce((total, rec) => { const isMatch = rec.roomType === roomCode; const dTime = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate())).getTime(); const rStart = new Date(Date.UTC(rec.startDate.getUTCFullYear(), rec.startDate.getUTCMonth(), rec.startDate.getUTCDate())).getTime(); const rEnd = new Date(Date.UTC(rec.endDate.getUTCFullYear(), rec.endDate.getUTCMonth(), rec.endDate.getUTCDate())).getTime(); if (isMatch && (dTime >= rStart && dTime <= rEnd)) { return total + (rec.count || 1); } return total; }, 0); inventory[roomCode] = totalPhysical - reservedCount - oooDeduction; } return inventory; }
-function getMasterInventory(profileName) { const masterRoomList = MASTER_INVENTORIES[profileName]; if (!masterRoomList) { console.error(`No master inventory found for profile: ${profileName}`); return {}; } const totalInventory = {}; masterRoomList.forEach(room => { totalInventory[room.code.toUpperCase()] = (totalInventory[room.code.toUpperCase()] || 0) + 1; }); return totalInventory; }
-function parseDate(dateStr) { if (!dateStr) return null; if (dateStr.includes(' ') && dateStr.includes(':')) { dateStr = dateStr.split(' ')[0]; } const parts = dateStr.split(/[-\/]/); if (parts.length === 3) { if (parts[0].length === 4) return new Date(Date.UTC(parts[0], parts[1] - 1, parts[2])); else return new Date(Date.UTC(parts[2], parts[0] - 1, parts[1])); } const fallbackDate = new Date(dateStr); return new Date(Date.UTC(fallbackDate.getFullYear(), fallbackDate.getMonth(), fallbackDate.getDate())); }
-function generateMatrixData(totalInventory, reservationsByDate, startDate, roomHierarchy) { const matrix = { headers: ['Room Type'], rows: [] }; const dates = Array.from({ length: 14 }, (_, i) => { const date = new Date(startDate); date.setUTCDate(date.getUTCDate() + i); return date; }); matrix.headers.push(...dates.map(date => `${date.toLocaleDateString('en-US', { weekday: 'short', timeZone: 'UTC' })}<br>${date.getUTCMonth() + 1}/${date.getUTCDate()}`)); roomHierarchy.forEach(roomCode => { const row = { roomCode, availability: [] }; dates.forEach(date => { const dateString = date.toISOString().split('T')[0]; let finalAvail = 0; if (currentInventoryMap && currentInventoryMap[dateString] && currentInventoryMap[dateString][roomCode] !== undefined) { finalAvail = currentInventoryMap[dateString][roomCode]; } else { const dTime = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate())).getTime(); const oooCount = oooRecords.reduce((total, rec) => { const rStart = new Date(Date.UTC(rec.startDate.getUTCFullYear(), rec.startDate.getUTCMonth(), rec.startDate.getUTCDate())).getTime(); const rEnd = new Date(Date.UTC(rec.endDate.getUTCFullYear(), rec.endDate.getUTCMonth(), rec.endDate.getUTCDate())).getTime(); if (rec.roomType === roomCode && (dTime >= rStart && dTime <= rEnd)) { return total + (rec.count || 1); } return total; }, 0); finalAvail = (totalInventory[roomCode] || 0) - (reservationsByDate[dateString]?.[roomCode] || 0) - oooCount; } row.availability.push(finalAvail); }); matrix.rows.push(row); }); return matrix; }
-function getBedType(roomCode) { if (!roomCode) return 'OTHER'; if (roomCode.includes('2BRDM')) return 'K'; if (roomCode.includes('-K')) return 'K'; if (roomCode.includes('-QQ')) return 'QQ'; if (roomCode.includes('-Q')) return 'Q'; if (roomCode.startsWith('DK')) return 'K'; if (roomCode.startsWith('GK')) return 'K'; if (roomCode.startsWith('PK')) return 'K'; if (roomCode.startsWith('TK')) return 'K'; if (roomCode.startsWith('TQ')) return 'QQ'; if (roomCode === 'CKS') return 'K'; if (roomCode === 'CSQ') return 'Q'; if (roomCode.startsWith('KS')) return 'K'; if (roomCode.startsWith('SQ')) return 'Q'; if (roomCode.startsWith('DQ')) return 'QQ'; if (roomCode === 'Q') return 'Q'; if (roomCode === 'DQ') return 'QQ'; if (roomCode === 'DD') return 'QQ'; if (roomCode === 'RD') return 'K'; if (roomCode === 'RDCY') return 'K'; if (roomCode === 'HHK') return 'K'; if (roomCode === 'QNV') return 'Q'; if (roomCode === 'QQ') return 'QQ'; if (roomCode === 'QAV') return 'Q'; if (roomCode === 'QQAV') return 'QQ'; if (roomCode === 'CHQ') return 'Q'; if (roomCode === 'PKR') return 'K'; if (roomCode === 'TKR') return 'K'; if (roomCode === 'QQR') return 'QQ'; if (roomCode === 'LKR') return 'K'; if (roomCode === 'CKR') return 'K'; if (roomCode === 'KS') return 'K'; if (roomCode === 'PKS') return 'K'; if (roomCode === 'AKR') return 'K'; if (roomCode === 'AQQ') return 'QQ'; if (roomCode === 'KING' || roomCode === 'KINGADA' || roomCode === 'LVKING' || roomCode === 'ADALV') return 'K'; if (roomCode === 'DQUEEN' || roomCode === 'ADADQ') return 'QQ'; if (roomCode === 'JRSTE' || roomCode === 'LVJRSTE' || roomCode === 'PRES') return 'K'; if (roomCode === 'KNR' || roomCode === 'KND' || roomCode === 'KAR' || roomCode === 'K1S' || roomCode === 'K1AS') return 'K'; if (roomCode === 'QQNR' || roomCode === 'QQAR') return 'QQ'; if (['PQNN', 'STQQ', 'SQAC'].includes(roomCode)) return 'QQ'; if (['PKNG', 'SKNG', 'SKAC', 'HERT', 'AMER', 'LEST', 'LEAC', 'GPST'].includes(roomCode)) return 'K'; if (['RKR', 'SKR', 'AKS', 'EXE', 'DAR'].includes(roomCode)) return 'K'; if (['RQR', 'RQQ'].includes(roomCode)) return 'QQ'; if (['K11-E', 'K12-P', 'K13-F', 'K1-B', 'K3'].includes(roomCode)) return 'K'; if (['QQ1-E', 'QQ2-I', 'SQQ4', 'DD2-B', 'DD20-P'].includes(roomCode)) return 'QQ'; if (['SQHC'].includes(roomCode)) return 'Q'; if (roomCode === 'DBDBADA-DD') return 'QQ'; if (['STAND-K', 'KINGSB-K', 'ACCESS-K', 'SENIOR-K', 'JUNIOR-K'].includes(roomCode)) return 'K'; if (['DOUBLE-QQ'].includes(roomCode)) return 'QQ'; if (['EURO-D'].includes(roomCode)) return 'D'; if (['QS'].includes(roomCode)) return 'Q'; if (['SS', 'EX'].includes(roomCode)) return 'K'; if (['KING', 'ADAKING', 'KSUITE', 'EXEC'].includes(roomCode)) return 'K'; if (['QQ'].includes(roomCode)) return 'QQ'; if (['KING-K', 'DKING-K', 'KINGOF-K'].includes(roomCode)) return 'K'; if (['QQ-QQ', 'DQQ-QQ'].includes(roomCode)) return 'QQ'; if (['Q-Q', 'QADA-Q'].includes(roomCode)) return 'Q'; if (['KMrsh', 'DKMrsh-K', 'KCrk', 'DKCrk', 'JRSTE-K/POC'].includes(roomCode)) return 'K'; if (['2QMRSH', '2QCrk', '2QCrk ADA'].includes(roomCode)) return 'QQ'; if (roomCode.startsWith('2Q')) return 'QQ'; if (['3-King-NB-K', '9-King-PV-Bal-K', '10-King-OV-B-K', '11-KingSuite-K/SOFA'].includes(roomCode)) return 'K'; if (['1-2Q-NB-Stan-QQ', '6-2Q-PV-Bal-QQ', '7-2Q-PV-Bal-QQ', '8-JrSuite-QQ'].includes(roomCode)) return 'QQ'; if (['4-ADAQueenRS-Q', '5-ADAQueen-Q'].includes(roomCode)) return 'Q'; if (roomCode === 'KINGFULL') return 'K'; return 'OTHER'; }
-function downloadAcceptedUpgradesCsv() {
-    if (!acceptedUpgrades || acceptedUpgrades.length === 0) { alert("No data to export."); return; }
-    const headers = ['Guest Name', 'Res ID', 'Current Room Type', 'Room Type to Upgrade To', 'Arrival Date', 'Departure Date'];
-    const rows = acceptedUpgrades.map(rec => { return [`"${rec.name}"`, `"${rec.resId}"`, `"${rec.room}"`, `"${rec.upgradeTo}"`, `"${rec.arrivalDate}"`, `"${rec.departureDate}"`].join(','); });
-    const csvContent = [headers.join(','), ...rows].join('\n');
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' }); const link = document.createElement('a'); const url = URL.createObjectURL(blob); const dateStr = new Date().toISOString().slice(0, 10); link.setAttribute('href', url); link.setAttribute('download', `accepted_upgrades_${dateStr}.csv`); link.style.visibility = 'hidden'; document.body.appendChild(link); link.click(); document.body.removeChild(link);
+function buildReservationsByDate(allReservations) {
+    const reservationsByDate = {};
+    allReservations.forEach(res => {
+        if (!res.arrival || !res.departure) return;
+        let currentDate = new Date(res.arrival);
+        while (currentDate < res.departure) {
+            const dateString = currentDate.toISOString().split('T')[0];
+            if (!reservationsByDate[dateString]) reservationsByDate[dateString] = {};
+            reservationsByDate[dateString][res.roomType] = (reservationsByDate[dateString][res.roomType] || 0) + 1;
+            currentDate.setUTCDate(currentDate.getUTCDate() + 1);
+        }
+    });
+    return reservationsByDate;
 }
+
+function getInventoryForDate(masterInventory, reservationsByDate, date) {
+    const inventory = {};
+    const dateString = date.toISOString().split('T')[0];
+    for (const roomCode in masterInventory) {
+        const totalPhysical = masterInventory[roomCode];
+        const reservedCount = reservationsByDate[dateString]?.[roomCode] || 0;
+        const oooDeduction = oooRecords.reduce((total, rec) => {
+            const isMatch = rec.roomType === roomCode;
+            const dTime = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate())).getTime();
+            const rStart = new Date(Date.UTC(rec.startDate.getUTCFullYear(), rec.startDate.getUTCMonth(), rec.startDate.getUTCDate())).getTime();
+            const rEnd = new Date(Date.UTC(rec.endDate.getUTCFullYear(), rec.endDate.getUTCMonth(), rec.endDate.getUTCDate())).getTime();
+            if (isMatch && (dTime >= rStart && dTime <= rEnd)) {
+                return total + (rec.count || 1);
+            }
+            return total;
+        }, 0);
+        inventory[roomCode] = totalPhysical - reservedCount - oooDeduction;
+    }
+    return inventory;
+}
+
+function getMasterInventory(profileName) {
+    const masterRoomList = MASTER_INVENTORIES[profileName];
+    if (!masterRoomList) {
+        console.error(`No master inventory found for profile: ${profileName}`);
+        return {};
+    }
+    const totalInventory = {};
+    masterRoomList.forEach(room => {
+        totalInventory[room.code.toUpperCase()] = (totalInventory[room.code.toUpperCase()] || 0) + 1;
+    });
+    return totalInventory;
+}
+
+function parseDate(dateStr) {
+    if (!dateStr) return null;
+    if (dateStr.includes(' ') && dateStr.includes(':')) {
+        dateStr = dateStr.split(' ')[0];
+    }
+    const parts = dateStr.split(/[-\/]/);
+    if (parts.length === 3) {
+        if (parts[0].length === 4) return new Date(Date.UTC(parts[0], parts[1] - 1, parts[2]));
+        else return new Date(Date.UTC(parts[2], parts[0] - 1, parts[1]));
+    }
+    const fallbackDate = new Date(dateStr);
+    return new Date(Date.UTC(fallbackDate.getFullYear(), fallbackDate.getMonth(), fallbackDate.getDate()));
+}
+
+function generateMatrixData(totalInventory, reservationsByDate, startDate, roomHierarchy) {
+    const matrix = {
+        headers: ['Room Type'],
+        rows: []
+    };
+    const dates = Array.from({
+        length: 14
+    }, (_, i) => {
+        const date = new Date(startDate);
+        date.setUTCDate(date.getUTCDate() + i);
+        return date;
+    });
+    matrix.headers.push(...dates.map(date => `${date.toLocaleDateString('en-US', { weekday: 'short', timeZone: 'UTC' })}<br>${date.getUTCMonth() + 1}/${date.getUTCDate()}`));
+    roomHierarchy.forEach(roomCode => {
+        const row = {
+            roomCode,
+            availability: []
+        };
+        dates.forEach(date => {
+            const dateString = date.toISOString().split('T')[0];
+            let finalAvail = 0;
+            if (currentInventoryMap && currentInventoryMap[dateString] && currentInventoryMap[dateString][roomCode] !== undefined) {
+                finalAvail = currentInventoryMap[dateString][roomCode];
+            } else {
+                const dTime = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate())).getTime();
+                const oooCount = oooRecords.reduce((total, rec) => {
+                    const rStart = new Date(Date.UTC(rec.startDate.getUTCFullYear(), rec.startDate.getUTCMonth(), rec.startDate.getUTCDate())).getTime();
+                    const rEnd = new Date(Date.UTC(rec.endDate.getUTCFullYear(), rec.endDate.getUTCMonth(), rec.endDate.getUTCDate())).getTime();
+                    if (rec.roomType === roomCode && (dTime >= rStart && dTime <= rEnd)) {
+                        return total + (rec.count || 1);
+                    }
+                    return total;
+                }, 0);
+                finalAvail = (totalInventory[roomCode] || 0) - (reservationsByDate[dateString]?.[roomCode] || 0) - oooCount;
+            }
+            row.availability.push(finalAvail);
+        });
+        matrix.rows.push(row);
+    });
+    return matrix;
+}
+
+function getBedType(roomCode) {
+    if (!roomCode) return 'OTHER';
+    if (roomCode.includes('2BRDM')) return 'K';
+    if (roomCode.includes('-K')) return 'K';
+    if (roomCode.includes('-QQ')) return 'QQ';
+    if (roomCode.includes('-Q')) return 'Q';
+    if (roomCode.startsWith('DK')) return 'K';
+    if (roomCode.startsWith('GK')) return 'K';
+    if (roomCode.startsWith('PK')) return 'K';
+    if (roomCode.startsWith('TK')) return 'K';
+    if (roomCode.startsWith('TQ')) return 'QQ';
+    if (roomCode === 'CKS') return 'K';
+    if (roomCode === 'CSQ') return 'Q';
+    if (roomCode.startsWith('KS')) return 'K';
+    if (roomCode.startsWith('SQ')) return 'Q';
+    if (roomCode.startsWith('DQ')) return 'QQ';
+    if (roomCode === 'Q') return 'Q';
+    if (roomCode === 'DQ') return 'QQ';
+    if (roomCode === 'DD') return 'QQ';
+    if (roomCode === 'RD') return 'K';
+    if (roomCode === 'RDCY') return 'K';
+    if (roomCode === 'HHK') return 'K';
+    if (roomCode === 'QNV') return 'Q';
+    if (roomCode === 'QQ') return 'QQ';
+    if (roomCode === 'QAV') return 'Q';
+    if (roomCode === 'QQAV') return 'QQ';
+    if (roomCode === 'CHQ') return 'Q';
+    if (roomCode === 'PKR') return 'K';
+    if (roomCode === 'TKR') return 'K';
+    if (roomCode === 'QQR') return 'QQ';
+    if (roomCode === 'LKR') return 'K';
+    if (roomCode === 'CKR') return 'K';
+    if (roomCode === 'KS') return 'K';
+    if (roomCode === 'PKS') return 'K';
+    if (roomCode === 'AKR') return 'K';
+    if (roomCode === 'AQQ') return 'QQ';
+    if (roomCode === 'KING' || roomCode === 'KINGADA' || roomCode === 'LVKING' || roomCode === 'ADALV') return 'K';
+    if (roomCode === 'DQUEEN' || roomCode === 'ADADQ') return 'QQ';
+    if (roomCode === 'JRSTE' || roomCode === 'LVJRSTE' || roomCode === 'PRES') return 'K';
+    if (roomCode === 'KNR' || roomCode === 'KND' || roomCode === 'KAR' || roomCode === 'K1S' || roomCode === 'K1AS') return 'K';
+    if (roomCode === 'QQNR' || roomCode === 'QQAR') return 'QQ';
+    if (['PQNN', 'STQQ', 'SQAC'].includes(roomCode)) return 'QQ';
+    if (['PKNG', 'SKNG', 'SKAC', 'HERT', 'AMER', 'LEST', 'LEAC', 'GPST'].includes(roomCode)) return 'K';
+    if (['RKR', 'SKR', 'AKS', 'EXE', 'DAR'].includes(roomCode)) return 'K';
+    if (['RQR', 'RQQ'].includes(roomCode)) return 'QQ';
+    if (['K11-E', 'K12-P', 'K13-F', 'K1-B', 'K3'].includes(roomCode)) return 'K';
+    if (['QQ1-E', 'QQ2-I', 'SQQ4', 'DD2-B', 'DD20-P'].includes(roomCode)) return 'QQ';
+    if (['SQHC'].includes(roomCode)) return 'Q';
+    if (roomCode === 'DBDBADA-DD') return 'QQ';
+    if (['STAND-K', 'KINGSB-K', 'ACCESS-K', 'SENIOR-K', 'JUNIOR-K'].includes(roomCode)) return 'K';
+    if (['DOUBLE-QQ'].includes(roomCode)) return 'QQ';
+    if (['EURO-D'].includes(roomCode)) return 'D';
+    if (['QS'].includes(roomCode)) return 'Q';
+    if (['SS', 'EX'].includes(roomCode)) return 'K';
+    if (['KING', 'ADAKING', 'KSUITE', 'EXEC'].includes(roomCode)) return 'K';
+    if (['QQ'].includes(roomCode)) return 'QQ';
+    if (['KING-K', 'DKING-K', 'KINGOF-K'].includes(roomCode)) return 'K';
+    if (['QQ-QQ', 'DQQ-QQ'].includes(roomCode)) return 'QQ';
+    if (['Q-Q', 'QADA-Q'].includes(roomCode)) return 'Q';
+    if (['KMrsh', 'DKMrsh-K', 'KCrk', 'DKCrk', 'JRSTE-K/POC'].includes(roomCode)) return 'K';
+    if (['2QMRSH', '2QCrk', '2QCrk ADA'].includes(roomCode)) return 'QQ';
+    if (roomCode.startsWith('2Q')) return 'QQ';
+    if (['3-King-NB-K', '9-King-PV-Bal-K', '10-King-OV-B-K', '11-KingSuite-K/SOFA'].includes(roomCode)) return 'K';
+    if (['1-2Q-NB-Stan-QQ', '6-2Q-PV-Bal-QQ', '7-2Q-PV-Bal-QQ', '8-JrSuite-QQ'].includes(roomCode)) return 'QQ';
+    if (['4-ADAQueenRS-Q', '5-ADAQueen-Q'].includes(roomCode)) return 'Q';
+    if (roomCode === 'KINGFULL') return 'K';
+    return 'OTHER';
+}
+
+function downloadAcceptedUpgradesCsv() {
+    if (!acceptedUpgrades || acceptedUpgrades.length === 0) {
+        alert("No data to export.");
+        return;
+    }
+    const headers = ['Guest Name', 'Res ID', 'Current Room Type', 'Room Type to Upgrade To', 'Arrival Date', 'Departure Date'];
+    const rows = acceptedUpgrades.map(rec => {
+        return [`"${rec.name}"`, `"${rec.resId}"`, `"${rec.room}"`, `"${rec.upgradeTo}"`, `"${rec.arrivalDate}"`, `"${rec.departureDate}"`].join(',');
+    });
+    const csvContent = [headers.join(','), ...rows].join('\n');
+    const blob = new Blob([csvContent], {
+        type: 'text/csv;charset=utf-8;'
+    });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    const dateStr = new Date().toISOString().slice(0, 10);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `accepted_upgrades_${dateStr}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+}
+
 
 
 
