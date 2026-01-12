@@ -5138,7 +5138,7 @@ function renderScenarioContent(name, recs, parent) {
 
     btn.textContent = "Accept Entire Path";
 
-    btn.style.cssText = 'background:#28a745; color:white; border:none; padding:10px 20px; border-radius:5px; cursor:pointer;';
+    btn.style.cssText = 'background:#4361ee; color:white; border:none; padding:10px 20px; border-radius:5px; cursor:pointer;';
 
     btn.addEventListener('click', () => handleAcceptScenario(name));
 
@@ -5939,3 +5939,4 @@ function downloadAcceptedUpgradesCsv() {
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' }); const link = document.createElement('a'); const url = URL.createObjectURL(blob); const dateStr = new Date().toISOString().slice(0, 10); link.setAttribute('href', url); link.setAttribute('download', `accepted_upgrades_${dateStr}.csv`); link.style.visibility = 'hidden'; document.body.appendChild(link); link.click(); document.body.removeChild(link);
 
 }
+
