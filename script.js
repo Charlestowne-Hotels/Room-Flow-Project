@@ -2556,27 +2556,36 @@ function generateMatrixHTML(title, rows, headers, colTotals) {
 }
 
 function renderScenarioContent(name, recs, parent) {
-    const old = parent.querySelector('.scenario-content'); if(old) old.remove();
-    const wrapper = document.createElement('div'); wrapper.className = 'scenario-content';
-    
-    const totalRev = recs.reduce((sum,r)=>sum+r.score,0);
+    const old = parent.querySelector('.scenario-content');
+    if (old) old.remove();
+    const wrapper = document.createElement('div');
+    wrapper.className = 'scenario-content';
+
+    const totalRev = recs.reduce((sum, r) => sum + r.score, 0);
     const head = document.createElement('div');
     head.style.cssText = 'display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; padding:15px; background:#f9f9f9; border-radius:8px;';
     head.innerHTML = `<div><h3 style="margin:0;">${name} Path</h3><span style="color:#666;">${recs.length} Upgrades | Potential: <strong>$${totalRev.toLocaleString()}</strong></span></div>`;
-    
+
     const btn = document.createElement('button');
     btn.textContent = "Accept Entire Path";
     btn.style.cssText = 'background:#28a745; color:white; border:none; padding:10px 20px; border-radius:5px; cursor:pointer;';
     btn.addEventListener('click', () => handleAcceptScenario(name));
-    head.appendChild(btn); wrapper.appendChild(head);
+    head.appendChild(btn);
+    wrapper.appendChild(head);
 
     // --- CALC MATRICES ---
     const startDate = parseDate(currentRules.selectedDate);
     const hierarchy = currentRules.hierarchy.toUpperCase().split(',').map(r => r.trim()).filter(Boolean);
     const baseReservations = buildReservationsByDate(currentAllReservations);
     const masterInv = getMasterInventory(currentRules.profile);
-    
-    const dates = Array.from({ length: 14 }, (_, i) => { const d = new Date(startDate); d.setUTCDate(d.getUTCDate() + i); return d; });
+
+    const dates = Array.from({
+        length: 14
+    }, (_, i) => {
+        const d = new Date(startDate);
+        d.setUTCDate(d.getUTCDate() + i);
+        return d;
+    });
     const headers = ['Room Type', ...dates.map(date => `${date.toLocaleDateString('en-US', { weekday: 'short', timeZone: 'UTC' })}<br>${date.getUTCMonth() + 1}/${date.getUTCDate()}`)];
 
     const projectedRows = [];
@@ -2586,32 +2595,42 @@ function renderScenarioContent(name, recs, parent) {
     const currColTotals = new Array(numCols).fill(0);
 
     hierarchy.forEach(roomCode => {
-        const pRow = { roomCode, data: [] };
-        const cRow = { roomCode, data: [] };
+        const pRow = {
+            roomCode,
+            data: []
+        };
+        const cRow = {
+            roomCode,
+            data: []
+        };
 
         dates.forEach((date, i) => {
             const dateString = date.toISOString().split('T')[0];
-            
+
             // BASE CALC
             let baseAvail = 0;
             if (currentInventoryMap && currentInventoryMap[dateString] && currentInventoryMap[dateString][roomCode] !== undefined) {
                 baseAvail = currentInventoryMap[dateString][roomCode];
             } else {
                 const dTime = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate())).getTime();
-                const oooCount = oooRecords.reduce((t, r) => { const rS=r.startDate.getTime(); const rE=r.endDate.getTime(); if(r.roomType===roomCode && dTime>=rS && dTime<=rE) return t+(r.count||1); return t; }, 0);
+                const oooCount = oooRecords.reduce((t, r) => {
+                    const rS = r.startDate.getTime();
+                    const rE = r.endDate.getTime();
+                    if (r.roomType === roomCode && dTime >= rS && dTime <= rE) return t + (r.count || 1);
+                    return t;
+                }, 0);
                 baseAvail = (masterInv[roomCode] || 0) - (baseReservations[dateString]?.[roomCode] || 0) - oooCount;
             }
 
-            // PROJECTED DELTA
+            // PROJECTED DELTA (UPDATED LOGIC)
             let projAvail = baseAvail;
             recs.forEach(upgrade => {
-                const uArr = new Date(upgrade.arrivalDate).getTime();
-                const uDep = new Date(upgrade.departureDate).getTime();
-                const dTime = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate())).getTime();
-
-                if (dTime >= uArr && dTime < uDep) {
-                    if (upgrade.room === roomCode) projAvail += 1; 
-                    if (upgrade.upgradeTo === roomCode) projAvail -= 1;
+                // FIXED: Use ISO strings for comparison to avoid Timezone offsets causing negatives
+                // We check if the current matrix column date (dateString) falls within the stay range.
+                // Logic: Arrival (Inclusive) <= CurrentDate < Departure (Exclusive)
+                if (dateString >= upgrade.isoArrival && dateString < upgrade.isoDeparture) {
+                    if (upgrade.room === roomCode) projAvail += 1; // Room freed up
+                    if (upgrade.upgradeTo === roomCode) projAvail -= 1; // Room occupied
                 }
             });
 
@@ -2626,9 +2645,9 @@ function renderScenarioContent(name, recs, parent) {
 
     // --- RENDER MATRICES ---
     const matrixContainer = document.createElement('div');
-    matrixContainer.innerHTML = generateMatrixHTML("Projected Availability (With Scenario)", projectedRows, headers, projColTotals) + 
-                                generateMatrixHTML("Current Availability (Base)", currentRows, headers, currColTotals);
-    
+    matrixContainer.innerHTML = generateMatrixHTML("Projected Availability (With Scenario)", projectedRows, headers, projColTotals) +
+        generateMatrixHTML("Current Availability (Base)", currentRows, headers, currColTotals);
+
     wrapper.appendChild(matrixContainer);
     parent.appendChild(wrapper);
 }
@@ -2950,6 +2969,7 @@ function downloadAcceptedUpgradesCsv() {
     const csvContent = [headers.join(','), ...rows].join('\n');
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' }); const link = document.createElement('a'); const url = URL.createObjectURL(blob); const dateStr = new Date().toISOString().slice(0, 10); link.setAttribute('href', url); link.setAttribute('download', `accepted_upgrades_${dateStr}.csv`); link.style.visibility = 'hidden'; document.body.appendChild(link); link.click(); document.body.removeChild(link);
 }
+
 
 
 
