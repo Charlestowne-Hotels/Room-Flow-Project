@@ -1600,7 +1600,6 @@ const MASTER_INVENTORIES = {
     ]
 
 };
-
 // ... (Your existing Config, ADMIN_UIDS, SNT_PROPERTY_MAP, DOM References, profiles, and MASTER_INVENTORIES remain above this) ...
 
 // --- STATE MANAGEMENT ---
@@ -2449,9 +2448,6 @@ function renderScenarioContent(name, recs, parent) {
             // PROJECTED DELTA
             let projAvail = baseAvail;
             recs.forEach(upgrade => {
-                // Must ensure dates compare correctly
-                // upgrades have string dates: "1/12/2026"
-                // 'date' is a Date object
                 const uArr = new Date(upgrade.arrivalDate).getTime();
                 const uDep = new Date(upgrade.departureDate).getTime();
                 const dTime = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate())).getTime();
@@ -2634,9 +2630,10 @@ function runSimulation(strategy, allReservations, masterInv, rules, completedIds
     const ineligible = rules.ineligibleUpgrades.toUpperCase().split(',');
     const otaRates = rules.otaRates.toLowerCase().split(',');
 
-    // Build Dynamic Inventory Map for 7 Days
+    // Build Dynamic Inventory Map for 14 Days (Matching Matrix View)
+    // Ensures robust checking for stays that extend beyond the first week
     const simInventory = {};
-    for(let i=0; i<7; i++) {
+    for(let i=0; i<14; i++) {
         const d = new Date(startDate); d.setUTCDate(d.getUTCDate()+i);
         const dStr = d.toISOString().split('T')[0];
         simInventory[dStr] = {};
@@ -2691,6 +2688,7 @@ function runSimulation(strategy, allReservations, masterInv, rules, completedIds
         let checkDate = new Date(cand.reservation.arrival);
         while(checkDate < cand.reservation.departure) {
             const dStr = checkDate.toISOString().split('T')[0];
+            // Check availability - Must exist AND be > 0
             if (!simInventory[dStr] || (simInventory[dStr][cand.upgradeTo] || 0) <= 0) { canUpgrade = false; break; }
             checkDate.setUTCDate(checkDate.getUTCDate()+1);
         }
@@ -2708,7 +2706,7 @@ function runSimulation(strategy, allReservations, masterInv, rules, completedIds
             checkDate = new Date(cand.reservation.arrival);
             while(checkDate < cand.reservation.departure) {
                 const dStr = checkDate.toISOString().split('T')[0];
-                simInventory[dStr][cand.upgradeTo]--;
+                if (simInventory[dStr]) simInventory[dStr][cand.upgradeTo]--;
                 checkDate.setUTCDate(checkDate.getUTCDate()+1);
             }
         }
@@ -2730,6 +2728,8 @@ function downloadAcceptedUpgradesCsv() {
     const csvContent = [headers.join(','), ...rows].join('\n');
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' }); const link = document.createElement('a'); const url = URL.createObjectURL(blob); const dateStr = new Date().toISOString().slice(0, 10); link.setAttribute('href', url); link.setAttribute('download', `accepted_upgrades_${dateStr}.csv`); link.style.visibility = 'hidden'; document.body.appendChild(link); link.click(); document.body.removeChild(link);
 }
+
+
 
 
 
