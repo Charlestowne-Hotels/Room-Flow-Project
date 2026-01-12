@@ -1603,11 +1603,14 @@ const MASTER_INVENTORIES = {
 
 // ... (Your existing Config, ADMIN_UIDS, SNT_PROPERTY_MAP, DOM References, profiles, and MASTER_INVENTORIES remain above this) ...
 
+// ... (Your existing Config, ADMIN_UIDS, SNT_PROPERTY_MAP, DOM References, profiles, and MASTER_INVENTORIES remain above this) ...
+
 // --- STATE MANAGEMENT ---
 let currentCsvContent = null;
 let currentFileName = null; 
 let currentRules = null;
 let currentScenarios = {}; 
+let currentAllReservations = []; // NEW: Stores parsed reservations for matrix projection
 let acceptedUpgrades = [];
 let completedUpgrades = [];
 let oooRecords = [];
@@ -1619,6 +1622,7 @@ function resetAppState() {
     currentFileName = null; 
     currentRules = null;
     currentScenarios = {};
+    currentAllReservations = [];
     acceptedUpgrades = [];
     currentInventoryMap = null; 
     
@@ -1633,7 +1637,7 @@ function resetAppState() {
     if (recContainer) recContainer.innerHTML = placeholderMsg;
 
     const matrixContainer = document.getElementById('matrix-container');
-    if (matrixContainer) matrixContainer.innerHTML = placeholderMsg;
+    if (matrixContainer) matrixContainer.innerHTML = ''; // Cleared, as it will be shown inside scenarios
 
     const inventoryContainer = document.getElementById('inventory');
     if (inventoryContainer) inventoryContainer.innerHTML = ''; 
@@ -2305,14 +2309,15 @@ function displayResults(data) {
     currentScenarios = data.scenarios || {};
     
     displayAcceptedUpgrades();
-    displayScenarios(currentScenarios); // Show Tabs
+    displayScenarios(currentScenarios, data.inventory); // Pass inventory
     
     document.getElementById('output').style.display = 'block';
     const messageEl = document.getElementById('message');
     messageEl.style.display = data.message ? 'block' : 'none';
     messageEl.innerHTML = data.message || '';
+    
+    // Matrix is now displayed INSIDE scenarios, but we keep inventory display
     displayInventory(data.inventory);
-    displayMatrix(data.matrixData);
 }
 
 function displayInventory(inventory) {
@@ -2321,8 +2326,8 @@ function displayInventory(inventory) {
     container.innerHTML = '<h3>Available Rooms</h3>' + (rooms.length ? rooms.join(' | ') : '<p>None.</p>');
 }
 
-// NEW: Display Scenario Tabs
-function displayScenarios(scenarios) {
+// NEW: Display Scenario Tabs + Dynamic Matrix
+function displayScenarios(scenarios, baseInventory) {
     const container = document.getElementById('recommendations-container');
     container.innerHTML = '';
     const keys = Object.keys(scenarios);
@@ -2362,19 +2367,81 @@ function renderScenarioContent(name, recs, parent) {
     btn.addEventListener('click', () => handleAcceptScenario(name));
     head.appendChild(btn); wrapper.appendChild(head);
 
-    if(recs.length > 0) {
-        const byDate = recs.reduce((g,r)=>{ (g[r.arrivalDate]=g[r.arrivalDate]||[]).push(r); return g; }, {});
-        Object.keys(byDate).sort((a,b)=>new Date(a)-new Date(b)).forEach(date => {
-            const h4 = document.createElement('h4'); h4.textContent=`Arrivals: ${date}`; h4.style.cssText='border-bottom:1px solid #eee; margin-top:20px;'; wrapper.appendChild(h4);
-            byDate[date].forEach(rec => {
-                const card = document.createElement('div'); card.className = 'rec-card';
-                // VIP RED TEXT
-                const vipHtml = rec.vipStatus ? `<div style="color: red; font-weight: bold; margin-bottom: 4px; font-size: 14px;">${rec.vipStatus}</div>` : '';
-                card.innerHTML = `<div class="rec-info"><h3>${rec.name} (${rec.resId})</h3>${vipHtml}<div class="rec-details">Booked: <b>${rec.room}</b> (${rec.nights} nts) | Rate: <i>${rec.rate}</i><br>Value: <strong>${rec.revenue}</strong></div></div><div class="rec-actions"><div class="rec-upgrade-to">Upgrade To<br><strong>${rec.upgradeTo}</strong></div><div class="rec-score">$${rec.score.toLocaleString()}</div></div>`;
-                wrapper.appendChild(card);
+    // --- RENDER DYNAMIC MATRIX ---
+    // 1. Generate Base Matrix
+    const startDate = parseDate(currentRules.selectedDate);
+    const hierarchy = currentRules.hierarchy.toUpperCase().split(',').map(r => r.trim()).filter(Boolean);
+    const baseReservations = buildReservationsByDate(currentAllReservations);
+    const masterInv = getMasterInventory(currentRules.profile);
+    
+    // 2. Clone Base to Projected (Modify logic here to calc projection)
+    // We can re-use generateMatrixData logic but apply delta
+    const matrix = { headers: ['Room Type'], rows: [] };
+    const dates = Array.from({ length: 14 }, (_, i) => { const d = new Date(startDate); d.setUTCDate(d.getUTCDate() + i); return d; });
+    matrix.headers.push(...dates.map(date => `${date.toLocaleDateString('en-US', { weekday: 'short', timeZone: 'UTC' })}<br>${date.getUTCMonth() + 1}/${date.getUTCDate()}`));
+
+    hierarchy.forEach(roomCode => {
+        const row = { roomCode, availability: [] };
+        dates.forEach(date => {
+            const dateString = date.toISOString().split('T')[0];
+            let avail = 0;
+            // Base
+            if (currentInventoryMap && currentInventoryMap[dateString] && currentInventoryMap[dateString][roomCode] !== undefined) {
+                avail = currentInventoryMap[dateString][roomCode];
+            } else {
+                const dTime = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate())).getTime();
+                const oooCount = oooRecords.reduce((t, r) => { const rS=r.startDate.getTime(); const rE=r.endDate.getTime(); if(r.roomType===roomCode && dTime>=rS && dTime<=rE) return t+(r.count||1); return t; }, 0);
+                avail = (masterInv[roomCode] || 0) - (baseReservations[dateString]?.[roomCode] || 0) - oooCount;
+            }
+
+            // Apply Scenario Delta
+            recs.forEach(upgrade => {
+                const arr = new Date(upgrade.arrivalDate);
+                const dep = new Date(upgrade.departureDate);
+                // Check if this date falls within stay (arr inclusive, dep exclusive)
+                // Note: upgrade dates are strings, need strict comparison or conversion
+                const dTime = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate())).getTime();
+                const uArr = new Date(arr).getTime();
+                const uDep = new Date(dep).getTime();
+
+                if (dTime >= uArr && dTime < uDep) {
+                    if (upgrade.room === roomCode) avail += 1; // Original room freed
+                    if (upgrade.upgradeTo === roomCode) avail -= 1; // New room occupied
+                }
             });
+
+            row.availability.push(avail);
         });
-    } else wrapper.innerHTML+='<p>No upgrades.</p>';
+        matrix.rows.push(row);
+    });
+
+    // Render Matrix HTML
+    const matDiv = document.createElement('div');
+    matDiv.id = 'scenario-matrix-container';
+    matDiv.style.marginTop = '20px';
+    
+    // Copy-paste Matrix rendering logic
+    const numDateColumns = matrix.headers.length - 1;
+    const columnTotals = new Array(numDateColumns).fill(0);
+    let html = '<h4 style="margin-bottom:10px;">Projected Availability Matrix</h4><table style="width:100%; border-collapse:collapse; text-align:center;"><thead><tr>' + matrix.headers.map(h => `<th style="border:1px solid #ddd; padding:8px; background:#f2f2f2;">${h}</th>`).join('') + '</tr></thead><tbody>';
+    matrix.rows.forEach(row => {
+        html += `<tr><td style="border:1px solid #ddd; padding:8px; font-weight:bold;">${row.roomCode}</td>`;
+        row.availability.forEach((avail, index) => {
+            let cls = avail < 0 ? 'matrix-neg' : (avail >= 3 ? 'matrix-high' : 'matrix-low');
+            let color = avail < 0 ? '#ffcccc' : (avail >= 3 ? '#ccffcc' : '#ffffcc'); // Inline styles for simplicity
+            html += `<td style="border:1px solid #ddd; padding:8px; background-color:${color};">${avail}</td>`;
+            columnTotals[index] += avail;
+        });
+        html += '</tr>';
+    });
+    html += '<tr style="background-color:#f8f9fa; border-top:2px solid #ccc;"><td><strong>TOTAL</strong></td>';
+    columnTotals.forEach(total => html += `<td style="border:1px solid #ddd; padding:8px;"><strong>${total}</strong></td>`);
+    html += '</tr></tbody></table>';
+    
+    matDiv.innerHTML = html;
+    wrapper.appendChild(matDiv);
+
+    // Cards are deliberately NOT rendered here as per request.
     parent.appendChild(wrapper);
 }
 
@@ -2436,6 +2503,9 @@ function processUpgradeData(csvContent, rules, fileName) {
     let allReservations = [];
     if (isSynxisArrivals) allReservations = parseSynxisArrivals(data, header);
     else allReservations = parseAllReservations(data, header, fileName);
+
+    // Save to global state for matrix recalculation in displayScenarios
+    currentAllReservations = allReservations;
 
     return generateScenariosFromData(allReservations, rules);
 }
