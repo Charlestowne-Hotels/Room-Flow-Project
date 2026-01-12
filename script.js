@@ -1602,6 +1602,9 @@ const MASTER_INVENTORIES = {
 };
 
 
+// ... (Your existing Config, ADMIN_UIDS, SNT_PROPERTY_MAP, DOM References, profiles, and MASTER_INVENTORIES remain above this) ...
+
+// --- STATE MANAGEMENT ---
 let currentCsvContent = null;
 let currentFileName = null; 
 let currentRules = null;
@@ -1614,11 +1617,11 @@ let currentInventoryMap = null;
 // --- FUNCTIONS ---
 function resetAppState() {
     currentCsvContent = null;
-    currentFileName = null;
+    currentFileName = null; 
     currentRules = null;
     currentRecommendations = [];
     acceptedUpgrades = [];
-    currentInventoryMap = null; // Reset inventory map
+    currentInventoryMap = null; 
     
     document.getElementById('csv-file').value = '';
 
@@ -1672,8 +1675,6 @@ function parseInventoryInput(inputText) {
     return inventoryList;
 }
 
-// --- NEW: PARSE SYNXIS INVENTORY CSV ---
-// Extracts Date and Room Availability from the specific report format
 function parseSynxisInventory(csvContent) {
     const lines = csvContent.trim().split('\n');
     const headers = lines[0].split(',').map(h => h.trim());
@@ -1690,7 +1691,7 @@ function parseSynxisInventory(csvContent) {
     const inventoryMap = {}; 
 
     for (let i = 1; i < lines.length; i++) {
-        const row = lines[i].split(','); // Simple split (adjust if CSV has quoted commas)
+        const row = lines[i].split(','); 
         if (row.length < headers.length) continue;
 
         const dateRaw = row[dateIndex]; 
@@ -2322,7 +2323,6 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 
-// --- UPDATED: AUTO-LOAD (With Cross-Reference) ---
 async function handleAutoLoad() {
     const btn = document.getElementById('auto-load-btn');
     const originalText = btn.textContent;
@@ -2341,11 +2341,9 @@ async function handleAutoLoad() {
     btn.textContent = "Loading...";
     showLoader(true, `Fetching ${targetDocId}...`);
 
-    // Reset inventory map before new load
     currentInventoryMap = null;
 
     try {
-        // 1. Fetch Reservation Report (SNTData) - REQUIRED
         const docRef = db.collection('SNTData').doc(targetDocId); 
         const doc = await docRef.get();
 
@@ -2361,7 +2359,6 @@ async function handleAutoLoad() {
             throw new Error("Report exists, but is empty.");
         }
 
-        // 2. Fetch Inventory Report (SynxisData) - OPTIONAL (Try/Catch inside)
         let inventoryMsg = "Using standard calculated availability.";
         try {
             const invDocRef = db.collection('SynxisData').doc(targetDocId);
@@ -2382,11 +2379,9 @@ async function handleAutoLoad() {
             console.warn("Could not load inventory report:", invError);
         }
 
-        // 3. Update Global State
         currentCsvContent = csvText;
         currentFileName = realFileName;
         
-        // 4. Build Rules
         currentRules = {
             hierarchy: document.getElementById('hierarchy').value,
             targetRooms: document.getElementById('target-rooms').value,
@@ -2397,13 +2392,11 @@ async function handleAutoLoad() {
             profile: currentProfile 
         };
 
-        // 5. Process
         setTimeout(() => {
             try {
                 const results = processUpgradeData(currentCsvContent, currentRules, currentFileName);
                 displayResults(results);
                 
-                // Alert with status of both reports
                 let finalAlert = `Success! Loaded Reservation Data: ${realFileName}\n\nInventory Status: ${inventoryMsg}`;
                 if (!currentInventoryMap) {
                     finalAlert += "\n(Note: No inventory file found in 'SynxisData', so falling back to calculation.)";
@@ -2435,8 +2428,6 @@ function handleGenerateClick() {
     }
     
     currentFileName = fileInput.files[0].name;
-    // For manual upload, we don't automatically load the SynXis map unless we add a separate button.
-    // So reset the map to avoid using stale data from a previous profile.
     currentInventoryMap = null; 
 
     acceptedUpgrades = [];
@@ -2638,9 +2629,14 @@ function displayRecommendations(recs) {
                 const originalIndex = currentRecommendations.findIndex(originalRec => originalRec.resId === rec.resId);
                 const card = document.createElement('div');
                 card.className = 'rec-card';
+                
+                // VIP DISPLAY LOGIC
+                const vipHtml = rec.vipStatus ? `<div style="color: red; font-weight: bold; margin-bottom: 4px; font-size: 14px;">${rec.vipStatus}</div>` : '';
+
                 card.innerHTML = `
                                 <div class="rec-info">
                                     <h3>${rec.name} (${rec.resId})</h3>
+                                    ${vipHtml}
                                     <div class="rec-details">
                                         Booked: <b>${rec.room}</b> for ${rec.nights} night(s) | Rate: <i>${rec.rate}</i><br>
                                         Value of Reservation: <strong>${rec.revenue}</strong>
@@ -2694,9 +2690,13 @@ function displayAcceptedUpgrades() {
             const card = document.createElement('div');
             card.className = 'rec-card';
             
+            // VIP DISPLAY LOGIC
+            const vipHtml = rec.vipStatus ? `<div style="color: red; font-weight: bold; margin-bottom: 4px; font-size: 14px;">${rec.vipStatus}</div>` : '';
+
             card.innerHTML = `
                                 <div class="rec-info">
                                     <h3>${rec.name} (${rec.resId})</h3>
+                                    ${vipHtml}
                                     <div class="rec-details">
                                         Original: <b>${rec.room}</b> | Upgraded To: <strong>${rec.upgradeTo}</strong><br>
                                         Value of Reservation: <strong>${rec.revenue}</strong>
@@ -3007,7 +3007,6 @@ function applyUpgradesAndRecalculate(currentAcceptedList, csvContent, rules, fil
     return results;
 }
 
-// --- UPDATED: PROCESS UPGRADE DATA (Supports Synxis Arrivals/Departures) ---
 function processUpgradeData(csvContent, rules, fileName) {
     const { data, header } = parseCsv(csvContent);
     if (!data || data.length === 0) {
@@ -3044,7 +3043,6 @@ function processUpgradeData(csvContent, rules, fileName) {
     return generateRecommendationsFromData(allReservations, rules);
 }
 
-// --- UPDATED: PARSER FOR SYNXIS ARRIVALS/DEPARTURES (With Deduplication) ---
 function parseSynxisArrivals(data, header) {
     const nameIndex = header.indexOf('Guest_Nm');
     const resIdIndex = header.indexOf('CRS_Confirm_No');
@@ -3160,7 +3158,6 @@ function generateRecommendationsFromData(allReservations, rules) {
     const ineligibleUpgrades = rules.ineligibleUpgrades.toUpperCase().split(',').map(r => r.trim()).filter(Boolean);
     const useDefaultLogic = originalTargetRooms.length === 0;
 
-    // --- UPDATED: Availability Logic with Cross-Reference ---
     const isRoomAvailableForStay = (roomCode, reservation, invByDate, masterInv) => {
         let checkDate = new Date(reservation.arrival);
         while (checkDate < reservation.departure) {
@@ -3263,7 +3260,8 @@ function generateRecommendationsFromData(allReservations, rules) {
                             score: score,
                             distance: distance,
                             arrivalDate: currentDate.toLocaleDateString('en-US', { timeZone: 'UTC' }),
-                            departureDate: res.departure.toLocaleDateString('en-US', { timeZone: 'UTC' })
+                            departureDate: res.departure.toLocaleDateString('en-US', { timeZone: 'UTC' }),
+                            vipStatus: res.vipStatus 
                         });
                         
                         break; 
@@ -3382,6 +3380,9 @@ function getBedType(roomCode) {
 function parseAllReservations(data, header, fileName) {
     const isSnt = fileName && (fileName.startsWith('SNT') || fileName.startsWith('LTRL') || fileName.startsWith('VERD') || fileName.startsWith('LCKWD') || fileName.startsWith('TBH') || fileName.startsWith('DARLING'));
     let nameIndex, resIdIndex, roomTypeIndex, rateNameIndex, arrivalIndex, departureIndex, statusIndex, rateIndex, firstNameIndex, lastNameIndex, marketCodeIndex;
+    
+    // NEW: Variable for VIP Index
+    let vipIndex = -1;
 
     if (isSnt) {
         firstNameIndex = header.indexOf('First Name');
@@ -3394,6 +3395,8 @@ function parseAllReservations(data, header, fileName) {
         statusIndex = header.indexOf('Reservation Status');
         rateIndex = header.indexOf('Adr');
         marketCodeIndex = header.indexOf('Market Code');
+        
+        vipIndex = header.indexOf('VIPDescription'); 
 
         if (firstNameIndex === -1 || resIdIndex === -1 || roomTypeIndex === -1) {
             throw new Error("One or more critical columns were not found in the SNT CSV header.");
@@ -3407,6 +3410,9 @@ function parseAllReservations(data, header, fileName) {
         departureIndex = header.indexOf('Departure Date');
         statusIndex = header.indexOf('Status');
         rateIndex = header.indexOf('Rate');
+        
+        // NEW: Find the VIP column
+        vipIndex = header.indexOf('VIPDescription');
 
         if (nameIndex === -1 || resIdIndex === -1 || roomTypeIndex === -1) {
             throw new Error("One or more critical columns were not found in the CSV header.");
@@ -3447,6 +3453,12 @@ function parseAllReservations(data, header, fileName) {
             marketCode = values[marketCodeIndex].trim();
         }
 
+        // NEW: Extract VIP Status
+        let vipStatus = "";
+        if (vipIndex > -1 && values[vipIndex]) {
+            vipStatus = values[vipIndex].trim();
+        }
+
         return {
             name: fullName,
             resId: values[resIdIndex] ? values[resIdIndex].trim() : '',
@@ -3457,7 +3469,8 @@ function parseAllReservations(data, header, fileName) {
             departure: departure,
             status: status,
             revenue: totalRevenue.toLocaleString('en-US', { style: 'currency', currency: 'USD' }),
-            marketCode: marketCode 
+            marketCode: marketCode,
+            vipStatus: vipStatus // Add to object
         };
     }).filter(r => r && r.roomType && r.arrival && r.departure && r.nights > 0);
 }
@@ -3515,7 +3528,6 @@ function getMasterInventory(profileName) {
     return totalInventory;
 }
 
-// --- UPDATED: PARSE DATE FUNCTION (Fixed logic) ---
 function parseDate(dateStr) {
     if (!dateStr) return null;
     
@@ -3542,7 +3554,7 @@ function generateMatrixData(totalInventory, reservationsByDate, startDate, roomH
         date.setUTCDate(date.getUTCDate() + i);
         return date;
     });
-    dates.forEach(date => matrix.headers.push(`${date.toLocaleDateString('en-US', { weekday: 'short', timeZone: 'UTC' })}<br>${date.getUTCMonth() + 1}/${date.getUTCDate()}`));
+    matrix.headers.push(...dates.map(date => `${date.toLocaleDateString('en-US', { weekday: 'short', timeZone: 'UTC' })}<br>${date.getUTCMonth() + 1}/${date.getUTCDate()}`));
     
     roomHierarchy.forEach(roomCode => {
         const row = { roomCode, availability: [] };
@@ -3618,5 +3630,6 @@ function downloadAcceptedUpgradesCsv() {
     link.click();
     document.body.removeChild(link);
 }
+
 
 
