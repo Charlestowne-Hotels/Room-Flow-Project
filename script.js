@@ -1643,7 +1643,6 @@ function resetAppState() {
     const messageEl = document.getElementById('message');
     if (messageEl) messageEl.innerHTML = '';
 
-    // Ensure accepted container is visible by default
     const acceptedContainer = document.getElementById('accepted-container');
     if(acceptedContainer) acceptedContainer.style.display = 'block';
     
@@ -1666,7 +1665,6 @@ function handleRefresh() {
         
         setTimeout(() => {
             try {
-                // If upgrades accepted, maintain that state but refresh background data
                 if (acceptedUpgrades.length > 0) {
                      const results = applyUpgradesAndRecalculate(acceptedUpgrades, currentCsvContent, currentRules, currentFileName);
                      displayMatrixOnlyView(results); 
@@ -2365,7 +2363,7 @@ function handleAcceptScenario(scenarioName) {
     setTimeout(() => {
         try {
             const results = applyUpgradesAndRecalculate(acceptedUpgrades, currentCsvContent, currentRules, currentFileName);
-            displayMatrixOnlyView(results); // New function to show just the matrix
+            displayMatrixOnlyView(results); 
         } catch (err) { showError(err); }
     }, 50);
 }
@@ -2374,27 +2372,27 @@ function handleAcceptScenario(scenarioName) {
 function displayMatrixOnlyView(results) {
     showLoader(false);
     
-    // 1. Show Accepted List (UPDATED)
+    // 1. Show Accepted List
     const acceptedContainer = document.getElementById('accepted-container');
     if(acceptedContainer) acceptedContainer.style.display = 'block';
     displayAcceptedUpgrades(); 
 
-    // 2. Target Container
+    // 2. Target Container (Clear current content)
     const container = document.getElementById('recommendations-container');
     container.innerHTML = ''; 
 
-    // 3. Render Matrix
+    // 3. Render Matrix - Using ONLY the recalculated results (No manual delta)
     const matDiv = document.createElement('div');
     matDiv.style.marginTop = '20px';
     
     const startDate = parseDate(currentRules.selectedDate);
-    const hierarchy = currentRules.hierarchy.toUpperCase().split(',').map(r => r.trim()).filter(Boolean);
     const dates = Array.from({ length: 14 }, (_, i) => { const d = new Date(startDate); d.setUTCDate(d.getUTCDate() + i); return d; });
     const headers = ['Room Type', ...dates.map(date => `${date.toLocaleDateString('en-US', { weekday: 'short', timeZone: 'UTC' })}<br>${date.getUTCMonth() + 1}/${date.getUTCDate()}`)];
     
     const numCols = dates.length;
     const colTotals = new Array(numCols).fill(0);
-    // Use the recalculate rows directly
+    
+    // Use the rows directly from results.matrixData (which are already updated)
     const rowsForHelper = results.matrixData.rows.map(row => {
         row.availability.forEach((val, i) => colTotals[i] += val);
         return { roomCode: row.roomCode, data: row.availability };
@@ -2403,7 +2401,14 @@ function displayMatrixOnlyView(results) {
     matDiv.innerHTML = generateMatrixHTML("Updated Availability (Post-Acceptance)", rowsForHelper, headers, colTotals);
     container.appendChild(matDiv);
 
-    // 4. No Undo Button as requested
+    // 4. "Continue Reviewing" Button to restore view (Optional but good UX)
+    const continueBtn = document.createElement('button');
+    continueBtn.textContent = "Continue Reviewing";
+    continueBtn.style.cssText = "margin-top: 20px; padding: 12px 24px; background: #4343FF; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 16px; display: block; margin-left: auto; margin-right: auto;";
+    continueBtn.addEventListener('click', () => {
+        displayResults(results); // Go back to standard results view with tabs
+    });
+    container.appendChild(continueBtn);
 }
 
 function handlePmsUpdateClick(event) {
@@ -2940,6 +2945,7 @@ function downloadAcceptedUpgradesCsv() {
     const csvContent = [headers.join(','), ...rows].join('\n');
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' }); const link = document.createElement('a'); const url = URL.createObjectURL(blob); const dateStr = new Date().toISOString().slice(0, 10); link.setAttribute('href', url); link.setAttribute('download', `accepted_upgrades_${dateStr}.csv`); link.style.visibility = 'hidden'; document.body.appendChild(link); link.click(); document.body.removeChild(link);
 }
+
 
 
 
