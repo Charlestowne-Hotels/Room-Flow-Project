@@ -1600,6 +1600,7 @@ const MASTER_INVENTORIES = {
     ]
 
 };
+
 // ... (Your existing Config, ADMIN_UIDS, SNT_PROPERTY_MAP, DOM References, profiles, and MASTER_INVENTORIES remain above this) ...
 
 // --- STATE MANAGEMENT ---
@@ -2035,6 +2036,68 @@ document.addEventListener('DOMContentLoaded', function() {
     if (saveNewPropBtn) saveNewPropBtn.addEventListener('click', handleSaveNewProperty);
     window.addEventListener('click', (e) => { if (e.target === addPropModal) addPropModal.classList.add('hidden'); });
 
+    // --- NEW: SETUP MANUAL UPLOAD WRAPPERS FOR MOVING ---
+    const fileInput = document.getElementById('csv-file');
+    const genBtnRef = document.getElementById('generate-btn');
+    
+    // Create wrapper for the manual controls
+    const manualUploadWrapper = document.createElement('div');
+    manualUploadWrapper.id = 'manual-upload-wrapper';
+    manualUploadWrapper.style.marginTop = '20px';
+    manualUploadWrapper.style.padding = '15px';
+    manualUploadWrapper.style.border = '1px dashed #ccc';
+    manualUploadWrapper.style.borderRadius = '8px';
+    manualUploadWrapper.style.backgroundColor = '#fafafa';
+
+    const uploadTitle = document.createElement('h4');
+    uploadTitle.textContent = "Manual PMS Upload";
+    uploadTitle.style.margin = "0 0 10px 0";
+    uploadTitle.style.color = '#555';
+    manualUploadWrapper.appendChild(uploadTitle);
+
+    // Insert wrapper where input currently is
+    if (fileInput && fileInput.parentNode) {
+        fileInput.parentNode.insertBefore(manualUploadWrapper, fileInput);
+        manualUploadWrapper.appendChild(fileInput);
+        if (genBtnRef) manualUploadWrapper.appendChild(genBtnRef);
+    }
+
+    // Create placeholder to remember location on Main Page
+    const mainPagePlaceholder = document.createElement('div');
+    mainPagePlaceholder.id = 'manual-upload-placeholder';
+    if (manualUploadWrapper.parentNode) {
+        manualUploadWrapper.parentNode.insertBefore(mainPagePlaceholder, manualUploadWrapper);
+    }
+
+    // Function to Switch UI Layout
+    const updateUIForProfile = () => {
+        const currentProfile = document.getElementById('profile-dropdown').value;
+        const isSnt = !!SNT_PROPERTY_MAP[currentProfile];
+        const autoLoadBtn = document.getElementById('auto-load-btn');
+        
+        // 1. Toggle Auto-Load Button
+        if (autoLoadBtn) {
+            autoLoadBtn.style.display = isSnt ? 'inline-block' : 'none';
+        }
+
+        // 2. Move Manual Upload Controls
+        if (isSnt) {
+            // Move to Settings Modal content (first element child usually content box)
+            const settingsContent = settingsModal.firstElementChild; 
+            if (settingsContent) {
+                // Check if already there to avoid reload flickers
+                if (manualUploadWrapper.parentNode !== settingsContent) {
+                    settingsContent.appendChild(manualUploadWrapper);
+                }
+            }
+        } else {
+            // Move back to Main Page
+            if (mainPagePlaceholder && mainPagePlaceholder.parentNode) {
+                mainPagePlaceholder.parentNode.insertBefore(manualUploadWrapper, mainPagePlaceholder.nextSibling);
+            }
+        }
+    };
+
     auth.onAuthStateChanged(async user => {
         const adminButton = document.getElementById('clear-analytics-btn');
         const saveBtn = document.getElementById('save-rules-btn'); 
@@ -2056,6 +2119,7 @@ document.addEventListener('DOMContentLoaded', function() {
             setAdminControls(isUserAdmin);
             loadCompletedUpgrades(user.uid);
             resetAppState();
+            updateUIForProfile(); // Ensure correct UI state on login
         } else {
             loginContainer.classList.remove('hidden'); appContainer.classList.add('hidden');
             setAdminControls(false);
@@ -2087,27 +2151,17 @@ document.addEventListener('DOMContentLoaded', function() {
 
     const profileDropdown = document.getElementById('profile-dropdown');
     
-    // Function to check if button should be visible (SNT only)
-    const updateAutoLoadButtonVisibility = () => {
-        const currentProfile = profileDropdown.value;
-        const autoLoadBtn = document.getElementById('auto-load-btn');
-        if (autoLoadBtn) {
-            // Hide if not in SNT map
-            autoLoadBtn.style.display = SNT_PROPERTY_MAP[currentProfile] ? 'inline-block' : 'none'; 
-        }
-    };
-
     profileDropdown.addEventListener('change', (event) => {
         updateRulesForm(event.target.value);
         resetAppState();
         displayCompletedUpgrades();
         displayDemandInsights(); 
         loadOooRecords(); 
-        updateAutoLoadButtonVisibility(); // Check visibility on change
+        updateUIForProfile(); // Switch UI on profile change
     });
     
     updateRulesForm('fqi'); 
-    updateAutoLoadButtonVisibility(); // Check visibility on init
+    updateUIForProfile(); // Initial check
 
     if(saveRulesBtn) saveRulesBtn.addEventListener('click', handleSaveRules);
     const addOooBtn = document.getElementById('add-ooo-btn');
@@ -2473,6 +2527,8 @@ function renderScenarioContent(name, recs, parent) {
                                 generateMatrixHTML("Current Availability (Base)", currentRows, headers, currColTotals);
     
     wrapper.appendChild(matrixContainer);
+    
+    // Note: Individual cards are intentionally NOT added here.
     parent.appendChild(wrapper);
 }
 
