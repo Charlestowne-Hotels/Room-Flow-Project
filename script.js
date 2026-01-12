@@ -2094,14 +2094,26 @@ document.addEventListener('DOMContentLoaded', function() {
             manualUploadWrapper.style.textAlign = 'left';
             manualUploadWrapper.style.display = 'block';
             manualUploadWrapper.style.minHeight = 'auto';
+            manualUploadWrapper.style.background = '#fafafa'; // Reset background
+            manualUploadWrapper.style.boxShadow = 'none';
+            manualUploadWrapper.style.gap = '0';
+            
             uploadTitle.style.fontSize = '16px';
             uploadTitle.style.textAlign = 'left';
+            uploadTitle.style.margin = '0 0 10px 0';
             
+            if (fileInput) {
+                fileInput.style.flexGrow = '0';
+                fileInput.style.width = 'auto';
+                fileInput.style.border = '1px solid #ccc';
+            }
+
             if (genBtnRef) {
                 genBtnRef.style.width = 'auto';
                 genBtnRef.style.display = 'inline-block';
                 genBtnRef.style.marginTop = '10px';
                 genBtnRef.style.fontSize = '14px';
+                genBtnRef.style.padding = '8px 15px';
             }
 
         } else {
@@ -2110,30 +2122,48 @@ document.addEventListener('DOMContentLoaded', function() {
                 mainPagePlaceholder.parentNode.insertBefore(manualUploadWrapper, mainPagePlaceholder.nextSibling);
             }
 
-            // Apply Hero Styles
+            // Apply Hero Styles - Shorter & Wider Toolbar
             manualUploadWrapper.style.marginTop = '20px';
-            manualUploadWrapper.style.padding = '40px';
-            manualUploadWrapper.style.border = '2px dashed #bbb';
+            manualUploadWrapper.style.marginBottom = '20px';
+            manualUploadWrapper.style.padding = '25px 30px'; 
+            manualUploadWrapper.style.border = '2px dashed #ccc'; 
             manualUploadWrapper.style.borderRadius = '12px';
-            manualUploadWrapper.style.backgroundColor = '#f8f9fa'; // Light gray background
-            manualUploadWrapper.style.background = 'linear-gradient(135deg, #f9f9f9 0%, #f0f2f5 100%)';
-            manualUploadWrapper.style.textAlign = 'center';
-            manualUploadWrapper.style.display = 'flex';
-            manualUploadWrapper.style.flexDirection = 'column';
-            manualUploadWrapper.style.alignItems = 'center';
-            manualUploadWrapper.style.justifyContent = 'center';
-            manualUploadWrapper.style.minHeight = '250px';
-            manualUploadWrapper.style.gap = '15px';
+            manualUploadWrapper.style.backgroundColor = '#f8f9fa';
+            manualUploadWrapper.style.background = 'linear-gradient(to right, #ffffff, #f4f6f8)'; 
+            manualUploadWrapper.style.boxShadow = '0 4px 6px rgba(0,0,0,0.05)';
             
-            uploadTitle.style.fontSize = '24px';
-            uploadTitle.style.color = '#4343FF'; // Brand color
-            uploadTitle.style.textAlign = 'center';
+            // Flex Layout: Row (Horizontal)
+            manualUploadWrapper.style.display = 'flex';
+            manualUploadWrapper.style.flexDirection = 'row';
+            manualUploadWrapper.style.alignItems = 'center';
+            manualUploadWrapper.style.justifyContent = 'space-between';
+            manualUploadWrapper.style.gap = '20px';
+            manualUploadWrapper.style.minHeight = 'auto'; 
+            
+            // Title Styling
+            uploadTitle.style.fontSize = '18px';
+            uploadTitle.style.fontWeight = '600';
+            uploadTitle.style.color = '#333';
+            uploadTitle.style.margin = '0'; 
+            uploadTitle.style.whiteSpace = 'nowrap'; 
 
+            // Input Styling (Make it fill space)
+            if (fileInput) {
+                fileInput.style.flexGrow = '1';
+                fileInput.style.maxWidth = 'none';
+                fileInput.style.padding = '10px';
+                fileInput.style.border = '1px solid #ddd';
+                fileInput.style.borderRadius = '6px';
+                fileInput.style.backgroundColor = '#fff';
+            }
+
+            // Button Styling
             if (genBtnRef) {
-                genBtnRef.style.width = '100%';
-                genBtnRef.style.maxWidth = '300px';
-                genBtnRef.style.fontSize = '16px';
-                genBtnRef.style.padding = '12px 20px';
+                genBtnRef.style.width = 'auto';
+                genBtnRef.style.maxWidth = 'none';
+                genBtnRef.style.fontSize = '15px';
+                genBtnRef.style.padding = '10px 25px';
+                genBtnRef.style.marginTop = '0'; 
             }
         }
     };
@@ -2159,7 +2189,7 @@ document.addEventListener('DOMContentLoaded', function() {
             setAdminControls(isUserAdmin);
             loadCompletedUpgrades(user.uid);
             resetAppState();
-            updateUIForProfile(); // Trigger UI check on load
+            updateUIForProfile(); // Ensure correct UI state on login
         } else {
             loginContainer.classList.remove('hidden'); appContainer.classList.add('hidden');
             setAdminControls(false);
@@ -2197,7 +2227,7 @@ document.addEventListener('DOMContentLoaded', function() {
         displayCompletedUpgrades();
         displayDemandInsights(); 
         loadOooRecords(); 
-        updateUIForProfile(); // Trigger UI switch on dropdown change
+        updateUIForProfile(); // Switch UI on profile change
     });
     
     updateRulesForm('fqi'); 
@@ -2567,8 +2597,6 @@ function renderScenarioContent(name, recs, parent) {
                                 generateMatrixHTML("Current Availability (Base)", currentRows, headers, currColTotals);
     
     wrapper.appendChild(matrixContainer);
-    
-    // Note: Individual cards are intentionally NOT added here.
     parent.appendChild(wrapper);
 }
 
@@ -2822,6 +2850,7 @@ function downloadAcceptedUpgradesCsv() {
     const csvContent = [headers.join(','), ...rows].join('\n');
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' }); const link = document.createElement('a'); const url = URL.createObjectURL(blob); const dateStr = new Date().toISOString().slice(0, 10); link.setAttribute('href', url); link.setAttribute('download', `accepted_upgrades_${dateStr}.csv`); link.style.visibility = 'hidden'; document.body.appendChild(link); link.click(); document.body.removeChild(link);
 }
+
 
 
 
