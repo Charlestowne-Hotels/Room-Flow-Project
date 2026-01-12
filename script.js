@@ -1603,14 +1603,12 @@ const MASTER_INVENTORIES = {
 
 // ... (Your existing Config, ADMIN_UIDS, SNT_PROPERTY_MAP, DOM References, profiles, and MASTER_INVENTORIES remain above this) ...
 
-// ... (Your existing Config, ADMIN_UIDS, SNT_PROPERTY_MAP, DOM References, profiles, and MASTER_INVENTORIES remain above this) ...
-
 // --- STATE MANAGEMENT ---
 let currentCsvContent = null;
 let currentFileName = null; 
 let currentRules = null;
 let currentScenarios = {}; 
-let currentAllReservations = []; // NEW: Stores parsed reservations for matrix projection
+let currentAllReservations = []; 
 let acceptedUpgrades = [];
 let completedUpgrades = [];
 let oooRecords = [];
@@ -1636,8 +1634,9 @@ function resetAppState() {
     const recContainer = document.getElementById('recommendations-container');
     if (recContainer) recContainer.innerHTML = placeholderMsg;
 
+    // Clear the standalone matrix container as requested
     const matrixContainer = document.getElementById('matrix-container');
-    if (matrixContainer) matrixContainer.innerHTML = ''; // Cleared, as it will be shown inside scenarios
+    if (matrixContainer) matrixContainer.innerHTML = ''; 
 
     const inventoryContainer = document.getElementById('inventory');
     if (inventoryContainer) inventoryContainer.innerHTML = ''; 
@@ -2309,14 +2308,14 @@ function displayResults(data) {
     currentScenarios = data.scenarios || {};
     
     displayAcceptedUpgrades();
-    displayScenarios(currentScenarios, data.inventory); // Pass inventory
+    // Use data.inventory and data.matrixData (optional, but mainly scenario display now does matrix)
+    displayScenarios(currentScenarios); 
     
     document.getElementById('output').style.display = 'block';
     const messageEl = document.getElementById('message');
     messageEl.style.display = data.message ? 'block' : 'none';
     messageEl.innerHTML = data.message || '';
     
-    // Matrix is now displayed INSIDE scenarios, but we keep inventory display
     displayInventory(data.inventory);
 }
 
@@ -2326,8 +2325,8 @@ function displayInventory(inventory) {
     container.innerHTML = '<h3>Available Rooms</h3>' + (rooms.length ? rooms.join(' | ') : '<p>None.</p>');
 }
 
-// NEW: Display Scenario Tabs + Dynamic Matrix
-function displayScenarios(scenarios, baseInventory) {
+// NEW: Display Scenario Tabs + Double Matrix (Projected & Current)
+function displayScenarios(scenarios) {
     const container = document.getElementById('recommendations-container');
     container.innerHTML = '';
     const keys = Object.keys(scenarios);
@@ -2352,6 +2351,23 @@ function displayScenarios(scenarios, baseInventory) {
     renderScenarioContent(keys[0], scenarios[keys[0]], container);
 }
 
+// Helper to render HTML table for matrix
+function generateMatrixHTML(title, rows, headers, colTotals) {
+    let html = `<h4 style="margin:20px 0 10px;">${title}</h4><table style="width:100%; border-collapse:collapse; text-align:center;"><thead><tr>` + headers.map(h => `<th style="border:1px solid #ddd; padding:8px; background:#f2f2f2;">${h}</th>`).join('') + '</tr></thead><tbody>';
+    rows.forEach(row => {
+        html += `<tr><td style="border:1px solid #ddd; padding:8px; font-weight:bold;">${row.roomCode}</td>`;
+        row.data.forEach(avail => {
+            let color = avail < 0 ? '#ffcccc' : (avail >= 3 ? '#ccffcc' : '#ffffcc'); 
+            html += `<td style="border:1px solid #ddd; padding:8px; background-color:${color};">${avail}</td>`;
+        });
+        html += '</tr>';
+    });
+    html += '<tr style="background-color:#f8f9fa; border-top:2px solid #ccc;"><td><strong>TOTAL</strong></td>';
+    colTotals.forEach(total => html += `<td style="border:1px solid #ddd; padding:8px;"><strong>${total}</strong></td>`);
+    html += '</tr></tbody></table>';
+    return html;
+}
+
 function renderScenarioContent(name, recs, parent) {
     const old = parent.querySelector('.scenario-content'); if(old) old.remove();
     const wrapper = document.createElement('div'); wrapper.className = 'scenario-content';
@@ -2367,81 +2383,71 @@ function renderScenarioContent(name, recs, parent) {
     btn.addEventListener('click', () => handleAcceptScenario(name));
     head.appendChild(btn); wrapper.appendChild(head);
 
-    // --- RENDER DYNAMIC MATRIX ---
-    // 1. Generate Base Matrix
+    // --- CALC MATRICES ---
     const startDate = parseDate(currentRules.selectedDate);
     const hierarchy = currentRules.hierarchy.toUpperCase().split(',').map(r => r.trim()).filter(Boolean);
     const baseReservations = buildReservationsByDate(currentAllReservations);
     const masterInv = getMasterInventory(currentRules.profile);
     
-    // 2. Clone Base to Projected (Modify logic here to calc projection)
-    // We can re-use generateMatrixData logic but apply delta
-    const matrix = { headers: ['Room Type'], rows: [] };
     const dates = Array.from({ length: 14 }, (_, i) => { const d = new Date(startDate); d.setUTCDate(d.getUTCDate() + i); return d; });
-    matrix.headers.push(...dates.map(date => `${date.toLocaleDateString('en-US', { weekday: 'short', timeZone: 'UTC' })}<br>${date.getUTCMonth() + 1}/${date.getUTCDate()}`));
+    const headers = ['Room Type', ...dates.map(date => `${date.toLocaleDateString('en-US', { weekday: 'short', timeZone: 'UTC' })}<br>${date.getUTCMonth() + 1}/${date.getUTCDate()}`)];
+
+    const projectedRows = [];
+    const currentRows = [];
+    const numCols = dates.length;
+    const projColTotals = new Array(numCols).fill(0);
+    const currColTotals = new Array(numCols).fill(0);
 
     hierarchy.forEach(roomCode => {
-        const row = { roomCode, availability: [] };
-        dates.forEach(date => {
+        const pRow = { roomCode, data: [] };
+        const cRow = { roomCode, data: [] };
+
+        dates.forEach((date, i) => {
             const dateString = date.toISOString().split('T')[0];
-            let avail = 0;
-            // Base
+            
+            // BASE CALC
+            let baseAvail = 0;
             if (currentInventoryMap && currentInventoryMap[dateString] && currentInventoryMap[dateString][roomCode] !== undefined) {
-                avail = currentInventoryMap[dateString][roomCode];
+                baseAvail = currentInventoryMap[dateString][roomCode];
             } else {
                 const dTime = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate())).getTime();
                 const oooCount = oooRecords.reduce((t, r) => { const rS=r.startDate.getTime(); const rE=r.endDate.getTime(); if(r.roomType===roomCode && dTime>=rS && dTime<=rE) return t+(r.count||1); return t; }, 0);
-                avail = (masterInv[roomCode] || 0) - (baseReservations[dateString]?.[roomCode] || 0) - oooCount;
+                baseAvail = (masterInv[roomCode] || 0) - (baseReservations[dateString]?.[roomCode] || 0) - oooCount;
             }
 
-            // Apply Scenario Delta
+            // PROJECTED DELTA
+            let projAvail = baseAvail;
             recs.forEach(upgrade => {
-                const arr = new Date(upgrade.arrivalDate);
-                const dep = new Date(upgrade.departureDate);
-                // Check if this date falls within stay (arr inclusive, dep exclusive)
-                // Note: upgrade dates are strings, need strict comparison or conversion
+                // Must ensure dates compare correctly
+                // upgrades have string dates: "1/12/2026"
+                // 'date' is a Date object
+                const uArr = new Date(upgrade.arrivalDate).getTime();
+                const uDep = new Date(upgrade.departureDate).getTime();
                 const dTime = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate())).getTime();
-                const uArr = new Date(arr).getTime();
-                const uDep = new Date(dep).getTime();
 
                 if (dTime >= uArr && dTime < uDep) {
-                    if (upgrade.room === roomCode) avail += 1; // Original room freed
-                    if (upgrade.upgradeTo === roomCode) avail -= 1; // New room occupied
+                    if (upgrade.room === roomCode) projAvail += 1; 
+                    if (upgrade.upgradeTo === roomCode) projAvail -= 1;
                 }
             });
 
-            row.availability.push(avail);
+            pRow.data.push(projAvail);
+            cRow.data.push(baseAvail);
+            projColTotals[i] += projAvail;
+            currColTotals[i] += baseAvail;
         });
-        matrix.rows.push(row);
+        projectedRows.push(pRow);
+        currentRows.push(cRow);
     });
 
-    // Render Matrix HTML
-    const matDiv = document.createElement('div');
-    matDiv.id = 'scenario-matrix-container';
-    matDiv.style.marginTop = '20px';
+    // --- RENDER MATRICES ---
+    const matrixContainer = document.createElement('div');
+    matrixContainer.innerHTML = generateMatrixHTML("Projected Availability (With Scenario)", projectedRows, headers, projColTotals) + 
+                                generateMatrixHTML("Current Availability (Base)", currentRows, headers, currColTotals);
     
-    // Copy-paste Matrix rendering logic
-    const numDateColumns = matrix.headers.length - 1;
-    const columnTotals = new Array(numDateColumns).fill(0);
-    let html = '<h4 style="margin-bottom:10px;">Projected Availability Matrix</h4><table style="width:100%; border-collapse:collapse; text-align:center;"><thead><tr>' + matrix.headers.map(h => `<th style="border:1px solid #ddd; padding:8px; background:#f2f2f2;">${h}</th>`).join('') + '</tr></thead><tbody>';
-    matrix.rows.forEach(row => {
-        html += `<tr><td style="border:1px solid #ddd; padding:8px; font-weight:bold;">${row.roomCode}</td>`;
-        row.availability.forEach((avail, index) => {
-            let cls = avail < 0 ? 'matrix-neg' : (avail >= 3 ? 'matrix-high' : 'matrix-low');
-            let color = avail < 0 ? '#ffcccc' : (avail >= 3 ? '#ccffcc' : '#ffffcc'); // Inline styles for simplicity
-            html += `<td style="border:1px solid #ddd; padding:8px; background-color:${color};">${avail}</td>`;
-            columnTotals[index] += avail;
-        });
-        html += '</tr>';
-    });
-    html += '<tr style="background-color:#f8f9fa; border-top:2px solid #ccc;"><td><strong>TOTAL</strong></td>';
-    columnTotals.forEach(total => html += `<td style="border:1px solid #ddd; padding:8px;"><strong>${total}</strong></td>`);
-    html += '</tr></tbody></table>';
+    wrapper.appendChild(matrixContainer);
     
-    matDiv.innerHTML = html;
-    wrapper.appendChild(matDiv);
-
-    // Cards are deliberately NOT rendered here as per request.
+    // Note: Individual cards are intentionally NOT added here.
     parent.appendChild(wrapper);
 }
 
@@ -2693,6 +2699,7 @@ function downloadAcceptedUpgradesCsv() {
     const csvContent = [headers.join(','), ...rows].join('\n');
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' }); const link = document.createElement('a'); const url = URL.createObjectURL(blob); const dateStr = new Date().toISOString().slice(0, 10); link.setAttribute('href', url); link.setAttribute('download', `accepted_upgrades_${dateStr}.csv`); link.style.visibility = 'hidden'; document.body.appendChild(link); link.click(); document.body.removeChild(link);
 }
+
 
 
 
