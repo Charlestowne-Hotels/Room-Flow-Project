@@ -5862,7 +5862,7 @@ function downloadAcceptedUpgradesCsv() {
 }
 
 // ==========================================
-// --- MANUAL UPGRADE SECTION (UPDATED WITH DATES) ---
+// --- MANUAL UPGRADE SECTION (UPDATED WITH VIP NOTES) ---
 // ==========================================
 
 function renderManualUpgradeView() {
@@ -5886,13 +5886,19 @@ function renderManualUpgradeView() {
     const candidates = currentAllReservations.filter(res => {
         const arrIso = res.arrival.toISOString().split('T')[0];
         if (arrIso !== startIso) return false;
+        
         if (acceptedIds.has(res.resId) || completedIds.has(res.resId)) return false;
         if (['CANCELED', 'CANCELLED', 'NO SHOW', 'CHECKED OUT'].includes(res.status)) return false;
+        
+        // Exclude "Do Not Move" from Manual list as well? 
+        // Usually manual overrides allow seeing them, but if you want consistency with Auto-Logic:
+        // if (res.isDoNotMove) return false; 
+        
         return true;
     });
 
     if (candidates.length === 0) {
-        container.innerHTML = '<p style="text-align:center; padding:20px; color:#666;">No eligible arrivals found for this date (or all have been upgraded).</p>';
+        container.innerHTML = '<p style="text-align:center; padding:20px; color:#666;">No eligible arrivals found for this date.</p>';
         return;
     }
 
@@ -5918,6 +5924,12 @@ function renderManualUpgradeView() {
         const arrStr = guest.arrival.toLocaleDateString('en-US', { month: 'numeric', day: 'numeric', timeZone: 'UTC' });
         const depStr = guest.departure.toLocaleDateString('en-US', { month: 'numeric', day: 'numeric', timeZone: 'UTC' });
         const dateDisplay = `${arrStr} - ${depStr}`;
+
+        // Format VIP Note
+        // Uses the data parsed from "Vip" (SNT) or "VIPDescription" (Others)
+        const vipDisplay = guest.vipStatus 
+            ? `<span style="color: #d63384; font-weight: bold; font-size: 12px; text-transform: uppercase;">${guest.vipStatus}</span>` 
+            : '';
 
         let optionsHtml = '';
         let hasValidUpgrade = false;
@@ -5969,6 +5981,9 @@ function renderManualUpgradeView() {
                 </td>
                 <td style="padding:12px 15px;"><span style="background:#eee; padding:4px 8px; border-radius:4px; font-weight:bold; font-size:12px;">${guest.roomType}</span></td>
                 <td style="padding:12px 15px;">${guest.revenue}</td>
+                
+                <td style="padding:12px 15px;">${vipDisplay}</td>
+                
                 <td style="padding:12px 15px;">${dropdown}</td>
                 <td style="padding:12px 15px; text-align:right;">
                     <button 
@@ -5994,7 +6009,7 @@ function renderManualUpgradeView() {
                         <th style="padding:12px 15px; text-align:left; color:#444;">Dates</th>
                         <th style="padding:12px 15px; text-align:left; color:#444;">Current Room</th>
                         <th style="padding:12px 15px; text-align:left; color:#444;">Rate / Value</th>
-                        <th style="padding:12px 15px; text-align:left; color:#444;">Select Upgrade</th>
+                        <th style="padding:12px 15px; text-align:left; color:#444;">Notes</th> <th style="padding:12px 15px; text-align:left; color:#444;">Select Upgrade</th>
                         <th style="padding:12px 15px; text-align:right; color:#444;">Action</th>
                     </tr>
                 </thead>
@@ -6003,5 +6018,7 @@ function renderManualUpgradeView() {
         container.innerHTML = tableHeader + rowsHtml + `</tbody></table>`;
     }
 }
+
+
 
 
