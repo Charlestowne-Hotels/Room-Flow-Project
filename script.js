@@ -4553,40 +4553,40 @@ document.addEventListener('DOMContentLoaded', function() {
 
 
 
+   
+
+  // --- UPDATED SUB-TAB LOGIC ---
     const subTabs = document.querySelectorAll('[data-sub-tab-target]');
-
     subTabs.forEach(tab => {
-
         tab.addEventListener('click', () => {
-
             const targetSelector = tab.dataset.subTabTarget;
-
             const target = document.querySelector(targetSelector);
-
+            
+            // 1. Update Button State (Visual Active Tab)
             subTabs.forEach(t => t.classList.remove('active'));
-
-            const completedView = document.querySelector('#completed-container')?.parentElement;
-
-            const demandView = document.querySelector('#demand-insights-container')?.parentElement;
-
-            if(document.querySelector('#completed-container')) document.querySelector('#completed-container').style.display = 'none';
-
-            if(document.querySelector('#demand-insights-container')) document.querySelector('#demand-insights-container').style.display = 'none';
-
             tab.classList.add('active');
 
+            // 2. Explicitly Hide ALL 3 Sub-Containers
+            const containers = [
+                '#completed-container', 
+                '#demand-insights-container', 
+                '#historical-demand-insights-container'
+            ];
+            
+            containers.forEach(id => {
+                const el = document.querySelector(id);
+                if(el) el.style.display = 'none';
+            });
+
+            // 3. Show the Selected Target
             if(target) {
-
                 target.style.display = 'block';
-
+                
+                // Trigger specific refresh functions if needed
                 if (target.id === 'demand-insights-container') displayDemandInsights();
-
                 else if (target.id === 'completed-container') displayCompletedUpgrades();
-
             }
-
         });
-
     });
 
 });
@@ -6178,6 +6178,7 @@ function renderHistoricalStats(reservations) {
     html += `</tbody></table>`;
     container.innerHTML = html;
 }
+
 
 
 
