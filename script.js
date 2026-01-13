@@ -4552,44 +4552,49 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
 
-
-   
-
-  // --- UPDATED SUB-TAB LOGIC ---
+// --- ROBUST SUB-TAB LOGIC ---
     const subTabs = document.querySelectorAll('[data-sub-tab-target]');
+    
+    // 1. Click Listener for Switching
     subTabs.forEach(tab => {
         tab.addEventListener('click', () => {
             const targetSelector = tab.dataset.subTabTarget;
             const target = document.querySelector(targetSelector);
             
-            // 1. Update Button State (Visual Active Tab)
+            // Update Visual State (Bold/Blue text)
             subTabs.forEach(t => t.classList.remove('active'));
             tab.classList.add('active');
 
-            // 2. Explicitly Hide ALL 3 Sub-Containers
-            const containers = [
+            // List of ALL possible sub-containers
+            const allContainers = [
                 '#completed-container', 
                 '#demand-insights-container', 
                 '#historical-demand-insights-container'
             ];
             
-            containers.forEach(id => {
+            // Hide ALL of them first
+            allContainers.forEach(id => {
                 const el = document.querySelector(id);
                 if(el) el.style.display = 'none';
             });
 
-            // 3. Show the Selected Target
+            // Show ONLY the selected one
             if(target) {
                 target.style.display = 'block';
                 
-                // Trigger specific refresh functions if needed
+                // Trigger refresh if needed
                 if (target.id === 'demand-insights-container') displayDemandInsights();
                 else if (target.id === 'completed-container') displayCompletedUpgrades();
             }
         });
     });
 
-});
+    // 2. FORCE DEFAULT STATE (Fixes "Blank Screen" on load)
+    // This ensures that when the page loads, the "Completed" tab is visible by default
+    const defaultSubTab = document.querySelector('[data-sub-tab-target="#completed-container"]');
+    if(defaultSubTab) {
+        defaultSubTab.click(); 
+    }
 
 
 
@@ -6178,6 +6183,7 @@ function renderHistoricalStats(reservations) {
     html += `</tbody></table>`;
     container.innerHTML = html;
 }
+
 
 
 
