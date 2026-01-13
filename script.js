@@ -5543,57 +5543,85 @@ function parseSynxisArrivals(data, header) {
 
 
 function parseAllReservations(data, header, fileName) {
-
     const isSnt = fileName && (fileName.startsWith('SNT') || fileName.startsWith('LTRL') || fileName.startsWith('VERD') || fileName.startsWith('LCKWD') || fileName.startsWith('TBH') || fileName.startsWith('DARLING'));
-
-    let nameIndex, resIdIndex, roomTypeIndex, rateNameIndex, arrivalIndex, departureIndex, statusIndex, rateIndex, firstNameIndex, lastNameIndex, marketCodeIndex, vipIndex = -1;
-
-
+    
+    let nameIndex, resIdIndex, roomTypeIndex, rateNameIndex, arrivalIndex, departureIndex, statusIndex, rateIndex;
+    let firstNameIndex, lastNameIndex, marketCodeIndex, vipIndex, dnmIndex = -1;
 
     if (isSnt) {
-
-        firstNameIndex = header.indexOf('First Name'); lastNameIndex = header.indexOf('Last Name'); resIdIndex = header.indexOf('Reservation Id'); roomTypeIndex = header.indexOf('Arrival Room Type'); rateNameIndex = header.indexOf('Arrival Rate Code'); arrivalIndex = header.indexOf('Arrival Date'); departureIndex = header.indexOf('Departure Date'); statusIndex = header.indexOf('Reservation Status'); rateIndex = header.indexOf('Adr'); marketCodeIndex = header.indexOf('Market Code'); vipIndex = header.indexOf('VIPDescription');
+        firstNameIndex = header.indexOf('First Name');
+        lastNameIndex = header.indexOf('Last Name');
+        resIdIndex = header.indexOf('Reservation Id');
+        roomTypeIndex = header.indexOf('Arrival Room Type');
+        rateNameIndex = header.indexOf('Arrival Rate Code');
+        arrivalIndex = header.indexOf('Arrival Date');
+        departureIndex = header.indexOf('Departure Date');
+        statusIndex = header.indexOf('Reservation Status');
+        rateIndex = header.indexOf('Adr');
+        marketCodeIndex = header.indexOf('Market Code');
+        
+        // Check for VIP (handle variations)
+        vipIndex = header.indexOf('Vip'); 
+        if (vipIndex === -1) vipIndex = header.indexOf('VIPDescription');
+        
+        // Check for Do Not Move
+        dnmIndex = header.indexOf('Do Not Move');
 
         if (firstNameIndex === -1 || resIdIndex === -1 || roomTypeIndex === -1) throw new Error("Missing SNT columns.");
-
     } else {
-
-        nameIndex = header.indexOf('Guest Name'); resIdIndex = header.indexOf('Res ID'); roomTypeIndex = header.indexOf('Room Type'); rateNameIndex = header.indexOf('Rate Name'); arrivalIndex = header.indexOf('Arrival Date'); departureIndex = header.indexOf('Departure Date'); statusIndex = header.indexOf('Status'); rateIndex = header.indexOf('Rate'); vipIndex = header.indexOf('VIPDescription');
-
+        nameIndex = header.indexOf('Guest Name');
+        resIdIndex = header.indexOf('Res ID');
+        roomTypeIndex = header.indexOf('Room Type');
+        rateNameIndex = header.indexOf('Rate Name');
+        arrivalIndex = header.indexOf('Arrival Date');
+        departureIndex = header.indexOf('Departure Date');
+        statusIndex = header.indexOf('Status');
+        rateIndex = header.indexOf('Rate');
+        vipIndex = header.indexOf('VIPDescription');
         if (nameIndex === -1 || resIdIndex === -1 || roomTypeIndex === -1) throw new Error("Missing CSV columns.");
-
     }
 
-
-
     return data.map(values => {
-
         if (values.length < header.length) return null;
-
+        
         const arrival = values[arrivalIndex] ? parseDate(values[arrivalIndex]) : null;
-
         const departure = values[departureIndex] ? parseDate(values[departureIndex]) : null;
-
-        let nights = 0; if (arrival && departure) nights = Math.max(1, Math.ceil((departure - arrival) / (1000 * 60 * 60 * 24)));
-
+        
+        let nights = 0; 
+        if (arrival && departure) nights = Math.max(1, Math.ceil((departure - arrival) / (1000 * 60 * 60 * 24)));
+        
         const dailyRate = parseFloat(values[rateIndex]) || 0;
-
+        
         let fullName = isSnt ? `${values[firstNameIndex] || ''} ${values[lastNameIndex] || ''}`.trim() : values[nameIndex];
-
+        
         let status = values[statusIndex] ? values[statusIndex].trim().toUpperCase() : '';
-
         if (isSnt && status === 'RESERVED') status = 'RESERVATION';
-
+        
         let marketCode = (isSnt && marketCodeIndex > -1) ? values[marketCodeIndex] : '';
-
+        
+        // Parse VIP Status
         let vipStatus = (vipIndex > -1 && values[vipIndex]) ? values[vipIndex].trim() : "";
+        if (vipStatus.toUpperCase() === 'NO') vipStatus = ""; // Clear "No" so it doesn't clutter UI
+        
+        // Parse Do Not Move
+        let doNotMove = (dnmIndex > -1 && values[dnmIndex]) ? values[dnmIndex].trim().toUpperCase() : "NO";
+        const isDoNotMove = (doNotMove === 'YES' || doNotMove === 'TRUE');
 
-
-
-        return { name: fullName, resId: values[resIdIndex]?.trim(), roomType: values[roomTypeIndex]?.trim().toUpperCase(), rate: values[rateNameIndex]?.trim(), nights, arrival, departure, status, revenue: (dailyRate * nights).toLocaleString('en-US', {style:'currency',currency:'USD'}), marketCode, vipStatus };
-
+        return { 
+            name: fullName, 
+            resId: values[resIdIndex]?.trim(), 
+            roomType: values[roomTypeIndex]?.trim().toUpperCase(), 
+            rate: values[rateNameIndex]?.trim(), 
+            nights, 
+            arrival, 
+            departure, 
+            status, 
+            revenue: (dailyRate * nights).toLocaleString('en-US', {style:'currency',currency:'USD'}), 
+            marketCode, 
+            vipStatus,
+            isDoNotMove // Store boolean for logic
+        };
     }).filter(r => r && r.roomType && r.arrival && r.departure && r.nights > 0);
-
 }
 
 
@@ -5645,313 +5673,164 @@ function generateScenariosFromData(allReservations, rules) {
 
 
 function runSimulation(strategy, allReservations, masterInv, rules, completedIds) {
-
     const startDate = parseDate(rules.selectedDate);
-
     const hierarchy = rules.hierarchy.toUpperCase().split(',').map(r => r.trim()).filter(Boolean);
-
     const ineligible = rules.ineligibleUpgrades.toUpperCase().split(',');
-
     const otaRates = rules.otaRates.toLowerCase().split(',');
 
-
-
-    // 1. Build Dynamic Inventory
-
+    // 1. Build Dynamic Inventory (Same as before)
     const simInventory = {};
-
     for (let i = 0; i < 14; i++) {
-
         const d = new Date(startDate); d.setUTCDate(d.getUTCDate() + i);
-
         const dStr = d.toISOString().split('T')[0];
-
         simInventory[dStr] = {};
-
         for (let room in masterInv) {
-
             const dTime = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate())).getTime();
-
             const existingCount = allReservations.reduce((acc, res) => {
-
                 if (res.roomType === room && res.arrival <= d && res.departure > d) return acc + 1;
-
                 return acc;
-
             }, 0);
-
             const oooCount = oooRecords.reduce((acc, rec) => {
-
                 const rStart = rec.startDate.getTime(); const rEnd = rec.endDate.getTime();
-
                 if (rec.roomType === room && dTime >= rStart && dTime <= rEnd) return acc + (rec.count || 1);
-
                 return acc;
-
             }, 0);
-
-
 
             if (currentInventoryMap && currentInventoryMap[dStr] && currentInventoryMap[dStr][room] !== undefined) {
-
                 simInventory[dStr][room] = currentInventoryMap[dStr][room];
-
             } else {
-
                 simInventory[dStr][room] = (masterInv[room] || 0) - existingCount - oooCount;
-
             }
-
         }
-
     }
 
-
-
     // 2. Track State
-
     const guestState = {};
-
     allReservations.forEach(r => guestState[r.resId] = r.roomType);
-
     
-
     const pendingUpgrades = {}; 
 
-
-
-    // 3. Iterative Passes (Up to 20 for cascading)
-
+    // 3. Iterative Passes
     for (let pass = 0; pass < 20; pass++) { 
-
         let activity = false;
-
         let candidates = [];
 
-
-
         for (let i = 0; i < 7; i++) {
-
             const d = new Date(startDate); d.setUTCDate(d.getUTCDate() + i);
-
             const dTime = d.getTime();
-
             const dailyArrivals = allReservations.filter(r => r.arrival && r.arrival.getTime() === dTime && r.status === 'RESERVATION');
 
-
-
             dailyArrivals.forEach(res => {
-
+                // --- EXCLUSION LOGIC ---
                 if (completedIds.has(res.resId)) return;
-
                 
+                // NEW: Check "Do Not Move" flag
+                if (res.isDoNotMove) return; 
 
                 const currentRoom = guestState[res.resId];
-
                 const currentIdx = hierarchy.indexOf(currentRoom);
-
                 if (currentIdx === -1) return;
 
-
-
                 const originalBed = getBedType(res.roomType); 
-
                 if (originalBed === 'OTHER') return;
 
-
-
                 if (rules.profile === 'sts' && res.marketCode === 'Internet Merchant Model') return;
-
                 if (otaRates.some(ota => res.rate.toLowerCase().includes(ota))) return;
-
                 
-
                 for (let u = currentIdx + 1; u < hierarchy.length; u++) {
-
                     const targetRoom = hierarchy[u];
-
                     if (ineligible.includes(targetRoom)) continue;
-
                     if (getBedType(targetRoom) !== originalBed) continue;
 
-
-
                     candidates.push({
-
                         resObj: res, 
-
                         currentRoom: currentRoom,
-
                         targetRoom: targetRoom,
-
                         score: parseFloat(res.revenue.replace(/[$,]/g, '')) || 0,
-
                         vip: res.vipStatus ? 1 : 0,
-
                         nights: res.nights,
-
                         rank: u 
-
                     });
-
                 }
-
             });
-
         }
 
-
-
+        // Sorting Logic
         if (strategy === 'Revenue Focus') {
-
             candidates.sort((a, b) => {
-
                 if (b.score !== a.score) return b.score - a.score; 
-
                 return b.rank - a.rank; 
-
             });
-
         } else if (strategy === 'VIP Focus') {
-
             candidates.sort((a, b) => {
-
                 if (b.vip !== a.vip) return b.vip - a.vip;
-
                 if (b.score !== a.score) return b.score - a.score;
-
                 return b.rank - a.rank;
-
             });
-
         } else {
-
             candidates.sort((a, b) => a.nights - b.nights);
-
         }
-
-
 
         const processedResIdsThisPass = new Set();
 
-
-
         candidates.forEach(cand => {
-
             if (processedResIdsThisPass.has(cand.resObj.resId)) return;
 
-
-
             let canMove = true;
-
             let checkDate = new Date(cand.resObj.arrival);
-
             while (checkDate < cand.resObj.departure) {
-
                 const dStr = checkDate.toISOString().split('T')[0];
-
                 if (!simInventory[dStr] || (simInventory[dStr][cand.targetRoom] || 0) <= 0) {
-
                     canMove = false;
-
                     break;
-
                 }
-
                 checkDate.setUTCDate(checkDate.getUTCDate() + 1);
-
             }
 
-
-
             if (canMove) {
-
                 activity = true;
-
                 processedResIdsThisPass.add(cand.resObj.resId);
 
-
-
                 checkDate = new Date(cand.resObj.arrival);
-
                 while (checkDate < cand.resObj.departure) {
-
                     const dStr = checkDate.toISOString().split('T')[0];
-
                     if (simInventory[dStr]) {
-
                         simInventory[dStr][cand.targetRoom]--; 
-
                         if (simInventory[dStr][cand.currentRoom] !== undefined) {
-
                             simInventory[dStr][cand.currentRoom]++;
-
                         }
-
                     }
-
                     checkDate.setUTCDate(checkDate.getUTCDate() + 1);
-
                 }
-
-
 
                 guestState[cand.resObj.resId] = cand.targetRoom;
 
-
-
                 if (!pendingUpgrades[cand.resObj.resId]) {
-
                     pendingUpgrades[cand.resObj.resId] = {
-
                         name: cand.resObj.name,
-
                         resId: cand.resObj.resId,
-
                         revenue: cand.resObj.revenue,
-
                         room: cand.resObj.roomType, 
-
                         rate: cand.resObj.rate,
-
                         nights: cand.resObj.nights,
-
                         upgradeTo: cand.targetRoom, 
-
                         score: cand.score,
-
                         arrivalDate: cand.resObj.arrival.toLocaleDateString('en-US', { timeZone: 'UTC' }),
-
                         departureDate: cand.resObj.departure.toLocaleDateString('en-US', { timeZone: 'UTC' }),
-
-                        isoArrival: cand.resObj.arrival.toISOString().split('T')[0], // Store for Matrix calc
-
-                        isoDeparture: cand.resObj.departure.toISOString().split('T')[0], // Store for Matrix calc
-
+                        isoArrival: cand.resObj.arrival.toISOString().split('T')[0], 
+                        isoDeparture: cand.resObj.departure.toISOString().split('T')[0], 
                         vipStatus: cand.resObj.vipStatus
-
                     };
-
                 } else {
-
                     pendingUpgrades[cand.resObj.resId].upgradeTo = cand.targetRoom;
-
                 }
-
             }
-
         });
 
-
-
         if (!activity) break; 
-
     }
 
-
-
     return Object.values(pendingUpgrades);
-
 }
 
 
@@ -6124,4 +6003,5 @@ function renderManualUpgradeView() {
         container.innerHTML = tableHeader + rowsHtml + `</tbody></table>`;
     }
 }
+
 
