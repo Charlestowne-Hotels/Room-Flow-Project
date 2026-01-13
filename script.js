@@ -5004,52 +5004,63 @@ function displayInventory(inventory) {
 
 // NEW: Display Scenario Tabs + Double Matrix (Projected & Current)
 
+// ==========================================
+// --- DISPLAY SCENARIOS (UPDATED: HIDE DUPLICATE VIP) ---
+// ==========================================
+
 function displayScenarios(scenarios) {
-
     const container = document.getElementById('recommendations-container');
-
     container.innerHTML = '';
 
-    const keys = Object.keys(scenarios);
+    // 1. Check for duplicates between Revenue and VIP
+    if (scenarios['Revenue Focus'] && scenarios['VIP Focus']) {
+        const revPath = scenarios['Revenue Focus'];
+        const vipPath = scenarios['VIP Focus'];
 
+        // Simple helper to create a unique signature for an upgrade
+        const getSig = (u) => `${u.resId}|${u.upgradeTo}`;
+
+        // Compare lengths first
+        let isIdentical = revPath.length === vipPath.length;
+
+        // If lengths match, compare content
+        if (isIdentical) {
+            const revSet = new Set(revPath.map(getSig));
+            for (const u of vipPath) {
+                if (!revSet.has(getSig(u))) {
+                    isIdentical = false;
+                    break;
+                }
+            }
+        }
+
+        // If identical, remove VIP Focus from the display object
+        if (isIdentical) {
+            delete scenarios['VIP Focus'];
+        }
+    }
+
+    const keys = Object.keys(scenarios);
     if (!keys.length) { container.innerHTML = '<p>No upgrade paths.</p>'; return; }
 
-
-
     const header = document.createElement('div');
-
     header.style.cssText = 'display:flex; gap:10px; margin-bottom:20px; border-bottom:2px solid #eee; padding-bottom:10px;';
 
-
-
     keys.forEach((key, i) => {
-
         const tab = document.createElement('button');
-
         tab.textContent = key;
-
         tab.style.cssText = `padding:10px 20px; border:none; cursor:pointer; border-radius:5px; background:${i===0?'#4343FF':'#f0f0f0'}; color:${i===0?'white':'#333'};`;
-
         tab.className = 'scenario-tab';
-
         tab.addEventListener('click', () => {
-
             container.querySelectorAll('.scenario-tab').forEach(b => { b.style.background='#f0f0f0'; b.style.color='#333'; });
-
             tab.style.background='#4343FF'; tab.style.color='white';
-
             renderScenarioContent(key, scenarios[key], container);
-
         });
-
         header.appendChild(tab);
-
     });
-
+    
     container.appendChild(header);
-
     renderScenarioContent(keys[0], scenarios[keys[0]], container);
-
 }
 
 
@@ -6018,6 +6029,7 @@ function renderManualUpgradeView() {
         container.innerHTML = tableHeader + rowsHtml + `</tbody></table>`;
     }
 }
+
 
 
 
