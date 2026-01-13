@@ -4595,7 +4595,8 @@ document.addEventListener('DOMContentLoaded', function() {
     if(defaultSubTab) {
         defaultSubTab.click(); 
     }
-
+});
+});
 
 
 async function handleAutoLoad() {
@@ -6183,6 +6184,7 @@ function renderHistoricalStats(reservations) {
     html += `</tbody></table>`;
     container.innerHTML = html;
 }
+
 
 
 
