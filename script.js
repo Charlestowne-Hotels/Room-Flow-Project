@@ -5947,14 +5947,14 @@ function downloadAcceptedUpgradesCsv() {
 
 }
 // ==========================================
-// --- MANUAL UPGRADE SECTION ---
+// --- MANUAL UPGRADE SECTION (UPDATED) ---
 // ==========================================
 
 function renderManualUpgradeView() {
     const container = document.getElementById('manual-upgrade-list-container');
     
     // 1. Safety Checks
-    if (!container) return; // Exit if tab content div doesn't exist
+    if (!container) return; 
     if (!currentCsvContent || !currentAllReservations.length) {
         container.innerHTML = '<p style="text-align:center; padding:20px; color:#666;">Please upload a PMS file and click "Generate Suggestions" first.</p>';
         return;
@@ -5969,16 +5969,10 @@ function renderManualUpgradeView() {
     const completedIds = new Set(completedUpgrades.map(u => u.resId));
     
     const candidates = currentAllReservations.filter(res => {
-        // Must match arrival date
         const arrIso = res.arrival.toISOString().split('T')[0];
         if (arrIso !== startIso) return false;
-        
-        // Must not be already handled
         if (acceptedIds.has(res.resId) || completedIds.has(res.resId)) return false;
-        
-        // Must be active status
         if (['CANCELED', 'CANCELLED', 'NO SHOW', 'CHECKED OUT'].includes(res.status)) return false;
-
         return true;
     });
 
@@ -5987,42 +5981,26 @@ function renderManualUpgradeView() {
         return;
     }
 
-    // Sort candidates by Name for easier scanning
     candidates.sort((a, b) => a.name.localeCompare(b.name));
 
     // 3. Get Hierarchy & Calculate Projected Availability
     const hierarchy = currentRules.hierarchy.toUpperCase().split(',').map(r => r.trim()).filter(Boolean);
-    
-    // We reuse the existing simulation logic to get the projected state (Inventory - Current Accepted Upgrades)
     const simResult = applyUpgradesAndRecalculate(acceptedUpgrades, currentCsvContent, currentRules, currentFileName);
     
-    // Transform matrix rows into a lookup map: { RoomType: [day0_qty, day1_qty, ...] }
     const projectedInvMap = {};
     simResult.matrixData.rows.forEach(row => {
         projectedInvMap[row.roomCode] = row.availability; 
     });
 
-    // 4. Render Table
-    let html = `
-        <table style="width:100%; border-collapse:collapse; font-size:14px; background:white; border-radius:8px; overflow:hidden; box-shadow:0 2px 5px rgba(0,0,0,0.05); margin-top:10px;">
-            <thead style="background:#f8f9fa; border-bottom:2px solid #eee;">
-                <tr>
-                    <th style="padding:12px 15px; text-align:left; color:#444;">Guest Name</th>
-                    <th style="padding:12px 15px; text-align:left; color:#444;">Current Room</th>
-                    <th style="padding:12px 15px; text-align:left; color:#444;">Rate / Value</th>
-                    <th style="padding:12px 15px; text-align:left; color:#444;">Select Upgrade</th>
-                    <th style="padding:12px 15px; text-align:right; color:#444;">Action</th>
-                </tr>
-            </thead>
-            <tbody>
-    `;
+    // 4. Build Table Rows
+    let rowsHtml = '';
+    let rowsGenerated = 0;
 
     candidates.forEach((guest, index) => {
         const currentIdx = hierarchy.indexOf(guest.roomType);
         
         let optionsHtml = '';
         let hasValidUpgrade = false;
-        let defaultSelection = '';
 
         if (currentIdx !== -1) {
             // Check rooms ABOVE current in hierarchy
@@ -6033,7 +6011,6 @@ function renderManualUpgradeView() {
                 let isAvailable = true;
                 const stayLen = guest.nights;
                 
-                // Check availability for stay duration (up to matrix limit of 14 days)
                 for (let d = 0; d < stayLen; d++) {
                     if (d < 14) {
                         const avail = projectedInvMap[targetRoom] ? projectedInvMap[targetRoom][d] : 0;
@@ -6045,25 +6022,22 @@ function renderManualUpgradeView() {
                 }
 
                 if (isAvailable) {
-                    if (!hasValidUpgrade) {
-                        defaultSelection = targetRoom; // Select the first valid upgrade found
-                        hasValidUpgrade = true;
-                    }
+                    hasValidUpgrade = true;
                     optionsHtml += `<option value="${targetRoom}">${targetRoom}</option>`;
                 }
             }
         }
 
-        const dropdown = hasValidUpgrade 
-            ? `<select id="manual-select-${index}" style="padding:8px; border:1px solid #ccc; border-radius:4px; width:100%; max-width:200px;">
+        // FILTER: If no upgrades available, SKIP this guest entirely
+        if (!hasValidUpgrade) return; 
+
+        rowsGenerated++;
+
+        const dropdown = `<select id="manual-select-${index}" style="padding:8px; border:1px solid #ccc; border-radius:4px; width:100%; max-width:200px;">
                  ${optionsHtml}
-               </select>`
-            : `<span style="color:#aaa; font-style:italic;">No upgrades available</span>`;
+               </select>`;
 
-        const btnState = hasValidUpgrade ? '' : 'disabled style="background:#ccc; cursor:not-allowed;"';
-        const btnStyle = hasValidUpgrade ? 'background:#4343FF; color:white; cursor:pointer;' : 'background:#ccc; color:#666; cursor:not-allowed;';
-
-        html += `
+        rowsHtml += `
             <tr style="border-bottom:1px solid #eee;">
                 <td style="padding:12px 15px;">
                     <strong>${guest.name}</strong><br>
@@ -6076,8 +6050,7 @@ function renderManualUpgradeView() {
                     <button 
                         onclick="executeManualUpgrade('${guest.resId}', ${index})" 
                         class="pms-btn" 
-                        ${btnState}
-                        style="${btnStyle} border:none; padding:8px 16px; border-radius:4px;">
+                        style="background:#4343FF; color:white; border:none; padding:8px 16px; border-radius:4px; cursor:pointer;">
                         Upgrade
                     </button>
                 </td>
@@ -6085,11 +6058,28 @@ function renderManualUpgradeView() {
         `;
     });
 
-    html += `</tbody></table>`;
-    container.innerHTML = html;
+    // 5. Final Render
+    if (rowsGenerated === 0) {
+        container.innerHTML = '<p style="text-align:center; padding:20px; color:#666;">No upgrades available for any guests arriving on this date (based on current inventory).</p>';
+    } else {
+        const tableHeader = `
+            <table style="width:100%; border-collapse:collapse; font-size:14px; background:white; border-radius:8px; overflow:hidden; box-shadow:0 2px 5px rgba(0,0,0,0.05); margin-top:10px;">
+                <thead style="background:#f8f9fa; border-bottom:2px solid #eee;">
+                    <tr>
+                        <th style="padding:12px 15px; text-align:left; color:#444;">Guest Name</th>
+                        <th style="padding:12px 15px; text-align:left; color:#444;">Current Room</th>
+                        <th style="padding:12px 15px; text-align:left; color:#444;">Rate / Value</th>
+                        <th style="padding:12px 15px; text-align:left; color:#444;">Select Upgrade</th>
+                        <th style="padding:12px 15px; text-align:right; color:#444;">Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+        `;
+        container.innerHTML = tableHeader + rowsHtml + `</tbody></table>`;
+    }
 }
 
-// Function to handle the button click - attached to Window for HTML access
+// Function to handle the button click
 window.executeManualUpgrade = function(resId, index) {
     const selectEl = document.getElementById(`manual-select-${index}`);
     if (!selectEl) return;
@@ -6099,7 +6089,7 @@ window.executeManualUpgrade = function(resId, index) {
     
     if (!guest || !targetRoom) return;
 
-    if(!confirm(`Confirm upgrade for ${guest.name} to ${targetRoom}?`)) return;
+    // REMOVED CONFIRM DIALOG HERE
 
     // Create the upgrade object
     const upgradeObj = {
