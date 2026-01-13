@@ -421,32 +421,47 @@
                 
                 <div id="analytics" class="tab-content">
                     
-                    <div class="analytics-toolbar">
-                        <div class="analytics-filter-group">
-                            <label for="sort-date-dropdown" style="font-weight: bold; margin-right: 10px;">Filter by Date:</label>
-                            <select id="sort-date-dropdown">
-                                <option value="all">All Dates</option>
-                            </select>
-                        </div>
-                        
-                        <button id="clear-analytics-btn" class="admin-only-btn hidden">Clear Profile Data</button>
-                    </div>
-                    
-                    <div class="sub-tabs-nav">
-                        <button class="sub-tab-btn active" data-sub-tab-target="#completed-container">Completed Upgrades</button>
-                        <button class="sub-tab-btn" data-sub-tab-target="#demand-insights-container">Demand Insights</button>
-                        <button class="sub-tab-btn" data-sub-tab-target="#historical-demand-insights-container">Historical Demand Insights</button>
-                    </div>
+                   <div id="analytics" class="tab-content">
+    
+    <div class="analytics-toolbar">
+        <div class="analytics-filter-group">
+            <label for="sort-date-dropdown" style="font-weight: bold; margin-right: 10px;">Filter by Date:</label>
+            <select id="sort-date-dropdown">
+                <option value="all">All Dates</option>
+            </select>
+        </div>
+        <button id="clear-analytics-btn" class="admin-only-btn hidden">Clear Profile Data</button>
+    </div>
+    
+    <div class="sub-tabs-nav">
+        <button class="sub-tab-btn active" data-sub-tab-target="#completed-container">Completed Upgrades</button>
+        <button class="sub-tab-btn" data-sub-tab-target="#demand-insights-container">Demand Insights</button>
+        <button class="sub-tab-btn" data-sub-tab-target="#historical-demand-insights-container">Historical Demand</button>
+    </div>
 
-                    <div id="completed-container" style="display: block;">
-                        <p>No upgrades have been marked as completed yet.</p>
-                    </div>
+    <div id="completed-container" style="display: block;">
+        <p>No upgrades have been marked as completed yet.</p>
+    </div>
 
-                    <div id="demand-insights-container" style="display: none;">
-                        <p style="text-align:center; color:#888;">No data available.</p>
-                    </div>
-                </div>
-                </div>
+    <div id="demand-insights-container" style="display: none;">
+        <p style="text-align:center; color:#888;">No data available.</p>
+    </div>
+
+    <div id="historical-demand-insights-container" style="display: none;">
+        <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; border: 1px solid #dee2e6; margin-bottom: 20px; text-align: center;">
+            <h4 style="margin-top: 0; color: #444;">Upload Last Year's Data</h4>
+            <p style="font-size: 13px; color: #666; margin-bottom: 15px;">
+                Upload a PMS export (CSV) from a previous month (e.g., Jan 2025) to analyze historical room demand.
+            </p>
+            <input type="file" id="historical-csv-file" accept=".csv" style="border: 1px solid #ccc; padding: 8px; border-radius: 4px; background: white;" />
+        </div>
+        
+        <div id="historical-results-area">
+            <p style="text-align:center; color:#888;">Upload a file to see insights.</p>
+        </div>
+    </div>
+
+</div> 
         </div>
     </div>
 
@@ -504,4 +519,5 @@
 
 </body>
 </html>
+
 
