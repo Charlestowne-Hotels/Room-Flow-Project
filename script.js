@@ -4305,6 +4305,13 @@ document.addEventListener('DOMContentLoaded', function() {
                 genBtnRef.style.marginTop = '0'; 
 
             }
+            // --- Add this inside DOMContentLoaded ---
+            const manualTab = document.querySelector('[data-tab-target="#Mupgrade"]');
+            if (manualTab) {
+                manualTab.addEventListener('click', () => {
+                renderManualUpgradeView();
+            });
+            }
 
         }
 
@@ -5939,3 +5946,196 @@ function downloadAcceptedUpgradesCsv() {
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' }); const link = document.createElement('a'); const url = URL.createObjectURL(blob); const dateStr = new Date().toISOString().slice(0, 10); link.setAttribute('href', url); link.setAttribute('download', `accepted_upgrades_${dateStr}.csv`); link.style.visibility = 'hidden'; document.body.appendChild(link); link.click(); document.body.removeChild(link);
 
 }
+// ==========================================
+// --- MANUAL UPGRADE SECTION ---
+// ==========================================
+
+function renderManualUpgradeView() {
+    const container = document.getElementById('manual-upgrade-list-container');
+    
+    // 1. Safety Checks
+    if (!container) return; // Exit if tab content div doesn't exist
+    if (!currentCsvContent || !currentAllReservations.length) {
+        container.innerHTML = '<p style="text-align:center; padding:20px; color:#666;">Please upload a PMS file and click "Generate Suggestions" first.</p>';
+        return;
+    }
+
+    const startStr = document.getElementById('selected-date').value;
+    const startDate = parseDate(startStr);
+    const startIso = startDate.toISOString().split('T')[0];
+
+    // 2. Filter: Arrivals on Selected Date AND Not already accepted/completed
+    const acceptedIds = new Set(acceptedUpgrades.map(u => u.resId));
+    const completedIds = new Set(completedUpgrades.map(u => u.resId));
+    
+    const candidates = currentAllReservations.filter(res => {
+        // Must match arrival date
+        const arrIso = res.arrival.toISOString().split('T')[0];
+        if (arrIso !== startIso) return false;
+        
+        // Must not be already handled
+        if (acceptedIds.has(res.resId) || completedIds.has(res.resId)) return false;
+        
+        // Must be active status
+        if (['CANCELED', 'CANCELLED', 'NO SHOW', 'CHECKED OUT'].includes(res.status)) return false;
+
+        return true;
+    });
+
+    if (candidates.length === 0) {
+        container.innerHTML = '<p style="text-align:center; padding:20px; color:#666;">No eligible arrivals found for this date (or all have been upgraded).</p>';
+        return;
+    }
+
+    // Sort candidates by Name for easier scanning
+    candidates.sort((a, b) => a.name.localeCompare(b.name));
+
+    // 3. Get Hierarchy & Calculate Projected Availability
+    const hierarchy = currentRules.hierarchy.toUpperCase().split(',').map(r => r.trim()).filter(Boolean);
+    
+    // We reuse the existing simulation logic to get the projected state (Inventory - Current Accepted Upgrades)
+    const simResult = applyUpgradesAndRecalculate(acceptedUpgrades, currentCsvContent, currentRules, currentFileName);
+    
+    // Transform matrix rows into a lookup map: { RoomType: [day0_qty, day1_qty, ...] }
+    const projectedInvMap = {};
+    simResult.matrixData.rows.forEach(row => {
+        projectedInvMap[row.roomCode] = row.availability; 
+    });
+
+    // 4. Render Table
+    let html = `
+        <table style="width:100%; border-collapse:collapse; font-size:14px; background:white; border-radius:8px; overflow:hidden; box-shadow:0 2px 5px rgba(0,0,0,0.05); margin-top:10px;">
+            <thead style="background:#f8f9fa; border-bottom:2px solid #eee;">
+                <tr>
+                    <th style="padding:12px 15px; text-align:left; color:#444;">Guest Name</th>
+                    <th style="padding:12px 15px; text-align:left; color:#444;">Current Room</th>
+                    <th style="padding:12px 15px; text-align:left; color:#444;">Rate / Value</th>
+                    <th style="padding:12px 15px; text-align:left; color:#444;">Select Upgrade</th>
+                    <th style="padding:12px 15px; text-align:right; color:#444;">Action</th>
+                </tr>
+            </thead>
+            <tbody>
+    `;
+
+    candidates.forEach((guest, index) => {
+        const currentIdx = hierarchy.indexOf(guest.roomType);
+        
+        let optionsHtml = '';
+        let hasValidUpgrade = false;
+        let defaultSelection = '';
+
+        if (currentIdx !== -1) {
+            // Check rooms ABOVE current in hierarchy
+            for (let i = currentIdx + 1; i < hierarchy.length; i++) {
+                const targetRoom = hierarchy[i];
+                
+                // STRICT CHECK: Is room available for ALL nights of stay?
+                let isAvailable = true;
+                const stayLen = guest.nights;
+                
+                // Check availability for stay duration (up to matrix limit of 14 days)
+                for (let d = 0; d < stayLen; d++) {
+                    if (d < 14) {
+                        const avail = projectedInvMap[targetRoom] ? projectedInvMap[targetRoom][d] : 0;
+                        if (avail <= 0) {
+                            isAvailable = false;
+                            break;
+                        }
+                    }
+                }
+
+                if (isAvailable) {
+                    if (!hasValidUpgrade) {
+                        defaultSelection = targetRoom; // Select the first valid upgrade found
+                        hasValidUpgrade = true;
+                    }
+                    optionsHtml += `<option value="${targetRoom}">${targetRoom}</option>`;
+                }
+            }
+        }
+
+        const dropdown = hasValidUpgrade 
+            ? `<select id="manual-select-${index}" style="padding:8px; border:1px solid #ccc; border-radius:4px; width:100%; max-width:200px;">
+                 ${optionsHtml}
+               </select>`
+            : `<span style="color:#aaa; font-style:italic;">No upgrades available</span>`;
+
+        const btnState = hasValidUpgrade ? '' : 'disabled style="background:#ccc; cursor:not-allowed;"';
+        const btnStyle = hasValidUpgrade ? 'background:#4343FF; color:white; cursor:pointer;' : 'background:#ccc; color:#666; cursor:not-allowed;';
+
+        html += `
+            <tr style="border-bottom:1px solid #eee;">
+                <td style="padding:12px 15px;">
+                    <strong>${guest.name}</strong><br>
+                    <span style="font-size:12px; color:#666;">${guest.resId} (${guest.nights} nts)</span>
+                </td>
+                <td style="padding:12px 15px;"><span style="background:#eee; padding:4px 8px; border-radius:4px; font-weight:bold; font-size:12px;">${guest.roomType}</span></td>
+                <td style="padding:12px 15px;">${guest.revenue}</td>
+                <td style="padding:12px 15px;">${dropdown}</td>
+                <td style="padding:12px 15px; text-align:right;">
+                    <button 
+                        onclick="executeManualUpgrade('${guest.resId}', ${index})" 
+                        class="pms-btn" 
+                        ${btnState}
+                        style="${btnStyle} border:none; padding:8px 16px; border-radius:4px;">
+                        Upgrade
+                    </button>
+                </td>
+            </tr>
+        `;
+    });
+
+    html += `</tbody></table>`;
+    container.innerHTML = html;
+}
+
+// Function to handle the button click - attached to Window for HTML access
+window.executeManualUpgrade = function(resId, index) {
+    const selectEl = document.getElementById(`manual-select-${index}`);
+    if (!selectEl) return;
+    
+    const targetRoom = selectEl.value;
+    const guest = currentAllReservations.find(r => r.resId === resId);
+    
+    if (!guest || !targetRoom) return;
+
+    if(!confirm(`Confirm upgrade for ${guest.name} to ${targetRoom}?`)) return;
+
+    // Create the upgrade object
+    const upgradeObj = {
+        name: guest.name,
+        resId: guest.resId,
+        revenue: guest.revenue,
+        room: guest.roomType, // Original Room
+        rate: guest.rate,
+        nights: guest.nights,
+        upgradeTo: targetRoom, // New Room
+        score: 0, // Manual has no score
+        arrivalDate: guest.arrival.toLocaleDateString('en-US', { timeZone: 'UTC' }),
+        departureDate: guest.departure.toLocaleDateString('en-US', { timeZone: 'UTC' }),
+        isoArrival: guest.arrival.toISOString().split('T')[0],
+        isoDeparture: guest.departure.toISOString().split('T')[0],
+        vipStatus: guest.vipStatus,
+        isManual: true 
+    };
+
+    // 1. Add to accepted list
+    acceptedUpgrades.push(upgradeObj);
+
+    // 2. Show Loader
+    showLoader(true, "Processing Upgrade...");
+    
+    setTimeout(() => {
+        // 3. Recalculate everything with new upgrade included
+        const results = applyUpgradesAndRecalculate(acceptedUpgrades, currentCsvContent, currentRules, currentFileName);
+        
+        // 4. Update the main Matrix view
+        displayMatrixOnlyView(results); 
+        
+        // 5. Re-render Manual View (this removes the upgraded guest from list and updates inventory for others)
+        renderManualUpgradeView(); 
+        
+        showLoader(false);
+    }, 50);
+};
+
