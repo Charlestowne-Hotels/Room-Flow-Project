@@ -5981,8 +5981,9 @@ function downloadAcceptedUpgradesCsv() {
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' }); const link = document.createElement('a'); const url = URL.createObjectURL(blob); const dateStr = new Date().toISOString().slice(0, 10); link.setAttribute('href', url); link.setAttribute('download', `accepted_upgrades_${dateStr}.csv`); link.style.visibility = 'hidden'; document.body.appendChild(link); link.click(); document.body.removeChild(link);
 
 }
+
 // ==========================================
-// --- MANUAL UPGRADE SECTION (UPDATED) ---
+// --- MANUAL UPGRADE SECTION (UPDATED WITH DATES) ---
 // ==========================================
 
 function renderManualUpgradeView() {
@@ -6034,6 +6035,11 @@ function renderManualUpgradeView() {
     candidates.forEach((guest, index) => {
         const currentIdx = hierarchy.indexOf(guest.roomType);
         
+        // Format Dates
+        const arrStr = guest.arrival.toLocaleDateString('en-US', { month: 'numeric', day: 'numeric', timeZone: 'UTC' });
+        const depStr = guest.departure.toLocaleDateString('en-US', { month: 'numeric', day: 'numeric', timeZone: 'UTC' });
+        const dateDisplay = `${arrStr} - ${depStr}`;
+
         let optionsHtml = '';
         let hasValidUpgrade = false;
 
@@ -6076,7 +6082,11 @@ function renderManualUpgradeView() {
             <tr style="border-bottom:1px solid #eee;">
                 <td style="padding:12px 15px;">
                     <strong>${guest.name}</strong><br>
-                    <span style="font-size:12px; color:#666;">${guest.resId} (${guest.nights} nts)</span>
+                    <span style="font-size:12px; color:#666;">${guest.resId}</span>
+                </td>
+                <td style="padding:12px 15px; color:#555;">
+                    ${dateDisplay}<br>
+                    <span style="font-size:11px; color:#888;">(${guest.nights} nts)</span>
                 </td>
                 <td style="padding:12px 15px;"><span style="background:#eee; padding:4px 8px; border-radius:4px; font-weight:bold; font-size:12px;">${guest.roomType}</span></td>
                 <td style="padding:12px 15px;">${guest.revenue}</td>
@@ -6102,6 +6112,7 @@ function renderManualUpgradeView() {
                 <thead style="background:#f8f9fa; border-bottom:2px solid #eee;">
                     <tr>
                         <th style="padding:12px 15px; text-align:left; color:#444;">Guest Name</th>
+                        <th style="padding:12px 15px; text-align:left; color:#444;">Dates</th>
                         <th style="padding:12px 15px; text-align:left; color:#444;">Current Room</th>
                         <th style="padding:12px 15px; text-align:left; color:#444;">Rate / Value</th>
                         <th style="padding:12px 15px; text-align:left; color:#444;">Select Upgrade</th>
@@ -6113,55 +6124,4 @@ function renderManualUpgradeView() {
         container.innerHTML = tableHeader + rowsHtml + `</tbody></table>`;
     }
 }
-
-// Function to handle the button click
-window.executeManualUpgrade = function(resId, index) {
-    const selectEl = document.getElementById(`manual-select-${index}`);
-    if (!selectEl) return;
-    
-    const targetRoom = selectEl.value;
-    const guest = currentAllReservations.find(r => r.resId === resId);
-    
-    if (!guest || !targetRoom) return;
-
-    // REMOVED CONFIRM DIALOG HERE
-
-    // Create the upgrade object
-    const upgradeObj = {
-        name: guest.name,
-        resId: guest.resId,
-        revenue: guest.revenue,
-        room: guest.roomType, // Original Room
-        rate: guest.rate,
-        nights: guest.nights,
-        upgradeTo: targetRoom, // New Room
-        score: 0, // Manual has no score
-        arrivalDate: guest.arrival.toLocaleDateString('en-US', { timeZone: 'UTC' }),
-        departureDate: guest.departure.toLocaleDateString('en-US', { timeZone: 'UTC' }),
-        isoArrival: guest.arrival.toISOString().split('T')[0],
-        isoDeparture: guest.departure.toISOString().split('T')[0],
-        vipStatus: guest.vipStatus,
-        isManual: true 
-    };
-
-    // 1. Add to accepted list
-    acceptedUpgrades.push(upgradeObj);
-
-    // 2. Show Loader
-    showLoader(true, "Processing Upgrade...");
-    
-    setTimeout(() => {
-        // 3. Recalculate everything with new upgrade included
-        const results = applyUpgradesAndRecalculate(acceptedUpgrades, currentCsvContent, currentRules, currentFileName);
-        
-        // 4. Update the main Matrix view
-        displayMatrixOnlyView(results); 
-        
-        // 5. Re-render Manual View (this removes the upgraded guest from list and updates inventory for others)
-        renderManualUpgradeView(); 
-        
-        showLoader(false);
-    }, 50);
-};
-
 
