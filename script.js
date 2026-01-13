@@ -6040,9 +6040,8 @@ function renderManualUpgradeView() {
         container.innerHTML = tableHeader + rowsHtml + `</tbody></table>`;
     }
 }
-
 // ==========================================
-// --- HISTORICAL DEMAND INSIGHTS LOGIC ---
+// --- HISTORICAL DEMAND INSIGHTS LOGIC (UNIVERSAL V2) ---
 // ==========================================
 
 document.addEventListener('DOMContentLoaded', function() {
@@ -6060,107 +6059,204 @@ function handleHistoricalUpload(event) {
     reader.onload = function(e) {
         const content = e.target.result;
         try {
-            // 1. Reuse existing parser to ensure format compatibility
             const { data, header } = parseCsv(content);
+            const headerStr = header.join(' ').toLowerCase();
             const fileName = file.name;
-            const reservations = parseAllReservations(data, header, fileName);
 
-            // 2. Filter for valid stays (exclude cancellations)
-            const validStays = reservations.filter(r => 
-                r.status !== 'CANCELED' && 
-                r.status !== 'CANCELLED' && 
-                r.status !== 'NO SHOW'
-            );
-
-            if (validStays.length === 0) {
-                alert("No valid reservations found in this file.");
-                return;
+            // --- TYPE A: Standard Reservation List (Headers like "Guest Name" or "Arrival") ---
+            if (headerStr.includes('guest name') || headerStr.includes('arrival date')) {
+                const reservations = parseAllReservations(data, header, fileName);
+                const validStays = reservations.filter(r => 
+                    !['CANCELED', 'CANCELLED', 'NO SHOW'].includes(r.status)
+                );
+                if (validStays.length === 0) { alert("No valid reservations found."); return; }
+                renderHistoricalStats(validStays, 'detailed');
+            } 
+            
+            // --- TYPE B: Summary Report (Headers, column 9 is %) ---
+            else if (isSummaryFormat(header, data)) {
+                const summaryData = parseSummaryReport(header, data);
+                renderHistoricalStats(summaryData, 'summary');
             }
-
-            // 3. Generate and Render Insights
-            renderHistoricalStats(validStays);
+            
+            // --- TYPE C: Headless History (No Headers: Room, Date, Rate, Nights) ---
+            // Detection: Check if 2nd column of the "header" row is a date like "12/27/2024"
+            else if (header.length >= 4 && (header[1].includes('/') || header[1].includes('-')) && !isNaN(parseFloat(header[2]))) {
+                const headlessData = parseHeadlessHistory(header, data);
+                renderHistoricalStats(headlessData, 'detailed');
+            }
+            
+            else {
+                alert("Unknown file format. Please upload a Reservation List, Summary Report, or History Dump.");
+            }
 
         } catch (err) {
             console.error(err);
-            alert("Error parsing historical file: " + err.message);
+            alert("Error parsing file: " + err.message);
         }
     };
     reader.readAsText(file);
 }
 
-function renderHistoricalStats(reservations) {
+// Helper for Type B
+function isSummaryFormat(header, data) {
+    const checkVal = (row) => row && row.length > 8 && row[9] && row[9].includes('%');
+    return checkVal(header) || (data.length > 0 && checkVal(data[0]));
+}
+
+// Parser for Type B
+function parseSummaryReport(header, data) {
+    const rows = [header, ...data];
+    const results = [];
+    rows.forEach(row => {
+        if (row.length < 10) return;
+        const roomType = row[1] ? row[1].trim() : null;
+        const soldNights = parseInt(row[7], 10);
+        const occString = row[9] ? row[9].replace('%', '') : '0';
+        
+        if (roomType && !isNaN(soldNights)) {
+            results.push({
+                roomType: roomType,
+                count: soldNights, // Volume
+                occPct: parseFloat(occString),
+                revenue: 0,
+                nights: soldNights // Treat count as nights for sorting
+            });
+        }
+    });
+    return results;
+}
+
+// Parser for Type C (The new file)
+function parseHeadlessHistory(firstRow, remainingData) {
+    // Combine first row (which was mistaken for header) with the rest
+    const allRows = [firstRow, ...remainingData];
+    
+    return allRows.map(row => {
+        if (row.length < 4) return null;
+        
+        const roomType = row[0].trim().toUpperCase();
+        const rate = parseFloat(row[2]) || 0;
+        const nights = parseInt(row[3], 10) || 1;
+        
+        // Assumption: Col 2 is Daily Rate (ADR), Col 3 is Nights
+        // Total Revenue = Rate * Nights
+        const revenue = rate * nights; 
+
+        return {
+            roomType: roomType,
+            revenue: revenue.toLocaleString('en-US', { style: 'currency', currency: 'USD' }),
+            nights: nights,
+            count: 1 // Each row is 1 booking/stay
+        };
+    }).filter(Boolean);
+}
+
+function renderHistoricalStats(data, type) {
     const container = document.getElementById('historical-results-area');
     if (!container) return;
 
-    // --- CALCULATIONS ---
     let totalRevenue = 0;
-    let totalNights = 0;
-    const roomStats = {};
+    let totalCount = 0; // Bookings
+    let totalNights = 0; // Room Nights
+    let roomStats = {};
 
-    reservations.forEach(res => {
-        const rev = parseFloat(res.revenue.replace(/[$,]/g, '')) || 0;
-        totalRevenue += rev;
-        totalNights += res.nights;
+    // Aggregation
+    data.forEach(res => {
+        // Parse revenue safely (remove $ and ,)
+        let revVal = 0;
+        if (typeof res.revenue === 'number') revVal = res.revenue;
+        else if (res.revenue) revVal = parseFloat(res.revenue.replace(/[$,]/g, '')) || 0;
 
-        const type = res.roomType;
-        if (!roomStats[type]) {
-            roomStats[type] = { count: 0, revenue: 0, nights: 0 };
+        // If Type B (Summary), 'count' is actually nights. If Type A/C, 'nights' is nights.
+        const nightsVal = res.nights || 0;
+        const countVal = (type === 'summary') ? 0 : 1; // Summary doesn't show booking count, just nights
+
+        totalRevenue += revVal;
+        totalNights += nightsVal;
+        totalCount += countVal;
+
+        if (!roomStats[res.roomType]) {
+            roomStats[res.roomType] = { roomType: res.roomType, count: 0, revenue: 0, nights: 0, occ: res.occPct || 0 };
         }
-        roomStats[type].count += 1;
-        roomStats[type].revenue += rev;
-        roomStats[type].nights += res.nights;
+        roomStats[res.roomType].count += (type === 'summary' ? res.count : 1);
+        roomStats[res.roomType].nights += nightsVal;
+        roomStats[res.roomType].revenue += revVal;
     });
 
-    const totalBookings = reservations.length;
-    const adr = totalNights > 0 ? (totalRevenue / totalNights) : 0;
+    // If summary type, use totalNights as the "Volume" metric for header
+    const displayCount = type === 'summary' ? totalNights : totalCount;
+    const countLabel = type === 'summary' ? "Total Sold Nights" : "Total Reservations";
     
-    // Sort rooms by popularity (Count)
-    const sortedRooms = Object.entries(roomStats)
-        .sort((a, b) => b[1].count - a[1].count);
+    // Calculate ADR
+    const globalAdr = totalNights > 0 ? (totalRevenue / totalNights) : 0;
 
-    // --- HTML GENERATION ---
+    // Sort by Volume (Nights for summary, Count for detailed)
+    const sortedRooms = Object.values(roomStats).sort((a, b) => b.nights - a.nights);
+
+    // --- HTML RENDER ---
+    const revDisplay = (type === 'summary') 
+        ? '<span style="color:#aaa;">N/A</span>' 
+        : totalRevenue.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 });
+        
+    const adrDisplay = (type === 'summary') 
+        ? '<span style="color:#aaa;">N/A</span>' 
+        : globalAdr.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
+
     let html = `
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 25px;">
             <div style="background: #e3f2fd; padding: 15px; border-radius: 8px; text-align: center;">
-                <h4 style="margin:0; color:#555;">Total Reservations</h4>
-                <div style="font-size: 24px; font-weight: bold; color: #0d6efd;">${totalBookings}</div>
+                <h4 style="margin:0; color:#555;">${countLabel}</h4>
+                <div style="font-size: 24px; font-weight: bold; color: #0d6efd;">${displayCount.toLocaleString()}</div>
             </div>
             <div style="background: #e8f5e9; padding: 15px; border-radius: 8px; text-align: center;">
                 <h4 style="margin:0; color:#555;">Total Revenue</h4>
-                <div style="font-size: 24px; font-weight: bold; color: #198754;">
-                    ${totalRevenue.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 })}
-                </div>
+                <div style="font-size: 24px; font-weight: bold; color: #198754;">${revDisplay}</div>
             </div>
             <div style="background: #fff3cd; padding: 15px; border-radius: 8px; text-align: center;">
                 <h4 style="margin:0; color:#555;">Historical ADR</h4>
-                <div style="font-size: 24px; font-weight: bold; color: #ffc107;">
-                    ${adr.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}
-                </div>
+                <div style="font-size: 24px; font-weight: bold; color: #ffc107;">${adrDisplay}</div>
             </div>
         </div>
 
-        <h3>Room Type Performance (Last Year)</h3>
+        <h3>Room Type Performance</h3>
         <table style="width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 14px;">
             <thead>
                 <tr style="background: #f8f9fa; text-align: left; border-bottom: 2px solid #ddd;">
                     <th style="padding: 10px;">Room Type</th>
-                    <th style="padding: 10px;">Bookings</th>
-                    <th style="padding: 10px;">% of Occ</th>
-                    <th style="padding: 10px;">Total Revenue</th>
-                    <th style="padding: 10px;">Avg Rate</th>
+                    <th style="padding: 10px;">${type === 'summary' ? 'Sold Nights' : 'Bookings'}</th>
+                    <th style="padding: 10px;">Share</th>
+                    <th style="padding: 10px;">${type === 'summary' ? 'Occupancy %' : 'Total Revenue'}</th>
+                    <th style="padding: 10px;">${type === 'summary' ? '' : 'Avg Rate'}</th>
                 </tr>
             </thead>
             <tbody>
     `;
 
-    sortedRooms.forEach(([room, stats]) => {
-        const percentage = ((stats.count / totalBookings) * 100).toFixed(1);
-        const avgRate = stats.nights > 0 ? (stats.revenue / stats.nights) : 0;
+    sortedRooms.forEach(stat => {
+        // Calculate % share based on nights (more accurate volume metric)
+        const percentage = totalNights > 0 ? ((stat.nights / totalNights) * 100).toFixed(1) : 0;
+        const avgRate = stat.nights > 0 ? (stat.revenue / stat.nights) : 0;
+        
+        // Dynamic Columns
+        let col3Val = '';
+        let col4Val = '';
+
+        if (type === 'summary') {
+            const color = stat.occ >= 70 ? '#198754' : (stat.occ >= 50 ? '#ffc107' : '#dc3545');
+            col3Val = `<span style="font-weight:bold; color:${color}">${stat.occ}%</span>`;
+            col4Val = ''; // Empty column
+        } else {
+            col3Val = stat.revenue.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 });
+            col4Val = avgRate.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
+        }
+
+        const volumeDisplay = type === 'summary' ? stat.nights : stat.count;
 
         html += `
             <tr style="border-bottom: 1px solid #eee;">
-                <td style="padding: 10px;"><strong>${room}</strong></td>
-                <td style="padding: 10px;">${stats.count}</td>
+                <td style="padding: 10px;"><strong>${stat.roomType}</strong></td>
+                <td style="padding: 10px;">${volumeDisplay}</td>
                 <td style="padding: 10px;">
                     <div style="display: flex; align-items: center;">
                         <span style="width: 45px;">${percentage}%</span>
@@ -6169,15 +6265,21 @@ function renderHistoricalStats(reservations) {
                         </div>
                     </div>
                 </td>
-                <td style="padding: 10px;">${stats.revenue.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 })}</td>
-                <td style="padding: 10px;">${avgRate.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</td>
+                <td style="padding: 10px;">${col3Val}</td>
+                <td style="padding: 10px;">${col4Val}</td>
             </tr>
         `;
     });
 
     html += `</tbody></table>`;
+    
+    if (type === 'summary') {
+        html += `<p style="margin-top:15px; font-size:12px; color:#666; font-style:italic;">* Revenue data not available in this summary format.</p>`;
+    }
+
     container.innerHTML = html;
 }
+
 
 
 
