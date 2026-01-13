@@ -4081,6 +4081,17 @@ document.addEventListener('DOMContentLoaded', function() {
     const closeAddPropBtn = document.getElementById('close-add-prop-btn');
 
     const saveNewPropBtn = document.getElementById('save-new-prop-btn');
+    
+    // --- Auto-Refresh on Date Change ---
+    const dateInput = document.getElementById('selected-date');
+        if (dateInput) {
+        dateInput.addEventListener('change', () => {
+            // Only trigger refresh if a file is actually loaded
+            if (currentCsvContent) {
+                handleRefresh();
+            }
+            });
+            }
     // ==========================================
     // --- SETTINGS TOGGLE LOGIC ---
     // ==========================================
@@ -6029,6 +6040,7 @@ function renderManualUpgradeView() {
         container.innerHTML = tableHeader + rowsHtml + `</tbody></table>`;
     }
 }
+
 
 
 
