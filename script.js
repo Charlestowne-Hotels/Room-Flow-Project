@@ -4081,6 +4081,41 @@ document.addEventListener('DOMContentLoaded', function() {
     const closeAddPropBtn = document.getElementById('close-add-prop-btn');
 
     const saveNewPropBtn = document.getElementById('save-new-prop-btn');
+    // ==========================================
+    // --- SETTINGS TOGGLE LOGIC ---
+    // ==========================================
+    
+    const manualToggle = document.getElementById('manual-upgrade-toggle');
+    const manualTabBtn = document.querySelector('[data-tab-target="#Mupgrade"]');
+
+    // 1. Helper function to update visibility
+    const updateManualTabVisibility = (isEnabled) => {
+        if (manualTabBtn) {
+            manualTabBtn.style.display = isEnabled ? 'inline-block' : 'none'; // Use inline-block or block depending on your CSS
+            
+            // If we are hiding it and it's currently active, switch to the first tab
+            if (!isEnabled && manualTabBtn.classList.contains('active')) {
+                const firstTab = document.querySelector('[data-tab-target]');
+                if (firstTab) firstTab.click();
+            }
+        }
+    };
+
+    // 2. Load Saved Preference on Startup
+    // Default to 'false' (hidden) if not set, or 'true' if you prefer default on
+    const savedManualState = localStorage.getItem('enableManualUpgrades') === 'true'; 
+    
+    if (manualToggle) {
+        manualToggle.checked = savedManualState;
+        updateManualTabVisibility(savedManualState);
+
+        // 3. Listen for Changes
+        manualToggle.addEventListener('change', (e) => {
+            const isChecked = e.target.checked;
+            localStorage.setItem('enableManualUpgrades', isChecked);
+            updateManualTabVisibility(isChecked);
+        });
+    }
 
 
 
@@ -6128,4 +6163,5 @@ window.executeManualUpgrade = function(resId, index) {
         showLoader(false);
     }, 50);
 };
+
 
