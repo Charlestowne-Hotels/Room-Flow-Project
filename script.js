@@ -5873,7 +5873,7 @@ function downloadAcceptedUpgradesCsv() {
 }
 
 // ==========================================
-// --- MANUAL UPGRADE SECTION (UPDATED WITH VIP NOTES) ---
+// --- MANUAL UPGRADE SECTION (UPDATED WITH RATE NAME) ---
 // ==========================================
 
 function renderManualUpgradeView() {
@@ -5900,10 +5900,6 @@ function renderManualUpgradeView() {
         
         if (acceptedIds.has(res.resId) || completedIds.has(res.resId)) return false;
         if (['CANCELED', 'CANCELLED', 'NO SHOW', 'CHECKED OUT'].includes(res.status)) return false;
-        
-        // Exclude "Do Not Move" from Manual list as well? 
-        // Usually manual overrides allow seeing them, but if you want consistency with Auto-Logic:
-        // if (res.isDoNotMove) return false; 
         
         return true;
     });
@@ -5937,7 +5933,6 @@ function renderManualUpgradeView() {
         const dateDisplay = `${arrStr} - ${depStr}`;
 
         // Format VIP Note
-        // Uses the data parsed from "Vip" (SNT) or "VIPDescription" (Others)
         const vipDisplay = guest.vipStatus 
             ? `<span style="color: #d63384; font-weight: bold; font-size: 12px; text-transform: uppercase;">${guest.vipStatus}</span>` 
             : '';
@@ -5991,7 +5986,11 @@ function renderManualUpgradeView() {
                     <span style="font-size:11px; color:#888;">(${guest.nights} nts)</span>
                 </td>
                 <td style="padding:12px 15px;"><span style="background:#eee; padding:4px 8px; border-radius:4px; font-weight:bold; font-size:12px;">${guest.roomType}</span></td>
-                <td style="padding:12px 15px;">${guest.revenue}</td>
+                
+                <td style="padding:12px 15px;">
+                    <strong>${guest.revenue}</strong><br>
+                    <span style="font-size:12px; color:#555;">${guest.rate || 'Unknown'}</span>
+                </td>
                 
                 <td style="padding:12px 15px;">${vipDisplay}</td>
                 
@@ -6020,7 +6019,8 @@ function renderManualUpgradeView() {
                         <th style="padding:12px 15px; text-align:left; color:#444;">Dates</th>
                         <th style="padding:12px 15px; text-align:left; color:#444;">Current Room</th>
                         <th style="padding:12px 15px; text-align:left; color:#444;">Rate / Value</th>
-                        <th style="padding:12px 15px; text-align:left; color:#444;">Notes</th> <th style="padding:12px 15px; text-align:left; color:#444;">Select Upgrade</th>
+                        <th style="padding:12px 15px; text-align:left; color:#444;">Notes</th>
+                        <th style="padding:12px 15px; text-align:left; color:#444;">Select Upgrade</th>
                         <th style="padding:12px 15px; text-align:right; color:#444;">Action</th>
                     </tr>
                 </thead>
