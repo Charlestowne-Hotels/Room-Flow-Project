@@ -747,8 +747,7 @@ function handleRefresh() {
       otaRates: document.getElementById('ota-rates').value,
       ineligibleUpgrades: document.getElementById('ineligible-upgrades').value,
       selectedDate: document.getElementById('selected-date').value,
-      profile: document.getElementById('profile-dropdown').value,
-      manualLeadTime: document.getElementById('manual-lead-time') ? parseInt(document.getElementById('manual-lead-time').value, 10) : null
+      profile: document.getElementById('profile-dropdown').value
     };
 
     showLoader(true, 'Refreshing Data...');
@@ -762,7 +761,6 @@ function handleRefresh() {
           const results = processUpgradeData(currentCsvContent, currentRules, currentFileName);
           displayResults(results);
         }
-        // Refresh analytics view to prevent NaN display issues
         displayLeadTimeAnalytics(); 
       } catch (err) {
         console.error("Refresh error:", err);
@@ -1466,8 +1464,7 @@ async function handleAutoLoad() {
       otaRates: document.getElementById('ota-rates').value,
       ineligibleUpgrades: document.getElementById('ineligible-upgrades').value,
       selectedDate: document.getElementById('selected-date').value,
-      profile: currentProfile,
-      manualLeadTime: document.getElementById('manual-lead-time') ? parseInt(document.getElementById('manual-lead-time').value, 10) : null
+      profile: currentProfile
     };
 
     setTimeout(() => {
@@ -1501,8 +1498,7 @@ function handleGenerateClick() {
     otaRates: document.getElementById('ota-rates').value,
     ineligibleUpgrades: document.getElementById('ineligible-upgrades').value,
     selectedDate: document.getElementById('selected-date').value,
-    profile: document.getElementById('profile-dropdown').value,
-    manualLeadTime: document.getElementById('manual-lead-time') ? parseInt(document.getElementById('manual-lead-time').value, 10) : null
+    profile: document.getElementById('profile-dropdown').value
   };
 
   const reader = new FileReader();
@@ -1875,16 +1871,11 @@ function parseSynxisArrivals(data, header, rules) {
     const arrival = values[arrivalIndex] ? parseDate(values[arrivalIndex]) : null;
     const departure = values[departureIndex] ? parseDate(values[departureIndex]) : null;
     
-    // Priority: Manual Override > Calculated > 0
     let leadTime = 0;
-    if (rules && rules.manualLeadTime !== null && !isNaN(rules.manualLeadTime)) {
-        leadTime = rules.manualLeadTime;
-    } else {
-        const bookDate = (createDtIndex > -1 && values[createDtIndex]) ? parseDate(values[createDtIndex]) : null;
-        if (arrival instanceof Date && !isNaN(arrival) && bookDate instanceof Date && !isNaN(bookDate)) {
-            const timeDiff = arrival.getTime() - bookDate.getTime();
-            leadTime = Math.ceil(timeDiff / (1000 * 3600 * 24));
-        }
+    const bookDate = (createDtIndex > -1 && values[createDtIndex]) ? parseDate(values[createDtIndex]) : null;
+    if (arrival instanceof Date && !isNaN(arrival) && bookDate instanceof Date && !isNaN(bookDate)) {
+        const timeDiff = arrival.getTime() - bookDate.getTime();
+        leadTime = Math.ceil(timeDiff / (1000 * 3600 * 24));
     }
 
     let nights = 0; if (arrival && departure) nights = Math.max(1, Math.ceil((departure - arrival) / (1000 * 60 * 60 * 24)));
@@ -1927,16 +1918,11 @@ function parseAllReservations(data, header, fileName, rules) {
     const arrival = values[arrivalIndex] ? parseDate(values[arrivalIndex]) : null;
     const departure = values[departureIndex] ? parseDate(values[departureIndex]) : null;
     
-    // Priority: Manual Override > Calculated > 0
     let leadTime = 0;
-    if (rules && rules.manualLeadTime !== null && !isNaN(rules.manualLeadTime)) {
-        leadTime = rules.manualLeadTime;
-    } else {
-        const bookDate = (bookDateIndex > -1 && values[bookDateIndex]) ? parseDate(values[bookDateIndex]) : null;
-        if (arrival instanceof Date && !isNaN(arrival) && bookDate instanceof Date && !isNaN(bookDate)) {
-            const timeDiff = arrival.getTime() - bookDate.getTime();
-            leadTime = Math.ceil(timeDiff / (1000 * 3600 * 24));
-        }
+    const bookDate = (bookDateIndex > -1 && values[bookDateIndex]) ? parseDate(values[bookDateIndex]) : null;
+    if (arrival instanceof Date && !isNaN(arrival) && bookDate instanceof Date && !isNaN(bookDate)) {
+        const timeDiff = arrival.getTime() - bookDate.getTime();
+        leadTime = Math.ceil(timeDiff / (1000 * 3600 * 24));
     }
 
     let nights = 0; if (arrival && departure) nights = Math.max(1, Math.ceil((departure - arrival) / (1000 * 60 * 60 * 24)));
@@ -1972,7 +1958,7 @@ function runSimulation(strategy, allReservations, masterInv, rules, completedIds
   const hierarchy = rules.hierarchy.toUpperCase().split(',').map(r => r.trim()).filter(Boolean);
   const ineligible = rules.ineligibleUpgrades.toUpperCase().split(',');
   const otaRates = rules.otaRates.toLowerCase().split(',');
-  const simulationLimit = (rules.manualLeadTime !== null && rules.manualLeadTime !== undefined) ? rules.manualLeadTime : 7;
+  const simulationLimit = 7; // Fixed logic limit
 
   const simInventory = {};
   for (let i = 0; i < 14; i++) {
@@ -2039,131 +2025,91 @@ function getBedType(roomCode) { if (!roomCode) return 'OTHER'; if (roomCode.incl
 function downloadAcceptedUpgradesCsv() { if (!acceptedUpgrades.length) return; const headers = ['Guest Name', 'Res ID', 'Current Room', 'Upgrade To', 'Arrival', 'Departure']; const rows = acceptedUpgrades.map(rec => [`"${rec.name}"`, `"${rec.resId}"`, `"${rec.room}"`, `"${rec.upgradeTo}"`, `"${rec.arrivalDate}"`, `"${rec.departureDate}"`].join(',')); const blob = new Blob([[headers.join(','), ...rows].join('\n')], { type: 'text/csv' }); const link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.download = `upgrades_${new Date().toISOString().slice(0, 10)}.csv`; link.click(); }
 
 // ==========================================
-// --- MANUAL UPGRADE SECTION ---
-// ==========================================
-function renderManualUpgradeView() {
-  const container = document.getElementById('manual-upgrade-list-container');
-  if (!container || !currentCsvContent) return;
-  const startStr = document.getElementById('selected-date').value;
-  const startDate = parseDate(startStr);
-  const startIso = startDate.toISOString().split('T')[0];
-  const completedIds = new Set(completedUpgrades.map(u => u.resId));
-  const acceptedIds = new Set(acceptedUpgrades.map(u => u.resId));
-  const candidates = currentAllReservations.filter(res => res.arrival.toISOString().split('T')[0] === startIso && !completedIds.has(res.resId) && !acceptedIds.has(res.resId) && !['CANCELED', 'CANCELLED', 'NO SHOW'].includes(res.status));
-  if (!candidates.length) { container.innerHTML = '<p>No eligible arrivals found.</p>'; return; }
-  candidates.sort((a, b) => a.name.localeCompare(b.name));
-  const hierarchy = currentRules.hierarchy.toUpperCase().split(',').map(r => r.trim()).filter(Boolean);
-  const simResult = applyUpgradesAndRecalculate(acceptedUpgrades, currentCsvContent, currentRules, currentFileName);
-  const projectedInvMap = {}; simResult.matrixData.rows.forEach(row => { projectedInvMap[row.roomCode] = row.availability; });
-  let rowsHtml = `<table style="width:100%; border-collapse:collapse;"><thead><tr style="background:#f8f9fa;"><th>Guest</th><th>Nights</th><th>Current</th><th>Value</th><th>Upgrade</th><th>Action</th></tr></thead><tbody>`;
-  candidates.forEach((guest, index) => {
-    const currentIdx = hierarchy.indexOf(guest.roomType); let optionsHtml = '';
-    if (currentIdx !== -1) {
-      for (let i = currentIdx + 1; i < hierarchy.length; i++) {
-        const target = hierarchy[i]; let isAvail = true;
-        for (let d = 0; d < Math.min(guest.nights, 14); d++) { if ((projectedInvMap[target]?.[d] || 0) <= 0) { isAvail = false; break; } }
-        if (isAvail) optionsHtml += `<option value="${target}">${target}</option>`;
-      }
-    }
-    if (optionsHtml) {
-      rowsHtml += `<tr><td><strong>${guest.name}</strong><br><small>${guest.resId}</small></td><td>${guest.nights}</td><td>${guest.roomType}</td><td>${guest.revenue}</td><td><select id="manual-select-${index}">${optionsHtml}</select></td><td><button onclick="executeManualUpgrade('${guest.resId}', ${index})" class="pms-btn">Upgrade</button></td></tr>`;
-    }
-  });
-  container.innerHTML = rowsHtml + '</tbody></table>';
-}
-
-function executeManualUpgrade(resId, index) {
-    const dropdown = document.getElementById(`manual-select-${index}`);
-    if (!dropdown) return;
-    const targetRoom = dropdown.value;
-    const res = currentAllReservations.find(r => r.resId === resId);
-    if (!res) return;
-    const upgrade = {
-        name: res.name, resId: res.resId, revenue: res.revenue, room: res.roomType, rate: res.rate, nights: res.nights,
-        upgradeTo: targetRoom, score: parseFloat(res.revenue.replace(/[$,]/g, '')) || 0,
-        arrivalDate: res.arrival.toLocaleDateString('en-US', { timeZone: 'UTC' }),
-        departureDate: res.departure.toLocaleDateString('en-US', { timeZone: 'UTC' }),
-        isoArrival: res.arrival.toISOString().split('T')[0],
-        isoDeparture: res.departure.toISOString().split('T')[0],
-        vipStatus: res.vipStatus
-    };
-    acceptedUpgrades.push(upgrade);
-    handleRefresh();
-    alert(`Upgraded ${res.name} to ${targetRoom}`);
-}
-
-// ==========================================
-// --- HISTORICAL DEMAND INSIGHTS LOGIC ---
-// ==========================================
-document.addEventListener('DOMContentLoaded', function() {
-  const historicalInput = document.getElementById('historical-csv-file');
-  if (historicalInput) historicalInput.addEventListener('change', handleHistoricalUpload);
-});
-
-function handleHistoricalUpload(event) {
-  const file = event.target.files[0]; if (!file) return;
-  const reader = new FileReader();
-  reader.onload = function(e) {
-    try {
-      const { data, header } = parseCsv(e.target.result);
-      const res = parseAllReservations(data, header, file.name, currentRules);
-      renderHistoricalStats(res.filter(r => !['CANCELED', 'CANCELLED', 'NO SHOW'].includes(r.status)), 'detailed');
-    } catch (err) { alert("Error parsing historical file."); }
-  };
-  reader.readAsText(file);
-}
-
-function renderHistoricalStats(data, type) {
-  const container = document.getElementById('historical-results-area'); if (!container) return;
-  let totalRevenue = 0, totalNights = 0, roomStats = {};
-  data.forEach(res => {
-    const revVal = parseFloat(res.revenue.replace(/[$,]/g, '')) || 0;
-    totalRevenue += revVal; totalNights += res.nights;
-    if (!roomStats[res.roomType]) roomStats[res.roomType] = { count: 0, revenue: 0, nights: 0 };
-    roomStats[res.roomType].count++; roomStats[res.roomType].revenue += revVal; roomStats[res.roomType].nights += res.nights;
-  });
-  const sorted = Object.entries(roomStats).sort((a, b) => b[1].nights - a[1].nights);
-  let html = `<div style="display:flex; gap:20px; margin-bottom:20px;"><div style="background:#e3f2fd; padding:15px; border-radius:8px; flex:1;"><h4>Total Bookings</h4><p>${data.length}</p></div><div style="background:#e8f5e9; padding:15px; border-radius:8px; flex:1;"><h4>Historical ADR</h4><p>$${(totalRevenue / totalNights).toFixed(2)}</p></div></div><table><thead><tr><th>Room Type</th><th>Share</th><th>Revenue</th></tr></thead><tbody>`;
-  sorted.forEach(([room, stats]) => {
-    const share = ((stats.nights / totalNights) * 100).toFixed(1);
-    html += `<tr><td><strong>${room}</strong></td><td>${share}%</td><td>$${stats.revenue.toLocaleString()}</td></tr>`;
-  });
-  container.innerHTML = html + '</tbody></table>';
-}
-
-// ==========================================
-// --- NEW: LEAD TIME ANALYTICS LOGIC ---
+// --- LEAD TIME ANALYTICS (Manual Entry) ---
 // ==========================================
 function displayLeadTimeAnalytics() {
-  const container = document.getElementById('lead-time-container'); if (!container || !currentAllReservations.length) return;
-  const stats = {};
-  currentAllReservations.forEach(res => {
-    if (['CANCELED', 'CANCELLED', 'NO SHOW'].includes(res.status) || typeof res.leadTime !== 'number') return;
-    if (!stats[res.roomType]) stats[res.roomType] = { total: 0, count: 0 };
-    stats[res.roomType].total += res.leadTime; stats[res.roomType].count++;
+  const container = document.getElementById('lead-time-container');
+  if (!container) return;
+  
+  const hierarchyVal = document.getElementById('hierarchy').value;
+  if (!hierarchyVal) {
+    container.innerHTML = '<p style="text-align:center; padding:20px; color:#666;">Please select a property to load room types.</p>';
+    return;
+  }
+
+  const roomTypes = hierarchyVal.split(',').map(r => r.trim().toUpperCase()).filter(Boolean);
+
+  let html = `
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+      <h3>Manual Lead Time Entry (Days)</h3>
+      <button id="save-lead-time-btn" onclick="handleSaveLeadTime()" style="background:#28a745; color:white; border:none; padding:10px 15px; border-radius:5px; cursor:pointer;">Save to Cloud</button>
+    </div>
+    <table style="width:100%; border-collapse:collapse; background:white; border-radius:8px; overflow:hidden; box-shadow:0 2px 5px rgba(0,0,0,0.05);">
+      <thead style="background:#f8f9fa; border-bottom:2px solid #eee;">
+        <tr>
+          <th style="padding:12px 15px; text-align:left;">Room Type</th>
+          <th style="padding:12px 15px; text-align:center;">Avg. Lead Time (Days)</th>
+        </tr>
+      </thead>
+      <tbody id="manual-lead-time-body">
+  `;
+
+  roomTypes.forEach(roomType => {
+    const existingVal = currentAllReservations.find(r => r.roomType === roomType)?.leadTime || "";
+    
+    html += `
+      <tr style="border-bottom:1px solid #eee;">
+        <td style="padding:10px 15px;"><strong>${roomType}</strong></td>
+        <td style="padding:10px 15px; text-align:center;">
+          <input type="number" 
+                 class="manual-room-lt-input" 
+                 data-room="${roomType}" 
+                 placeholder="e.g. 14" 
+                 value="${existingVal}"
+                 style="width: 80px; padding: 5px; border: 1px solid #ccc; border-radius: 4px; text-align: center;">
+        </td>
+      </tr>
+    `;
   });
-  let html = `<div style="display:flex; justify-content:space-between; align-items:center;"><h3>Lead Time Analysis</h3><button id="save-lead-time-btn" onclick="handleSaveLeadTime()">Save Cloud</button></div><table><thead><tr><th>Room Type</th><th>Bookings</th><th>Avg Lead Time (Days)</th></tr></thead><tbody>`;
-  Object.keys(stats).sort().forEach(room => {
-    const avg = (stats[room].total / stats[room].count).toFixed(1);
-    html += `<tr><td><strong>${room}</strong></td><td>${stats[room].count}</td><td>${avg} days</td></tr>`;
-  });
-  container.innerHTML = html + '</tbody></table>';
+
+  html += '</tbody></table>';
+  container.innerHTML = html;
 }
 
 window.handleSaveLeadTime = async function() {
-  const currentProfile = document.getElementById('profile-dropdown').value; if (!currentAllReservations.length) return;
-  const storageData = { lastUpdated: new Date(), roomTypes: {} };
-  const stats = {};
-  currentAllReservations.forEach(res => {
-    if (['CANCELED', 'CANCELLED', 'NO SHOW'].includes(res.status) || typeof res.leadTime !== 'number') return;
-    if (!stats[res.roomType]) stats[res.roomType] = { total: 0, count: 0 };
-    stats[res.roomType].total += res.leadTime; stats[res.roomType].count++;
-  });
-  Object.keys(stats).forEach(rt => { storageData.roomTypes[rt] = { avgLeadTime: parseFloat((stats[rt].total / stats[rt].count).toFixed(2)), count: stats[rt].count }; });
-  try {
-    await db.collection('property_analytics').doc(currentProfile).set({ leadTimeStats: storageData }, { merge: true });
-    alert("Saved successfully!");
-  } catch (e) { alert("Save failed."); }
-};
+  const btn = document.getElementById('save-lead-time-btn');
+  const currentProfile = document.getElementById('profile-dropdown').value;
+  const inputs = document.querySelectorAll('.manual-room-lt-input');
+  
+  btn.disabled = true;
+  btn.textContent = "Saving...";
 
+  const leadTimeStats = {
+    lastUpdated: new Date(),
+    roomTypes: {}
+  };
+
+  inputs.forEach(input => {
+    const room = input.dataset.room;
+    const val = parseInt(input.value, 10);
+    if (!isNaN(val)) {
+      leadTimeStats.roomTypes[room] = { avgLeadTime: val, count: "Manual Entry" };
+      currentAllReservations.forEach(res => {
+        if (res.roomType === room) res.leadTime = val;
+      });
+    }
+  });
+
+  try {
+    await db.collection('property_analytics').doc(currentProfile).set({ leadTimeStats }, { merge: true });
+    alert("Room Lead Times saved successfully!");
+    handleRefresh(); 
+  } catch (error) {
+    console.error(error);
+    alert("Failed to save.");
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "Save to Cloud";
+  }
+};
 
