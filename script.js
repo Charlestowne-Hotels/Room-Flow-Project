@@ -732,6 +732,10 @@ function resetAppState() {
   const acceptedContainer = document.getElementById('accepted-container');
   if (acceptedContainer) acceptedContainer.style.display = 'block';
 
+  // Clear Lead Time Container
+  const leadTimeContainer = document.getElementById('lead-time-container');
+  if (leadTimeContainer) leadTimeContainer.innerHTML = '';
+
   displayAcceptedUpgrades();
 }
 
@@ -1421,7 +1425,8 @@ document.addEventListener('DOMContentLoaded', function() {
       const containers = [
         '#completed-container',
         '#demand-insights-container',
-        '#historical-demand-insights-container'
+        '#historical-demand-insights-container',
+        '#lead-time-container'
       ];
       containers.forEach(id => {
         const el = document.querySelector(id);
@@ -1432,6 +1437,7 @@ document.addEventListener('DOMContentLoaded', function() {
         target.style.display = 'block';
         if (target.id === 'demand-insights-container') displayDemandInsights();
         else if (target.id === 'completed-container') displayCompletedUpgrades();
+        else if (target.id === 'lead-time-container') displayLeadTimeAnalytics();
       }
     });
   });
@@ -1897,6 +1903,10 @@ function parseSynxisArrivals(data, header) {
   const departureIndex = header.indexOf('Depart_Date');
   const statusIndex = header.indexOf('Rez_Status');
   const rateIndex = header.indexOf('Avg_Rate_Offshore');
+  
+  // SynXis typically uses 'create_dt' or similar
+  const createDtIndex = header.indexOf('create_dt'); 
+  
   const ids = new Set();
   return data.map(values => {
     if (values.length < header.length) return null;
@@ -1905,13 +1915,23 @@ function parseSynxisArrivals(data, header) {
     ids.add(resId);
     const arrival = values[arrivalIndex] ? parseDate(values[arrivalIndex]) : null;
     const departure = values[departureIndex] ? parseDate(values[departureIndex]) : null;
+    
+    // Parse Creation Date for SynXis
+    const bookDate = (createDtIndex > -1 && values[createDtIndex]) ? parseDate(values[createDtIndex]) : null;
+    let leadTime = 0;
+    if (arrival && bookDate) {
+      const timeDiff = arrival.getTime() - bookDate.getTime();
+      leadTime = Math.ceil(timeDiff / (1000 * 3600 * 24));
+    }
+
     let nights = 0; if (arrival && departure) nights = Math.max(1, Math.ceil((departure - arrival) / (1000 * 60 * 60 * 24)));
     const dailyRate = parseFloat(values[rateIndex]) || 0;
     let fullName = values[nameIndex] || "";
     if (fullName.includes(',')) { const parts = fullName.split(','); if (parts.length >= 2) fullName = `${parts[1].trim()} ${parts[0].trim()}`; }
     let status = values[statusIndex]?.trim().toUpperCase() || 'RESERVATION';
     if (status === 'CONFIRMED') status = 'RESERVATION'; if (status === 'CANCELLED') status = 'CANCELED';
-    return { name: fullName, resId, roomType: values[roomTypeIndex]?.trim().toUpperCase(), rate: values[rateNameIndex]?.trim(), nights, arrival, departure, status, revenue: (dailyRate * nights).toLocaleString('en-US', { style: 'currency', currency: 'USD' }), marketCode: '' };
+    
+    return { name: fullName, resId, roomType: values[roomTypeIndex]?.trim().toUpperCase(), rate: values[rateNameIndex]?.trim(), nights, arrival, departure, status, revenue: (dailyRate * nights).toLocaleString('en-US', { style: 'currency', currency: 'USD' }), marketCode: '', leadTime };
   }).filter(r => r && r.roomType && r.arrival && r.departure && r.nights > 0);
 }
 
@@ -1919,6 +1939,8 @@ function parseAllReservations(data, header, fileName) {
   const isSnt = fileName && (fileName.startsWith('SNT') || fileName.startsWith('LTRL') || fileName.startsWith('VERD') || fileName.startsWith('LCKWD') || fileName.startsWith('TBH') || fileName.startsWith('DARLING'));
   let nameIndex, resIdIndex, roomTypeIndex, rateNameIndex, arrivalIndex, departureIndex, statusIndex, rateIndex;
   let firstNameIndex, lastNameIndex, marketCodeIndex, vipIndex, dnmIndex = -1;
+  let bookDateIndex = -1; 
+
   if (isSnt) {
     firstNameIndex = header.indexOf('First Name');
     lastNameIndex = header.indexOf('Last Name');
@@ -1933,6 +1955,11 @@ function parseAllReservations(data, header, fileName) {
     vipIndex = header.indexOf('Vip');
     if (vipIndex === -1) vipIndex = header.indexOf('VIPDescription');
     dnmIndex = header.indexOf('Do Not Move');
+    
+    // Attempt to find booking date in SNT headers
+    const bookDateCandidates = ['Book Date', 'Booked Date', 'Creation Date', 'Create Date', 'Entered On'];
+    bookDateIndex = header.findIndex(h => bookDateCandidates.includes(h));
+
     if (firstNameIndex === -1 || resIdIndex === -1 || roomTypeIndex === -1) throw new Error("Missing SNT columns.");
   } else {
     nameIndex = header.indexOf('Guest Name');
@@ -1944,12 +1971,29 @@ function parseAllReservations(data, header, fileName) {
     statusIndex = header.indexOf('Status');
     rateIndex = header.indexOf('Rate');
     vipIndex = header.indexOf('VIPDescription');
+    
+    // Attempt to find booking date in generic CSV headers
+    const bookDateCandidates = ['Book Date', 'Booked Date', 'Booked On', 'Creation Date', 'Create Date', 'Entered On'];
+    bookDateIndex = header.findIndex(h => bookDateCandidates.includes(h));
+
     if (nameIndex === -1 || resIdIndex === -1 || roomTypeIndex === -1) throw new Error("Missing CSV columns.");
   }
+
   return data.map(values => {
     if (values.length < header.length) return null;
     const arrival = values[arrivalIndex] ? parseDate(values[arrivalIndex]) : null;
     const departure = values[departureIndex] ? parseDate(values[departureIndex]) : null;
+    
+    // Parse Book Date
+    const bookDate = (bookDateIndex > -1 && values[bookDateIndex]) ? parseDate(values[bookDateIndex]) : null;
+    
+    // Calculate Lead Time
+    let leadTime = 0;
+    if (arrival && bookDate) {
+      const timeDiff = arrival.getTime() - bookDate.getTime();
+      leadTime = Math.ceil(timeDiff / (1000 * 3600 * 24)); // Days
+    }
+
     let nights = 0;
     if (arrival && departure) nights = Math.max(1, Math.ceil((departure - arrival) / (1000 * 60 * 60 * 24)));
     const dailyRate = parseFloat(values[rateIndex]) || 0;
@@ -1961,6 +2005,7 @@ function parseAllReservations(data, header, fileName) {
     if (vipStatus.toUpperCase() === 'NO') vipStatus = "";
     let doNotMove = (dnmIndex > -1 && values[dnmIndex]) ? values[dnmIndex].trim().toUpperCase() : "NO";
     const isDoNotMove = (doNotMove === 'YES' || doNotMove === 'TRUE');
+    
     return {
       name: fullName,
       resId: values[resIdIndex]?.trim(),
@@ -1973,7 +2018,8 @@ function parseAllReservations(data, header, fileName) {
       revenue: (dailyRate * nights).toLocaleString('en-US', { style: 'currency', currency: 'USD' }),
       marketCode,
       vipStatus,
-      isDoNotMove
+      isDoNotMove,
+      leadTime
     };
   }).filter(r => r && r.roomType && r.arrival && r.departure && r.nights > 0);
 }
@@ -2375,3 +2421,123 @@ function renderHistoricalStats(data, type) {
   if (type === 'summary') html += `<p style="margin-top:15px; font-size:12px; color:#666; font-style:italic;">* Revenue data not available in this summary format.</p>`;
   container.innerHTML = html;
 }
+
+// ==========================================
+// --- NEW: LEAD TIME ANALYTICS LOGIC ---
+// ==========================================
+
+function displayLeadTimeAnalytics() {
+  const container = document.getElementById('lead-time-container');
+  if (!container) return;
+  
+  if (!currentAllReservations || currentAllReservations.length === 0) {
+    container.innerHTML = '<p style="text-align:center; padding:20px; color:#666;">Please load reservation data to calculate lead times.</p>';
+    return;
+  }
+
+  // Calculate Statistics
+  const stats = {};
+  currentAllReservations.forEach(res => {
+    if (['CANCELED', 'CANCELLED', 'NO SHOW'].includes(res.status)) return;
+    if (typeof res.leadTime !== 'number') return; // Skip if no book date found
+
+    if (!stats[res.roomType]) {
+      stats[res.roomType] = { totalLeadTime: 0, count: 0 };
+    }
+    stats[res.roomType].totalLeadTime += res.leadTime;
+    stats[res.roomType].count++;
+  });
+
+  if (Object.keys(stats).length === 0) {
+    container.innerHTML = '<p style="text-align:center; padding:20px; color:#666;">Booking Date information not found in the uploaded file.</p>';
+    return;
+  }
+
+  // Sort by Room Type
+  const sortedKeys = Object.keys(stats).sort();
+
+  // Render Table
+  let html = `
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+      <h3>Average Lead Time by Room Type</h3>
+      <button id="save-lead-time-btn" onclick="handleSaveLeadTime()" style="background:#28a745; color:white; border:none; padding:10px 15px; border-radius:5px; cursor:pointer;">Save to Cloud</button>
+    </div>
+    <table style="width:100%; border-collapse:collapse; background:white; border-radius:8px; overflow:hidden; box-shadow:0 2px 5px rgba(0,0,0,0.05);">
+      <thead style="background:#f8f9fa; border-bottom:2px solid #eee;">
+        <tr>
+          <th style="padding:12px 15px; text-align:left;">Room Type</th>
+          <th style="padding:12px 15px; text-align:center;">Total Bookings</th>
+          <th style="padding:12px 15px; text-align:center;">Avg. Lead Time (Days)</th>
+        </tr>
+      </thead>
+      <tbody>
+  `;
+
+  sortedKeys.forEach(roomType => {
+    const data = stats[roomType];
+    const avg = (data.totalLeadTime / data.count).toFixed(1);
+    html += `
+      <tr style="border-bottom:1px solid #eee;">
+        <td style="padding:10px 15px;"><strong>${roomType}</strong></td>
+        <td style="padding:10px 15px; text-align:center;">${data.count}</td>
+        <td style="padding:10px 15px; text-align:center;">
+          <span style="background:${avg > 30 ? '#e3f2fd' : '#fff3cd'}; padding:3px 8px; border-radius:4px; font-weight:bold;">${avg} days</span>
+        </td>
+      </tr>
+    `;
+  });
+
+  html += '</tbody></table>';
+  container.innerHTML = html;
+}
+
+// Global function for the save button onclick
+window.handleSaveLeadTime = async function() {
+  const btn = document.getElementById('save-lead-time-btn');
+  const currentProfile = document.getElementById('profile-dropdown').value;
+  
+  if (!currentAllReservations || currentAllReservations.length === 0) {
+    alert("No data to save."); return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = "Saving...";
+
+  try {
+    // Re-calculate stats to save clean object
+    const statsToSave = {};
+    currentAllReservations.forEach(res => {
+      if (['CANCELED', 'CANCELLED', 'NO SHOW'].includes(res.status)) return;
+      if (typeof res.leadTime !== 'number') return;
+      if (!statsToSave[res.roomType]) statsToSave[res.roomType] = { totalLeadTime: 0, count: 0 };
+      statsToSave[res.roomType].totalLeadTime += res.leadTime;
+      statsToSave[res.roomType].count++;
+    });
+
+    // Flatten for storage
+    const storageData = {
+      lastUpdated: new Date(),
+      roomTypes: {}
+    };
+
+    Object.keys(statsToSave).forEach(rt => {
+      storageData.roomTypes[rt] = {
+        avgLeadTime: parseFloat((statsToSave[rt].totalLeadTime / statsToSave[rt].count).toFixed(2)),
+        count: statsToSave[rt].count
+      };
+    });
+
+    await db.collection('property_analytics').doc(currentProfile).set({
+      leadTimeStats: storageData
+    }, { merge: true });
+
+    alert("Lead Time data saved successfully!");
+  } catch (error) {
+    console.error("Error saving lead time:", error);
+    alert("Failed to save data.");
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "Save to Cloud";
+  }
+};
+
