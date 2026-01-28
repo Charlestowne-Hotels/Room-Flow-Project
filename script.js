@@ -1628,8 +1628,10 @@ function displayInventory(inventory) {
 function displayScenarios(scenarios) {
   const container = document.getElementById('recommendations-container');
   container.innerHTML = '';
-  if (scenarios['Revenue Focus'] && scenarios['VIP Focus']) {
-    const revPath = scenarios['Revenue Focus'];
+  
+  // Update focus names in scenarios if they exist
+  if (scenarios['Guesa Focus'] && scenarios['VIP Focus']) {
+    const revPath = scenarios['Guesa Focus'];
     const vipPath = scenarios['VIP Focus'];
     const getSig = (u) => `${u.resId}|${u.upgradeTo}`;
     let isIdentical = revPath.length === vipPath.length;
@@ -1646,19 +1648,26 @@ function displayScenarios(scenarios) {
   if (!keys.length) { container.innerHTML = '<p>No upgrade paths.</p>'; return; }
 
   const header = document.createElement('div');
-  header.style.cssText = 'display:flex; gap:10px; margin-bottom:20px; border-bottom:2px solid #eee; padding-bottom:10px;';
-  keys.forEach((key, i) => {
-    const tab = document.createElement('button');
-    tab.textContent = key;
-    tab.style.cssText = `padding:10px 20px; border:none; cursor:pointer; border-radius:5px; background:${i === 0 ? '#4343FF' : '#f0f0f0'}; color:${i === 0 ? 'white' : '#333'};`;
-    tab.className = 'scenario-tab';
-    tab.addEventListener('click', () => {
-      container.querySelectorAll('.scenario-tab').forEach(b => { b.style.background = '#f0f0f0'; b.style.color = '#333'; });
-      tab.style.background = '#4343FF'; tab.style.color = 'white';
-      renderScenarioContent(key, scenarios[key], container);
-    });
-    header.appendChild(tab);
+  header.style.cssText = 'display:flex; align-items:center; gap:15px; margin-bottom:20px; border-bottom:2px solid #eee; padding-bottom:15px;';
+
+  const label = document.createElement('label');
+  label.textContent = "Optimization Strategy:";
+  label.style.fontWeight = "bold";
+  header.appendChild(label);
+
+  const select = document.createElement('select');
+  select.style.cssText = 'padding:10px; border:1px solid #ccc; border-radius:5px; background:white; font-size:14px; min-width:200px;';
+  keys.forEach(key => {
+    const opt = document.createElement('option');
+    opt.value = key; opt.textContent = key;
+    select.appendChild(opt);
   });
+  
+  select.addEventListener('change', (e) => {
+    renderScenarioContent(e.target.value, scenarios[e.target.value], container);
+  });
+
+  header.appendChild(select);
   container.appendChild(header);
   renderScenarioContent(keys[0], scenarios[keys[0]], container);
 }
@@ -1947,7 +1956,9 @@ function generateScenariosFromData(allReservations, rules) {
   const reservationsByDate = buildReservationsByDate(activeReservations);
   const todayInventory = getInventoryForDate(masterInventory, reservationsByDate, startDate);
   const matrixData = generateMatrixData(masterInventory, reservationsByDate, startDate, rules.hierarchy.toUpperCase().split(',').map(r => r.trim()).filter(Boolean));
-  const strategies = ['Revenue Focus', 'VIP Focus', 'Efficiency (Fill Gaps)'];
+  
+  // Updated strategy labels
+  const strategies = ['Guesa Focus', 'VIP Focus', 'Optimized'];
   const scenarios = {};
   strategies.forEach(strategy => { scenarios[strategy] = runSimulation(strategy, activeReservations, masterInventory, rules, completedResIds); });
   return { scenarios, inventory: todayInventory, matrixData, message: null };
@@ -1958,7 +1969,7 @@ function runSimulation(strategy, allReservations, masterInv, rules, completedIds
   const hierarchy = rules.hierarchy.toUpperCase().split(',').map(r => r.trim()).filter(Boolean);
   const ineligible = rules.ineligibleUpgrades.toUpperCase().split(',');
   const otaRates = rules.otaRates.toLowerCase().split(',');
-  const simulationLimit = 7; // Fixed logic limit
+  const simulationLimit = 7; 
 
   const simInventory = {};
   for (let i = 0; i < 14; i++) {
@@ -1996,14 +2007,16 @@ function runSimulation(strategy, allReservations, masterInv, rules, completedIds
         }
       });
     }
-    if (strategy === 'Revenue Focus') candidates.sort((a, b) => (b.score - a.score) || (b.rank - a.rank));
+    // Updated logic conditions for renamed strategies
+    if (strategy === 'Guesa Focus') candidates.sort((a, b) => (b.score - a.score) || (b.rank - a.rank));
     else if (strategy === 'VIP Focus') candidates.sort((a, b) => (b.vip - a.vip) || (b.score - a.score) || (b.rank - a.rank));
-    else candidates.sort((a, b) => a.nights - b.nights);
+    else if (strategy === 'Optimized') candidates.sort((a, b) => a.nights - b.nights);
+    
     const processedPass = new Set();
     candidates.forEach(cand => {
       if (processedPass.has(cand.resObj.resId)) return;
       let canMove = true; let checkDate = new Date(cand.resObj.arrival);
-      while (checkDate < cand.resObj.departure) { const dStr = checkDate.toISOString().split('T')[0]; if (!simInventory[dStr] || (simInventory[dStr][cand.targetRoom] || 0) <= 0) { canMove = false; break; } checkDate.setUTCDate(checkDate.getUTCDate() + 1); }
+      while (checkDate < cand.resObj.departure) { const dStr = checkDate.toISOString().split('T')[0]; if (!simInventory[dStr] || (simInventory[dStr][cand.targetRoom] || 0) <= 0) { canMove = false; break; } checkDate.setUTCDate(checkDate.getUTCDate() + i); }
       if (canMove) {
         activity = true; processedPass.add(cand.resObj.resId); checkDate = new Date(cand.resObj.arrival);
         while (checkDate < cand.resObj.departure) { const dStr = checkDate.toISOString().split('T')[0]; if (simInventory[dStr]) { simInventory[dStr][cand.targetRoom]--; if (simInventory[dStr][cand.currentRoom] !== undefined) simInventory[dStr][cand.currentRoom]++; } checkDate.setUTCDate(checkDate.getUTCDate() + 1); }
@@ -2112,4 +2125,3 @@ window.handleSaveLeadTime = async function() {
     btn.textContent = "Save to Cloud";
   }
 };
-
