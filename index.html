@@ -8,6 +8,7 @@
     <link rel="stylesheet" href="style.css">
     
     <style>
+        /* --- General Layout & OOO Styles --- */
         .ooo-stack {
             display: flex;
             flex-direction: column;
@@ -17,20 +18,17 @@
             border-radius: 6px; 
             border: 1px solid #e9ecef;
         }
-
         .input-group {
             display: flex;
             flex-direction: column;
             width: 100%;
         }
-
         .input-group label {
             font-size: 11px;
             font-weight: bold;
             margin-bottom: 6px;
             color: #495057;
         }
-
         .ooo-input-field {
             width: 100%;
             height: 42px;
@@ -40,13 +38,11 @@
             box-sizing: border-box;
             font-family: inherit;
         }
-
         .ooo-btn-container {
             width: 100%;
             height: 42px;
             margin-top: 10px;
         }
-
         #add-ooo-btn {
             width: 100%;
             height: 100%;
@@ -62,7 +58,6 @@
             color: white;
             font-size: 14px;
         }
-
         #add-ooo-btn:hover {
             background-color: #3f37c9;
         }
@@ -74,7 +69,6 @@
             margin-bottom: 20px;
             gap: 20px;
         }
-
         .sub-tab-btn {
             background: none;
             border: none;
@@ -86,11 +80,9 @@
             border-bottom: 2px solid transparent;
             transition: all 0.2s;
         }
-
         .sub-tab-btn:hover {
             color: #4361ee;
         }
-
         .sub-tab-btn.active {
             color: #4361ee;
             border-bottom: 2px solid #4361ee;
@@ -100,124 +92,64 @@
         /* --- ANALYTICS TOOLBAR STYLING --- */
         .analytics-toolbar {
             display: flex;
-            justify-content: space-between; /* Pushes Dropdown left, Button right */
+            justify-content: space-between;
             align-items: center;
             width: 100%;
             margin-bottom: 25px;
             padding-bottom: 15px;
         }
-
         .analytics-filter-group {
             display: flex;
             align-items: center;
             gap: 10px;
         }
-
-        /* Match Height and Width Logic */
         #sort-date-dropdown, #clear-analytics-btn {
-            height: 40px; /* Identical Height */
-            min-width: 180px; /* Identical Width baseline */
+            height: 40px;
+            min-width: 180px;
             box-sizing: border-box;
             border-radius: 4px;
             font-size: 14px;
         }
-
         #sort-date-dropdown {
             padding: 5px 10px;
             border: 1px solid #ced4da;
         }
-
         #clear-analytics-btn {
-            background-color: #dc3545; /* Red Background */
+            background-color: #dc3545;
             color: white;
             border: none;
             cursor: pointer;
             font-weight: bold;
             transition: background-color 0.2s;
         }
-
         #clear-analytics-btn:hover {
-            background-color: #c82333; /* Darker Red on Hover */
+            background-color: #c82333;
         }
 
-        /* Initially hide demand insights */
-        #demand-insights-container {
-            display: none;
-        }
-
-        /* Form styling for the Add Property Modal */
-        #add-property-modal .form-group {
-            margin-bottom: 15px;
-        }
-        #add-property-modal label {
-            display: block;
-            margin-bottom: 5px;
-            font-weight: bold;
-            font-size: 13px;
-        }
-        #add-property-modal input, 
-        #add-property-modal textarea {
-            width: 100%;
-            padding: 8px;
-            box-sizing: border-box;
-            border: 1px solid #ccc;
-            border-radius: 4px;
+        /* --- MODAL & FORM STYLING --- */
+        #add-property-modal .form-group { margin-bottom: 15px; }
+        #add-property-modal label { display: block; margin-bottom: 5px; font-weight: bold; font-size: 13px; }
+        #add-property-modal input, #add-property-modal textarea {
+            width: 100%; padding: 8px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px;
         }
 
         /* --- TOGGLE SWITCH STYLING --- */
         .toggle-container {
-            margin-top: 20px;
-            padding-top: 15px;
-            border-top: 1px solid #eee;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
+            margin-top: 20px; padding-top: 15px; border-top: 1px solid #eee;
+            display: flex; align-items: center; justify-content: space-between;
         }
-        
-        .switch {
-            position: relative;
-            display: inline-block;
-            width: 50px;
-            height: 26px;
-        }
-        
-        .switch input { 
-            opacity: 0;
-            width: 0;
-            height: 0;
-        }
-        
+        .switch { position: relative; display: inline-block; width: 50px; height: 26px; }
+        .switch input { opacity: 0; width: 0; height: 0; }
         .slider {
-            position: absolute;
-            cursor: pointer;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background-color: #ccc;
-            transition: .4s;
-            border-radius: 34px;
+            position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0;
+            background-color: #ccc; transition: .4s; border-radius: 34px;
         }
-        
         .slider:before {
-            position: absolute;
-            content: "";
-            height: 18px;
-            width: 18px;
-            left: 4px;
-            bottom: 4px;
-            background-color: white;
-            transition: .4s;
-            border-radius: 50%;
+            position: absolute; content: ""; height: 18px; width: 18px; left: 4px; bottom: 4px;
+            background-color: white; transition: .4s; border-radius: 50%;
         }
-        
-        input:checked + .slider {
-            background-color: #4361ee;
-        }
-        
-        input:checked + .slider:before {
-            transform: translateX(24px);
-        }
+        input:checked + .slider { background-color: #4361ee; }
+        input:checked + .slider:before { transform: translateX(24px); }
     </style>
 </head>
 <body>
@@ -322,33 +254,27 @@
                         </p>
                         
                         <div class="ooo-stack">
-                            
                             <div class="input-group">
                                 <label>Room Type</label>
                                 <select id="ooo-room-type" class="ooo-input-field">
                                     <option value="">Select Room</option>
                                 </select>
                             </div>
-                            
                             <div class="input-group">
                                 <label>Count</label>
                                 <input type="number" id="ooo-count" value="1" min="1" class="ooo-input-field">
                             </div>
-
                             <div class="input-group">
                                 <label>Start Date</label>
                                 <input type="date" id="ooo-start-date" class="ooo-input-field">
                             </div>
-
                             <div class="input-group">
                                 <label>End Date</label>
                                 <input type="date" id="ooo-end-date" class="ooo-input-field">
                             </div>
-
                             <div class="ooo-btn-container">
                                 <button id="add-ooo-btn" class="primary-btn">Add Record</button>
                             </div>
-
                         </div>
                         <h4 style="margin-bottom: 8px; margin-top: 15px;">Current OOO List</h4>
                         <div id="ooo-list" style="max-height: 150px; overflow-y: auto; border: 1px solid #eee; padding: 10px; background: #f9f9f9; border-radius: 4px;">
@@ -363,7 +289,6 @@
                             <span class="slider"></span>
                         </label>
                     </div>
-
                 </div>
 
                 <div class="modal-footer">
@@ -428,7 +353,6 @@
                                 <option value="all">All Dates</option>
                             </select>
                         </div>
-                        
                         <button id="clear-analytics-btn" class="admin-only-btn hidden">Clear Profile Data</button>
                     </div>
                     
@@ -455,7 +379,6 @@
                             </p>
                             <input type="file" id="historical-csv-file" accept=".csv" style="border: 1px solid #ccc; padding: 8px; border-radius: 4px; background: white;" />
                         </div>
-                        
                         <div id="historical-results-area">
                             <p style="text-align:center; color:#888;">Upload a file to see insights.</p>
                         </div>
@@ -464,62 +387,56 @@
                     <div id="lead-time-container" class="sub-tab-content" style="display: none;"></div>
 
                 </div>
-                </div>              
-    
-  
-      
-
-<div id="add-property-modal" class="modal-overlay hidden">
-    <div class="modal-content">
-        <div class="modal-header">
-            <h2>Add New Property</h2>
-            <button id="close-add-prop-btn" class="close-btn">&times;</button>
-        </div>
-        
-        <div class="modal-body">
-            <div class="form-group">
-                <label>Property Code (e.g., MIA, SOH):</label>
-                <input type="text" id="new-prop-code" placeholder="e.g. abr" style="text-transform: lowercase;">
             </div>
-
-            <div class="form-group">
-                <label>Room Hierarchy (Comma separated):</label>
-                <textarea id="new-prop-hierarchy" rows="3" placeholder="KING-K, KINGADA-K, DOUBLE-QQ..."></textarea>
-            </div>
-
-            <div class="form-group">
-                <label>Inventory Data:</label>
-                <small style="display:block; color:#666; margin-bottom:5px;">Format: Room numbers separated by spaces, ending with the Room Code. Separate groups with commas.</small>
-                <textarea id="new-prop-inventory" rows="6" placeholder="101 102 103 KING-K, 201 202 203 DOUBLE-QQ"></textarea>
-            </div>
-
-            <h3 style="margin-top:20px;">Default Rules</h3>
-            <div class="form-group">
-                <label for="new-prop-ineligible">Never Upgrade To (Ineligible Codes):</label>
-                <input type="text" id="new-prop-ineligible" placeholder="e.g. TQHC, ADA-Q (Comma separated)">
-            </div>
-            <div class="form-group">
-                <label>Target Rooms (Optional):</label>
-                <input type="text" id="new-prop-target">
-            </div>
-            
-            <div class="form-group">
-                <label>Prioritized Rates:</label>
-                <input type="text" id="new-prop-rates" value="Best Available, BAR, Rack">
-            </div>
-
-            <button id="save-new-prop-btn" class="primary-btn" style="width: 100%; margin-top: 15px;">Save Property to Cloud</button>
         </div>
     </div>
-</div>
 
-<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
-<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
-<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
-<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-storage.js"></script>
+    <div id="add-property-modal" class="modal-overlay hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Add New Property</h2>
+                <button id="close-add-prop-btn" class="close-btn">&times;</button>
+            </div>
+            
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>Property Code (e.g., MIA, SOH):</label>
+                    <input type="text" id="new-prop-code" placeholder="e.g. abr" style="text-transform: lowercase;">
+                </div>
+                <div class="form-group">
+                    <label>Room Hierarchy (Comma separated):</label>
+                    <textarea id="new-prop-hierarchy" rows="3" placeholder="KING-K, KINGADA-K, DOUBLE-QQ..."></textarea>
+                </div>
+                <div class="form-group">
+                    <label>Inventory Data:</label>
+                    <small style="display:block; color:#666; margin-bottom:5px;">Format: Room numbers separated by spaces, ending with the Room Code. Separate groups with commas.</small>
+                    <textarea id="new-prop-inventory" rows="6" placeholder="101 102 103 KING-K, 201 202 203 DOUBLE-QQ"></textarea>
+                </div>
+                <h3 style="margin-top:20px;">Default Rules</h3>
+                <div class="form-group">
+                    <label for="new-prop-ineligible">Never Upgrade To (Ineligible Codes):</label>
+                    <input type="text" id="new-prop-ineligible" placeholder="e.g. TQHC, ADA-Q (Comma separated)">
+                </div>
+                <div class="form-group">
+                    <label>Target Rooms (Optional):</label>
+                    <input type="text" id="new-prop-target">
+                </div>
+                <div class="form-group">
+                    <label>Prioritized Rates:</label>
+                    <input type="text" id="new-prop-rates" value="Best Available, BAR, Rack">
+                </div>
+                <button id="save-new-prop-btn" class="primary-btn" style="width: 100%; margin-top: 15px;">Save Property to Cloud</button>
+            </div>
+        </div>
+    </div>
 
-<script src="Config.js"></script> 
-<script src="script.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-storage.js"></script>
+
+    <script src="Config.js"></script> 
+    <script src="script.js"></script>
 
 </body>
 </html>
