@@ -711,9 +711,7 @@ function resetAppState() {
   acceptedUpgrades = [];
   currentInventoryMap = null;
 
-  const fileInput = document.getElementById('csv-file');
-  if (fileInput) fileInput.value = '';
-  
+  document.getElementById('csv-file').value = '';
   const outputEl = document.getElementById('output');
   if (outputEl) outputEl.style.display = 'block';
 
@@ -1146,7 +1144,6 @@ async function handleClearAnalytics() {
   }
 }
 
-// --- DOCUMENT READY & EVENT LISTENERS ---
 document.addEventListener('DOMContentLoaded', function() {
   loginContainer = document.getElementById('login-container');
   appContainer = document.getElementById('app-container');
@@ -1168,152 +1165,54 @@ document.addEventListener('DOMContentLoaded', function() {
   const closeAddPropBtn = document.getElementById('close-add-prop-btn');
   const saveNewPropBtn = document.getElementById('save-new-prop-btn');
 
-  // Auth Listener
-  auth.onAuthStateChanged(async user => {
-    if (user) {
-      loginContainer.classList.add('hidden');
-      appContainer.classList.remove('hidden');
-      await loadCustomProperties();
-      await loadRemoteProfiles();
-      await loadOooRecords();
-      
-      const isUserAdmin = ADMIN_UIDS.includes(user.uid);
-      setAdminControls(isUserAdmin);
-      
-      if (isUserAdmin) {
-        if(clearAnalyticsBtn) clearAnalyticsBtn.classList.remove('hidden');
-        if(saveRulesBtn) saveRulesBtn.classList.remove('hidden');
-        if(settingsTriggerBtn) settingsTriggerBtn.classList.remove('hidden');
-        if(addPropBtn) addPropBtn.classList.remove('hidden');
-      } else {
-        if(saveRulesBtn) saveRulesBtn.classList.add('hidden');
-        if(clearAnalyticsBtn) clearAnalyticsBtn.classList.add('hidden');
-        if(settingsTriggerBtn) settingsTriggerBtn.classList.add('hidden');
-        if(addPropBtn) addPropBtn.classList.add('hidden');
+  // --- Auto-Refresh on Date Change ---
+  const dateInput = document.getElementById('selected-date');
+  if (dateInput) {
+    dateInput.addEventListener('change', () => {
+      if (currentCsvContent) {
+        handleRefresh();
       }
+    });
+  }
 
-      loadCompletedUpgrades(user.uid);
-      resetAppState();
-      updateUIForProfile();
-    } else {
-      loginContainer.classList.remove('hidden');
-      appContainer.classList.add('hidden');
-      setAdminControls(false);
+  // --- SETTINGS TOGGLE LOGIC ---
+  const manualToggle = document.getElementById('manual-upgrade-toggle');
+  const manualTabBtn = document.querySelector('[data-tab-target="#Mupgrade"]');
+
+  const updateManualTabVisibility = (isEnabled) => {
+    if (manualTabBtn) {
+      manualTabBtn.style.display = isEnabled ? 'inline-block' : 'none';
+      if (!isEnabled && manualTabBtn.classList.contains('active')) {
+        const firstTab = document.querySelector('[data-tab-target]');
+        if (firstTab) firstTab.click();
+      }
     }
-  });
+  };
 
-  // Event Listeners
-  if(settingsTriggerBtn) settingsTriggerBtn.addEventListener('click', () => { settingsModal.classList.remove('hidden'); populateOooDropdown(); });
-  if(closeSettingsBtn) closeSettingsBtn.addEventListener('click', () => { settingsModal.classList.add('hidden'); handleRefresh(); });
-  window.addEventListener('click', (e) => { if (e.target === settingsModal) { settingsModal.classList.add('hidden'); handleRefresh(); }});
-  
-  if(generateBtn) generateBtn.addEventListener('click', handleGenerateClick);
-  
-  const autoLoadBtn = document.getElementById('auto-load-btn');
-  if(autoLoadBtn) autoLoadBtn.addEventListener('click', handleAutoLoad);
+  const savedManualState = localStorage.getItem('enableManualUpgrades') === 'true';
 
-  document.getElementById('profile-dropdown').addEventListener('change', (event) => {
-    updateRulesForm(event.target.value);
-    resetAppState();
-    displayCompletedUpgrades();
-    displayDemandInsights();
-    loadOooRecords();
-    updateUIForProfile();
-  });
-
-  // Initial Load
-  updateRulesForm('fqi');
-  updateUIForProfile();
-
-  if(saveRulesBtn) saveRulesBtn.addEventListener('click', handleSaveRules);
-  
-  const addOooBtn = document.getElementById('add-ooo-btn');
-  if(addOooBtn) addOooBtn.addEventListener('click', handleAddOoo);
-
-  signinBtn.addEventListener('click', handleSignIn);
-  signoutBtn.addEventListener('click', handleSignOut);
-  if(clearAnalyticsBtn) clearAnalyticsBtn.addEventListener('click', handleClearAnalytics);
-
-  // Default Date
-  const futureDate = new Date(); futureDate.setDate(futureDate.getDate() + 3);
-  document.getElementById('selected-date').value = futureDate.toISOString().slice(0, 10);
-  
-  // Refresh on Date Change
-  document.getElementById('selected-date').addEventListener('change', () => {
-     if(currentCsvContent) handleRefresh(); 
-  });
-
-  // Sort Date Dropdown
-  document.getElementById('sort-date-dropdown').addEventListener('change', () => {
-    displayCompletedUpgrades();
-    displayDemandInsights();
-  });
-
-  // Main Tabs
-  const tabs = document.querySelectorAll('[data-tab-target]');
-  const tabContents = document.querySelectorAll('.tab-content');
-  tabs.forEach(tab => {
-    tab.addEventListener('click', () => {
-      const target = document.querySelector(tab.dataset.tabTarget);
-      tabContents.forEach(tc => tc.classList.remove('active'));
-      tabs.forEach(t => t.classList.remove('active'));
-      tab.classList.add('active');
-      target.classList.add('active');
+  if (manualToggle) {
+    manualToggle.checked = savedManualState;
+    updateManualTabVisibility(savedManualState);
+    manualToggle.addEventListener('change', (e) => {
+      const isChecked = e.target.checked;
+      localStorage.setItem('enableManualUpgrades', isChecked);
+      updateManualTabVisibility(isChecked);
     });
-  });
+  }
 
-  // --- SUB TABS LOGIC ---
-  const subTabs = document.querySelectorAll('[data-sub-tab-target]');
-  subTabs.forEach(tab => {
-    tab.addEventListener('click', () => {
-      const targetSelector = tab.dataset.subTabTarget;
-      const target = document.querySelector(targetSelector);
-      
-      // Update Button State
-      subTabs.forEach(t => t.classList.remove('active'));
-      tab.classList.add('active');
-
-      // Hide All Containers
-      const containers = [
-        '#completed-container',
-        '#demand-insights-container',
-        '#historical-demand-insights-container',
-        '#lead-time-container'
-      ];
-      
-      containers.forEach(id => {
-        const el = document.querySelector(id);
-        if(el) el.style.display = 'none';
-      });
-
-      // Show Target
-      if(target) {
-        target.style.display = 'block';
-        if (target.id === 'demand-insights-container') displayDemandInsights();
-        else if (target.id === 'completed-container') displayCompletedUpgrades();
-        else if (target.id === 'lead-time-container') displayLeadTimeAnalytics();
-      }
-    });
-  });
-
-  // Modal Handlers
-  if(addPropBtn) addPropBtn.addEventListener('click', () => addPropModal.classList.remove('hidden'));
-  if(closeAddPropBtn) closeAddPropBtn.addEventListener('click', () => addPropModal.classList.add('hidden'));
-  if(saveNewPropBtn) saveNewPropBtn.addEventListener('click', handleSaveNewProperty);
+  if (addPropBtn) addPropBtn.addEventListener('click', () => addPropModal.classList.remove('hidden'));
+  if (closeAddPropBtn) closeAddPropBtn.addEventListener('click', () => addPropModal.classList.add('hidden'));
+  if (saveNewPropBtn) saveNewPropBtn.addEventListener('click', handleSaveNewProperty);
   window.addEventListener('click', (e) => { if (e.target === addPropModal) addPropModal.classList.add('hidden'); });
-  
-  // Setup Manual Upload UI
-  setupManualUploadUI();
-});
 
-// --- HELPER FUNCTIONS ---
-function setupManualUploadUI() {
+  // --- SETUP MANUAL UPLOAD WRAPPERS ---
   const fileInput = document.getElementById('csv-file');
   const genBtnRef = document.getElementById('generate-btn');
-  
+
   const manualUploadWrapper = document.createElement('div');
   manualUploadWrapper.id = 'manual-upload-wrapper';
-  
+
   const uploadTitle = document.createElement('h3');
   uploadTitle.id = 'manual-upload-title';
   uploadTitle.textContent = "Manual PMS Upload";
@@ -1326,7 +1225,630 @@ function setupManualUploadUI() {
     manualUploadWrapper.appendChild(fileInput);
     if (genBtnRef) manualUploadWrapper.appendChild(genBtnRef);
   }
+
+  const mainPagePlaceholder = document.createElement('div');
+  mainPagePlaceholder.id = 'manual-upload-placeholder';
+  if (manualUploadWrapper.parentNode) {
+    manualUploadWrapper.parentNode.insertBefore(mainPagePlaceholder, manualUploadWrapper);
+  }
+
+  const updateUIForProfile = () => {
+    const currentProfile = document.getElementById('profile-dropdown').value;
+    const isSnt = !!SNT_PROPERTY_MAP[currentProfile];
+    const autoLoadBtn = document.getElementById('auto-load-btn');
+
+    if (autoLoadBtn) autoLoadBtn.style.display = isSnt ? 'inline-block' : 'none';
+
+    if (isSnt) {
+      const settingsContent = settingsModal.firstElementChild;
+      if (settingsContent && manualUploadWrapper.parentNode !== settingsContent) {
+        settingsContent.appendChild(manualUploadWrapper);
+      }
+      manualUploadWrapper.style.marginTop = '20px';
+      manualUploadWrapper.style.padding = '15px';
+      manualUploadWrapper.style.border = '1px solid #eee';
+      manualUploadWrapper.style.borderRadius = '5px';
+      manualUploadWrapper.style.backgroundColor = '#fafafa';
+      manualUploadWrapper.style.textAlign = 'left';
+      manualUploadWrapper.style.display = 'block';
+      manualUploadWrapper.style.minHeight = 'auto';
+      manualUploadWrapper.style.background = '#fafafa';
+      manualUploadWrapper.style.boxShadow = 'none';
+      manualUploadWrapper.style.gap = '0';
+
+      uploadTitle.style.fontSize = '16px';
+      uploadTitle.style.textAlign = 'left';
+      uploadTitle.style.margin = '0 0 10px 0';
+
+      if (fileInput) {
+        fileInput.style.flexGrow = '0';
+        fileInput.style.width = 'auto';
+        fileInput.style.border = '1px solid #ccc';
+      }
+      if (genBtnRef) {
+        genBtnRef.style.width = 'auto';
+        genBtnRef.style.display = 'inline-block';
+        genBtnRef.style.marginTop = '10px';
+        genBtnRef.style.fontSize = '14px';
+        genBtnRef.style.padding = '8px 15px';
+      }
+    } else {
+      if (mainPagePlaceholder && mainPagePlaceholder.parentNode) {
+        mainPagePlaceholder.parentNode.insertBefore(manualUploadWrapper, mainPagePlaceholder.nextSibling);
+      }
+      manualUploadWrapper.style.marginTop = '20px';
+      manualUploadWrapper.style.marginBottom = '20px';
+      manualUploadWrapper.style.padding = '25px 30px';
+      manualUploadWrapper.style.border = '2px dashed #ccc';
+      manualUploadWrapper.style.borderRadius = '12px';
+      manualUploadWrapper.style.backgroundColor = '#f8f9fa';
+      manualUploadWrapper.style.background = 'linear-gradient(to right, #ffffff, #f4f6f8)';
+      manualUploadWrapper.style.boxShadow = '0 4px 6px rgba(0,0,0,0.05)';
+      manualUploadWrapper.style.display = 'flex';
+      manualUploadWrapper.style.flexDirection = 'row';
+      manualUploadWrapper.style.alignItems = 'center';
+      manualUploadWrapper.style.justifyContent = 'space-between';
+      manualUploadWrapper.style.gap = '20px';
+      manualUploadWrapper.style.minHeight = 'auto';
+
+      uploadTitle.style.fontSize = '18px';
+      uploadTitle.style.fontWeight = '600';
+      uploadTitle.style.color = '#333';
+      uploadTitle.style.margin = '0';
+      uploadTitle.style.whiteSpace = 'nowrap';
+
+      if (fileInput) {
+        fileInput.style.flexGrow = '1';
+        fileInput.style.maxWidth = 'none';
+        fileInput.style.padding = '10px';
+        fileInput.style.border = '1px solid #ddd';
+        fileInput.style.borderRadius = '6px';
+        fileInput.style.backgroundColor = '#fff';
+      }
+      if (genBtnRef) {
+        genBtnRef.style.width = 'auto';
+        genBtnRef.style.maxWidth = 'none';
+        genBtnRef.style.fontSize = '15px';
+        genBtnRef.style.padding = '10px 25px';
+        genBtnRef.style.marginTop = '0';
+      }
+      const manualTab = document.querySelector('[data-tab-target="#Mupgrade"]');
+      if (manualTab) {
+        manualTab.addEventListener('click', () => {
+          renderManualUpgradeView();
+        });
+      }
+    }
+  };
+
+  auth.onAuthStateChanged(async user => {
+    const adminButton = document.getElementById('clear-analytics-btn');
+    const saveBtn = document.getElementById('save-rules-btn');
+    if (user) {
+      loginContainer.classList.add('hidden'); appContainer.classList.remove('hidden');
+      await loadCustomProperties(); await loadRemoteProfiles(); await loadOooRecords();
+      const isUserAdmin = ADMIN_UIDS.includes(user.uid);
+      if (isUserAdmin) {
+        if (adminButton) adminButton.classList.remove('hidden');
+        if (saveBtn) saveBtn.classList.remove('hidden');
+        if (settingsTriggerBtn) settingsTriggerBtn.classList.remove('hidden');
+        if (addPropBtn) addPropBtn.classList.remove('hidden');
+      } else {
+        if (saveBtn) saveBtn.classList.add('hidden');
+        if (adminButton) adminButton.classList.add('hidden');
+        if (settingsTriggerBtn) settingsTriggerBtn.classList.add('hidden');
+        if (addPropBtn) addPropBtn.classList.add('hidden');
+      }
+      setAdminControls(isUserAdmin);
+      loadCompletedUpgrades(user.uid);
+      resetAppState();
+      updateUIForProfile();
+    } else {
+      loginContainer.classList.remove('hidden'); appContainer.classList.add('hidden');
+      setAdminControls(false);
+    }
+  });
+
+  if (settingsTriggerBtn) {
+    settingsTriggerBtn.addEventListener('click', () => { settingsModal.classList.remove('hidden'); populateOooDropdown(); });
+  }
+
+  if (closeSettingsBtn) {
+    closeSettingsBtn.addEventListener('click', () => {
+      settingsModal.classList.add('hidden');
+      handleRefresh();
+    });
+  }
+
+  window.addEventListener('click', (e) => {
+    if (e.target === settingsModal) {
+      settingsModal.classList.add('hidden');
+      handleRefresh();
+    }
+  });
+
+  if (generateBtn) generateBtn.addEventListener('click', handleGenerateClick);
+  const autoLoadBtn = document.getElementById('auto-load-btn');
+  if (autoLoadBtn) autoLoadBtn.addEventListener('click', handleAutoLoad);
+
+  const profileDropdown = document.getElementById('profile-dropdown');
+  profileDropdown.addEventListener('change', (event) => {
+    updateRulesForm(event.target.value);
+    resetAppState();
+    displayCompletedUpgrades();
+    displayDemandInsights();
+    loadOooRecords();
+    updateUIForProfile();
+  });
+
+  updateRulesForm('fqi');
+  updateUIForProfile();
+
+  if (saveRulesBtn) saveRulesBtn.addEventListener('click', handleSaveRules);
+  const addOooBtn = document.getElementById('add-ooo-btn');
+  if (addOooBtn) addOooBtn.addEventListener('click', handleAddOoo);
+
+  if (emailInput) emailInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') handleSignIn(); });
+  if (passwordInput) passwordInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') handleSignIn(); });
+
+  signinBtn.addEventListener('click', handleSignIn);
+  signoutBtn.addEventListener('click', handleSignOut);
+  clearAnalyticsBtn.addEventListener('click', handleClearAnalytics);
+
+  const futureDate = new Date(); futureDate.setDate(futureDate.getDate() + 3);
+  document.getElementById('selected-date').value = futureDate.toISOString().slice(0, 10);
+
+  document.getElementById('sort-date-dropdown').addEventListener('change', () => {
+    displayCompletedUpgrades(); displayDemandInsights();
+  });
+
+  const tabs = document.querySelectorAll('[data-tab-target]');
+  const tabContents = document.querySelectorAll('.tab-content');
+  tabs.forEach(tab => {
+    tab.addEventListener('click', () => {
+      const target = document.querySelector(tab.dataset.tabTarget);
+      tabContents.forEach(tc => tc.classList.remove('active'));
+      tabs.forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+      target.classList.add('active');
+    });
+  });
+
+  const subTabs = document.querySelectorAll('[data-sub-tab-target]');
+  subTabs.forEach(tab => {
+    tab.addEventListener('click', () => {
+      const targetSelector = tab.dataset.subTabTarget;
+      const target = document.querySelector(targetSelector);
+      subTabs.forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+
+      const containers = [
+        '#completed-container',
+        '#demand-insights-container',
+        '#historical-demand-insights-container',
+        '#lead-time-container'
+      ];
+      containers.forEach(id => {
+        const el = document.querySelector(id);
+        if (el) el.style.display = 'none';
+      });
+
+      if (target) {
+        target.style.display = 'block';
+        if (target.id === 'demand-insights-container') displayDemandInsights();
+        else if (target.id === 'completed-container') displayCompletedUpgrades();
+        else if (target.id === 'lead-time-container') displayLeadTimeAnalytics();
+      }
+    });
+  });
+});
+
+async function handleAutoLoad() {
+  const btn = document.getElementById('auto-load-btn');
+  const originalText = btn.textContent;
+  const currentProfile = document.getElementById('profile-dropdown').value;
+  const requiredPrefix = SNT_PROPERTY_MAP[currentProfile];
+
+  if (!requiredPrefix) { alert("This property is not configured for Auto-Load."); return; }
+
+  btn.disabled = true; btn.textContent = "Loading..."; showLoader(true, `Fetching ${requiredPrefix}...`);
+  currentInventoryMap = null;
+
+  try {
+    const docRef = db.collection('SNTData').doc(`${requiredPrefix}_latest`);
+    const doc = await docRef.get();
+    if (!doc.exists) throw new Error("No report found.");
+    const data = doc.data();
+    if (!data.csv_content) throw new Error("Report empty.");
+
+    try {
+      const invDocRef = db.collection('SynxisData').doc(`${requiredPrefix}_latest`);
+      const invDoc = await invDocRef.get();
+      if (invDoc.exists && invDoc.data().csv_content) {
+        currentInventoryMap = parseSynxisInventory(invDoc.data().csv_content);
+      }
+    } catch (invError) { console.warn("Inv load fail", invError); }
+
+    currentCsvContent = data.csv_content;
+    currentFileName = data.filename || "Unknown.csv";
+
+    currentRules = {
+      hierarchy: document.getElementById('hierarchy').value,
+      targetRooms: document.getElementById('target-rooms').value,
+      prioritizedRates: document.getElementById('prioritized-rates').value,
+      otaRates: document.getElementById('ota-rates').value,
+      ineligibleUpgrades: document.getElementById('ineligible-upgrades').value,
+      selectedDate: document.getElementById('selected-date').value,
+      profile: currentProfile
+    };
+
+    setTimeout(() => {
+      try {
+        const results = processUpgradeData(currentCsvContent, currentRules, currentFileName);
+        displayResults(results);
+        alert(`Loaded: ${currentFileName}\nInventory: ${currentInventoryMap ? "SynXis" : "Calculated"}`);
+      } catch (err) { showError(err); } finally { btn.disabled = false; btn.textContent = originalText; }
+    }, 50);
+
+  } catch (error) {
+    console.error("Auto-load error:", error);
+    showLoader(false); btn.disabled = false; btn.textContent = originalText;
+    alert(error.message);
+  }
 }
+
+function handleGenerateClick() {
+  const fileInput = document.getElementById('csv-file');
+  if (!fileInput.files.length) { alert('Select file.'); return; }
+
+  currentFileName = fileInput.files[0].name;
+  currentInventoryMap = null;
+  acceptedUpgrades = [];
+  displayAcceptedUpgrades();
+
+  const rules = {
+    hierarchy: document.getElementById('hierarchy').value,
+    targetRooms: document.getElementById('target-rooms').value,
+    prioritizedRates: document.getElementById('prioritized-rates').value,
+    otaRates: document.getElementById('ota-rates').value,
+    ineligibleUpgrades: document.getElementById('ineligible-upgrades').value,
+    selectedDate: document.getElementById('selected-date').value,
+    profile: document.getElementById('profile-dropdown').value
+  };
+
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    currentCsvContent = e.target.result;
+    currentRules = rules;
+    showLoader(true, 'Generating...');
+    setTimeout(() => {
+      try {
+        const results = processUpgradeData(currentCsvContent, currentRules, currentFileName);
+        displayResults(results);
+      } catch (err) { showError(err); }
+    }, 50);
+  };
+  reader.readAsText(fileInput.files[0]);
+}
+
+function handleAcceptScenario(scenarioName) {
+  const scenario = currentScenarios[scenarioName];
+  if (!scenario || !scenario.length) { alert("No upgrades available."); return; }
+  if (!confirm(`Accept all ${scenario.length} upgrades in ${scenarioName}?`)) return;
+
+  acceptedUpgrades.push(...scenario);
+  currentScenarios = {};
+
+  showLoader(true, "Processing...");
+  setTimeout(() => {
+    try {
+      const results = applyUpgradesAndRecalculate(acceptedUpgrades, currentCsvContent, currentRules, currentFileName);
+      displayMatrixOnlyView(results);
+    } catch (err) { showError(err); }
+  }, 50);
+}
+
+function displayMatrixOnlyView(results) {
+  showLoader(false);
+  const acceptedContainer = document.getElementById('accepted-container');
+  if (acceptedContainer) acceptedContainer.style.display = 'block';
+  displayAcceptedUpgrades();
+
+  const container = document.getElementById('recommendations-container');
+  container.innerHTML = '';
+
+  const matDiv = document.createElement('div');
+  matDiv.style.marginTop = '20px';
+
+  const startDate = parseDate(currentRules.selectedDate);
+  const dates = Array.from({ length: 14 }, (_, i) => { const d = new Date(startDate); d.setUTCDate(d.getUTCDate() + i); return d; });
+  const headers = ['Room Type', ...dates.map(date => `${date.toLocaleDateString('en-US', { weekday: 'short', timeZone: 'UTC' })}<br>${date.getUTCMonth() + 1}/${date.getUTCDate()}`)];
+
+  const numCols = dates.length;
+  const colTotals = new Array(numCols).fill(0);
+
+  const rowsForHelper = results.matrixData.rows.map(row => {
+    row.availability.forEach((val, i) => colTotals[i] += val);
+    return { roomCode: row.roomCode, data: row.availability };
+  });
+
+  matDiv.innerHTML = generateMatrixHTML("Updated Availability (Post-Acceptance)", rowsForHelper, headers, colTotals);
+  container.appendChild(matDiv);
+
+  const continueBtn = document.createElement('button');
+  continueBtn.textContent = "Continue / Review More";
+  continueBtn.style.cssText = "margin-top: 20px; padding: 12px 24px; background: #4343FF; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 16px; display: block; margin-left: auto; margin-right: auto;";
+  continueBtn.addEventListener('click', () => {
+    displayResults(results);
+  });
+  container.appendChild(continueBtn);
+}
+
+function handlePmsUpdateClick(event) {
+  const user = auth.currentUser; if (!user) { showError({ message: "Login req" }); return; }
+  const recIndex = event.target.dataset.index;
+  const item = acceptedUpgrades[recIndex];
+  if (item) {
+    const toComplete = acceptedUpgrades.splice(recIndex, 1)[0];
+    toComplete.completedTimestamp = new Date();
+    toComplete.profile = document.getElementById('profile-dropdown').value;
+    completedUpgrades.push(toComplete);
+    db.collection('users').doc(user.uid).collection('completedUpgrades').add(toComplete)
+      .then((doc) => { toComplete.firestoreId = doc.id; displayCompletedUpgrades(); displayDemandInsights(); })
+      .catch((e) => { completedUpgrades.pop(); acceptedUpgrades.splice(recIndex, 0, toComplete); showError({ message: "Save failed" }); });
+    displayAcceptedUpgrades(); displayCompletedUpgrades();
+  }
+}
+
+async function handleUndoCompletedClick(event) {
+  const user = auth.currentUser; if (!user) return;
+  if (!confirm("Undo?")) return;
+  const fid = event.target.dataset.firestoreId;
+  const idx = completedUpgrades.findIndex(u => u.firestoreId === fid);
+  if (idx === -1) return;
+  const item = completedUpgrades[idx];
+  event.target.disabled = true;
+  try {
+    await db.collection('users').doc(user.uid).collection('completedUpgrades').doc(fid).delete();
+    completedUpgrades.splice(idx, 1);
+    delete item.completedTimestamp; delete item.firestoreId;
+    acceptedUpgrades.push(item);
+    displayCompletedUpgrades(); displayDemandInsights(); displayAcceptedUpgrades();
+    if (currentCsvContent) {
+      const results = applyUpgradesAndRecalculate(acceptedUpgrades, currentCsvContent, currentRules, currentFileName);
+      displayResults(results);
+    }
+  } catch (e) { alert("Undo failed."); }
+}
+
+function displayResults(data) {
+  showLoader(false);
+  if (data.error) { showError({ message: data.error }); return; }
+  if (data.acceptedUpgrades) acceptedUpgrades = data.acceptedUpgrades;
+
+  currentScenarios = data.scenarios || {};
+
+  const accCont = document.getElementById('accepted-container');
+  if (accCont) accCont.style.display = 'block';
+
+  displayAcceptedUpgrades();
+  displayScenarios(currentScenarios);
+
+  document.getElementById('output').style.display = 'block';
+  const messageEl = document.getElementById('message');
+  messageEl.style.display = data.message ? 'block' : 'none';
+  messageEl.innerHTML = data.message || '';
+
+  displayInventory(data.inventory);
+}
+
+function displayInventory(inventory) {
+  const container = document.getElementById('inventory');
+  let rooms = []; for (const r in inventory) if (inventory[r] > 0) rooms.push(`<strong>${r}:</strong> ${inventory[r]}`);
+  container.innerHTML = '<h3>Available Rooms</h3>' + (rooms.length ? rooms.join(' | ') : '<p>None.</p>');
+}
+
+function displayScenarios(scenarios) {
+  const container = document.getElementById('recommendations-container');
+  container.innerHTML = '';
+
+  if (scenarios['Revenue Focus'] && scenarios['VIP Focus']) {
+    const revPath = scenarios['Revenue Focus'];
+    const vipPath = scenarios['VIP Focus'];
+    const getSig = (u) => `${u.resId}|${u.upgradeTo}`;
+    let isIdentical = revPath.length === vipPath.length;
+    if (isIdentical) {
+      const revSet = new Set(revPath.map(getSig));
+      for (const u of vipPath) {
+        if (!revSet.has(getSig(u))) {
+          isIdentical = false;
+          break;
+        }
+      }
+    }
+    if (isIdentical) {
+      delete scenarios['VIP Focus'];
+    }
+  }
+
+  const keys = Object.keys(scenarios);
+  if (!keys.length) { container.innerHTML = '<p>No upgrade paths.</p>'; return; }
+
+  const header = document.createElement('div');
+  header.style.cssText = 'display:flex; gap:10px; margin-bottom:20px; border-bottom:2px solid #eee; padding-bottom:10px;';
+
+  keys.forEach((key, i) => {
+    const tab = document.createElement('button');
+    tab.textContent = key;
+    tab.style.cssText = `padding:10px 20px; border:none; cursor:pointer; border-radius:5px; background:${i === 0 ? '#4343FF' : '#f0f0f0'}; color:${i === 0 ? 'white' : '#333'};`;
+    tab.className = 'scenario-tab';
+    tab.addEventListener('click', () => {
+      container.querySelectorAll('.scenario-tab').forEach(b => { b.style.background = '#f0f0f0'; b.style.color = '#333'; });
+      tab.style.background = '#4343FF'; tab.style.color = 'white';
+      renderScenarioContent(key, scenarios[key], container);
+    });
+    header.appendChild(tab);
+  });
+
+  container.appendChild(header);
+  renderScenarioContent(keys[0], scenarios[keys[0]], container);
+}
+
+function generateMatrixHTML(title, rows, headers, colTotals) {
+  const styleTable = 'width:100%; border-collapse:collapse; font-size:13px; font-family:sans-serif; min-width:100%;';
+  const styleTh = 'padding:12px 8px; background-color:#f8f9fa; color:#495057; font-weight:600; border-bottom:2px solid #e9ecef; text-align:center;';
+  const styleTd = 'padding:10px 8px; border-bottom:1px solid #e9ecef; text-align:center; color:#333;';
+  const styleRowLabel = 'padding:10px 8px; border-bottom:1px solid #e9ecef; text-align:left; font-weight:600; color:#333; background-color:#fff; position:sticky; left:0;';
+  const styleTotalRow = 'background-color:#f1f3f5; font-weight:bold;';
+
+  const getCellColor = (val) => {
+    if (val < 0) return 'background-color:#ffebee; color:#c62828; font-weight:bold;';
+    if (val < 3) return 'background-color:#fff3e0; color:#ef6c00;';
+    return 'background-color:#e8f5e9; color:#2e7d32;';
+  };
+
+  let html = `
+    <div style="background:white; border-radius:8px; box-shadow:0 2px 4px rgba(0,0,0,0.05); overflow:hidden; margin-bottom:25px; border:1px solid #eee;">
+      <div style="padding:15px; border-bottom:1px solid #eee; background:#fff;">
+        <h4 style="margin:0; color:#4343FF; font-size:16px;">${title}</h4>
+      </div>
+      <div style="overflow-x:auto;">
+        <table style="${styleTable}">
+          <thead>
+            <tr>${headers.map(h => `<th style="${styleTh}">${h}</th>`).join('')}</tr>
+          </thead>
+          <tbody>`;
+
+  rows.forEach(row => {
+    html += `<tr><td style="${styleRowLabel}">${row.roomCode}</td>`;
+    row.data.forEach(avail => {
+      html += `<td style="${styleTd} ${getCellColor(avail)}">${avail}</td>`;
+    });
+    html += '</tr>';
+  });
+
+  html += `<tr style="${styleTotalRow}">
+            <td style="${styleRowLabel} background-color:#f1f3f5;">TOTAL</td>`;
+  colTotals.forEach(total => {
+    html += `<td style="${styleTd}">${total}</td>`;
+  });
+  html += '</tr></tbody></table></div></div>';
+
+  return html;
+}
+
+function renderScenarioContent(name, recs, parent) {
+  const old = parent.querySelector('.scenario-content');
+  if (old) old.remove();
+  const wrapper = document.createElement('div');
+  wrapper.className = 'scenario-content';
+
+  const totalRev = recs.reduce((sum, r) => sum + r.score, 0);
+  const head = document.createElement('div');
+  head.style.cssText = 'display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; padding:15px; background:#f9f9f9; border-radius:8px;';
+  head.innerHTML = `<div><h3 style="margin:0;">${name} Path</h3><span style="color:#666;">${recs.length} Upgrades | Potential: <strong>$${totalRev.toLocaleString()}</strong></span></div>`;
+
+  const btn = document.createElement('button');
+  btn.textContent = "Accept Entire Path";
+  btn.style.cssText = 'background:#4361ee; color:white; border:none; padding:10px 20px; border-radius:5px; cursor:pointer;';
+  btn.addEventListener('click', () => handleAcceptScenario(name));
+  head.appendChild(btn);
+  wrapper.appendChild(head);
+
+  const startDate = parseDate(currentRules.selectedDate);
+  const hierarchy = currentRules.hierarchy.toUpperCase().split(',').map(r => r.trim()).filter(Boolean);
+  const baseReservations = buildReservationsByDate(currentAllReservations);
+  const masterInv = getMasterInventory(currentRules.profile);
+
+  const dates = Array.from({ length: 14 }, (_, i) => {
+    const d = new Date(startDate);
+    d.setUTCDate(d.getUTCDate() + i);
+    return d;
+  });
+  const headers = ['Room Type', ...dates.map(date => `${date.toLocaleDateString('en-US', { weekday: 'short', timeZone: 'UTC' })}<br>${date.getUTCMonth() + 1}/${date.getUTCDate()}`)];
+
+  const projectedRows = [];
+  const currentRows = [];
+  const numCols = dates.length;
+  const projColTotals = new Array(numCols).fill(0);
+  const currColTotals = new Array(numCols).fill(0);
+
+  hierarchy.forEach(roomCode => {
+    const pRow = { roomCode, data: [] };
+    const cRow = { roomCode, data: [] };
+
+    dates.forEach((date, i) => {
+      const dateString = date.toISOString().split('T')[0];
+      let baseAvail = 0;
+      if (currentInventoryMap && currentInventoryMap[dateString] && currentInventoryMap[dateString][roomCode] !== undefined) {
+        baseAvail = currentInventoryMap[dateString][roomCode];
+      } else {
+        const dTime = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate())).getTime();
+        const oooCount = oooRecords.reduce((t, r) => {
+          const rS = r.startDate.getTime(); const rE = r.endDate.getTime();
+          if (r.roomType === roomCode && dTime >= rS && dTime <= rE) return t + (r.count || 1);
+          return t;
+        }, 0);
+        baseAvail = (masterInv[roomCode] || 0) - (baseReservations[dateString]?.[roomCode] || 0) - oooCount;
+      }
+
+      let projAvail = baseAvail;
+      recs.forEach(upgrade => {
+        if (dateString >= upgrade.isoArrival && dateString < upgrade.isoDeparture) {
+          if (upgrade.room === roomCode) projAvail += 1;
+          if (upgrade.upgradeTo === roomCode) projAvail -= 1;
+        }
+      });
+
+      pRow.data.push(projAvail);
+      cRow.data.push(baseAvail);
+      projColTotals[i] += projAvail;
+      currColTotals[i] += baseAvail;
+    });
+    projectedRows.push(pRow);
+    currentRows.push(cRow);
+  });
+
+  const matrixContainer = document.createElement('div');
+  matrixContainer.innerHTML = generateMatrixHTML("Projected Availability (With Scenario)", projectedRows, headers, projColTotals) +
+    generateMatrixHTML("Current Availability (Base)", currentRows, headers, currColTotals);
+
+  wrapper.appendChild(matrixContainer);
+  parent.appendChild(wrapper);
+}
+
+function displayAcceptedUpgrades() {
+  const container = document.getElementById('accepted-container'); container.innerHTML = '';
+  if (acceptedUpgrades.length > 0) {
+    const c = document.createElement('div'); c.style.cssText = 'display:flex;justify-content:flex-end;margin-bottom:20px;padding:10px;background:#f8f9fa;border-radius:5px;';
+    const b = document.createElement('button'); b.textContent = 'Download CSV'; b.style.cssText = 'background:#4343FF;color:white;border:none;padding:10px 15px;border-radius:4px;cursor:pointer;';
+    b.addEventListener('click', downloadAcceptedUpgradesCsv); c.appendChild(b); container.appendChild(c);
+
+    acceptedUpgrades.forEach((rec, i) => {
+      const card = document.createElement('div'); card.className = 'rec-card';
+      const vipHtml = rec.vipStatus ? `<div style="color: red; font-weight: bold; margin-bottom: 4px; font-size: 14px;">${rec.vipStatus}</div>` : '';
+      card.innerHTML = `<div class="rec-info"><h3>${rec.name} (${rec.resId})</h3>${vipHtml}<div class="rec-details">Original: <b>${rec.room}</b> | Upgraded To: <strong>${rec.upgradeTo}</strong><br>Value: <strong>${rec.revenue}</strong></div></div><div class="rec-actions"><button class="pms-btn" data-index="${i}" style="margin-right:5px;">Mark as PMS Updated</button></div>`;
+      container.appendChild(card);
+    });
+    container.querySelectorAll('.pms-btn').forEach(btn => btn.addEventListener('click', handlePmsUpdateClick));
+  } else container.innerHTML = '<p>No accepted upgrades.</p>';
+}
+
+function displayDemandInsights() {
+  const container = document.getElementById('demand-insights-container'); const profileDropdown = document.getElementById('profile-dropdown'); if (!container || !profileDropdown) return; const currentProfile = profileDropdown.value; const profileUpgrades = completedUpgrades.filter(rec => rec.profile === currentProfile); container.innerHTML = ''; if (profileUpgrades.length === 0) { container.innerHTML = '<p style="text-align:center; color:#888;">No completed upgrade data available for Demand Insights.</p>'; return; } const roomTypeCounts = {}; let totalRevenue = 0; profileUpgrades.forEach(rec => { const type = rec.upgradeTo; roomTypeCounts[type] = (roomTypeCounts[type] || 0) + 1; const val = parseFloat(rec.revenue.replace(/[$,]/g, '')) || 0; totalRevenue += val; }); const sortedRooms = Object.entries(roomTypeCounts).sort((a, b) => b[1] - a[1]); const avgRevenue = profileUpgrades.length > 0 ? (totalRevenue / profileUpgrades.length) : 0; let html = ` <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 25px;"> <div style="background: #f0f7ff; padding: 15px; border-radius: 8px; text-align: center;"> <h4 style="margin:0; color:#555;">Total Completed Upgrades</h4> <div style="font-size: 24px; font-weight: bold; color: #4343FF;">${profileUpgrades.length}</div> </div> <div style="background: #f0fff4; padding: 15px; border-radius: 8px; text-align: center;"> <h4 style="margin:0; color:#555;">Total Revenue Value</h4> <div style="font-size: 24px; font-weight: bold; color: #28a745;">${totalRevenue.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</div> </div> <div style="background: #fff8f0; padding: 15px; border-radius: 8px; text-align: center;"> <h4 style="margin:0; color:#555;">Avg. Upgrade Value</h4> <div style="font-size: 24px; font-weight: bold; color: #fd7e14;">${avgRevenue.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</div> </div> </div> <h3>Top Performing Upgrade Rooms</h3> <table style="width: 100%; border-collapse: collapse; margin-top: 10px;"> <thead> <tr style="background: #f8f9fa; text-align: left;"> <th style="padding: 10px; border-bottom: 2px solid #ddd;">Room Type</th> <th style="padding: 10px; border-bottom: 2px solid #ddd;">Upgrade Count</th> <th style="padding: 10px; border-bottom: 2px solid #ddd;">% of Total</th> </tr> </thead> <tbody> `; sortedRooms.forEach(([room, count]) => { const percentage = ((count / profileUpgrades.length) * 100).toFixed(1); html += ` <tr> <td style="padding: 10px; border-bottom: 1px solid #eee;"><strong>${room}</strong></td> <td style="padding: 10px; border-bottom: 1px solid #eee;">${count}</td> <td style="padding: 10px; border-bottom: 1px solid #eee;"> <div style="display: flex; align-items: center;"> <span style="width: 40px;">${percentage}%</span> <div style="flex-grow: 1; height: 6px; background: #eee; border-radius: 3px; margin-left: 10px;"> <div style="width: ${percentage}%; height: 100%; background: #4343FF; border-radius: 3px;"></div> </div> </div> </td> </tr> `; }); html += ` </tbody> </table> `; container.innerHTML = html;
+}
+
+function displayCompletedUpgrades() {
+  const container = document.getElementById('completed-container'); const dateDropdown = document.getElementById('sort-date-dropdown'); const profileDropdown = document.getElementById('profile-dropdown'); if (!container || !dateDropdown || !profileDropdown) return; const selectedDate = dateDropdown.value; const currentProfile = profileDropdown.value; let totalValue = 0; const profileUpgrades = completedUpgrades.filter(rec => rec.profile === currentProfile); while (dateDropdown.options.length > 1) { dateDropdown.remove(1); } const existingOptions = new Set(Array.from(dateDropdown.options).map(opt => opt.value)); const uniqueDates = new Set(profileUpgrades.map(rec => rec.completedTimestamp.toLocaleDateString())); uniqueDates.forEach(date => { if (!existingOptions.has(date)) { const option = document.createElement('option'); option.value = date; option.textContent = date; dateDropdown.appendChild(option); } }); container.innerHTML = ''; const dateFilteredUpgrades = selectedDate === 'all' ? profileUpgrades : profileUpgrades.filter(rec => rec.completedTimestamp.toLocaleDateString() === selectedDate); if (dateFilteredUpgrades && dateFilteredUpgrades.length > 0) { dateFilteredUpgrades.sort((a, b) => b.completedTimestamp - a.completedTimestamp); dateFilteredUpgrades.forEach(rec => { totalValue += parseFloat(rec.revenue.replace(/[$,]/g, '')) || 0; const card = document.createElement('div'); card.className = 'rec-card completed'; card.innerHTML = ` <div class="rec-info"> <h3>${rec.name} (${rec.resId})</h3> <div class="rec-details"> Original: <b>${rec.room}</b> | Upgraded To: <strong>${rec.upgradeTo}</strong><br> Value of Reservation: <strong>${rec.revenue}</strong><br> Completed On: <strong>${rec.completedTimestamp.toLocaleDateString()}</strong> </div> </div> <div class="rec-actions" style="flex-direction: column; align-items: flex-end;"> <div style="color: var(--success-color); margin-bottom: 5px;"> <strong style="color: #4343FF;">✓ Completed</strong> </div> <button class="undo-completed-btn" data-firestore-id="${rec.firestoreId}" style="background-color: #dc3545; color: white; padding: 5px 10px; font-size: 12px; border: none; border-radius: 4px; cursor: pointer;">Undo</button> </div> `; container.appendChild(card); }); const totalHeader = document.createElement('h3'); totalHeader.style.textAlign = 'right'; totalHeader.style.marginTop = '20px'; totalHeader.textContent = `Total Value: ${totalValue.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}`; container.appendChild(totalHeader); container.querySelectorAll('.undo-completed-btn').forEach(btn => { btn.addEventListener('click', handleUndoCompletedClick); }); } else { container.innerHTML = '<p>No upgrades have been marked as completed for this profile and date.</p>'; }
+}
+
+function displayMatrix(matrix) {
+  const container = document.getElementById('matrix-container'); if (!matrix || !matrix.headers || !matrix.rows) { container.innerHTML = '<p>Could not generate the availability matrix.</p>'; return; } const numDateColumns = matrix.headers.length - 1; const columnTotals = new Array(numDateColumns).fill(0); let html = '<table><thead><tr>' + matrix.headers.map(h => `<th>${h}</th>`).join('') + '</tr></thead><tbody>'; matrix.rows.forEach(row => { html += `<tr><td><strong>${row.roomCode}</strong></td>`; row.availability.forEach((avail, index) => { html += `<td>${avail}</td>`; columnTotals[index] += (typeof avail === 'number' ? avail : 0); }); html += '</tr>'; }); html += '<tr style="background-color: #f8f9fa; border-top: 2px solid #ccc;">'; html += '<td><strong>TOTAL AVAILABLE</strong></td>'; columnTotals.forEach(total => { html += `<td><strong>${total}</strong></td>`; }); html += '</tr>'; html += '</tbody></table>'; container.innerHTML = html; colorMatrixCells();
+}
+
+function colorMatrixCells() { const cells = document.querySelectorAll("#matrix-container td:not(:first-child)"); cells.forEach(cell => { const value = parseInt(cell.textContent, 10); if (isNaN(value)) return; cell.classList.remove('matrix-neg', 'matrix-low', 'matrix-high'); if (value < 0) cell.classList.add('matrix-neg'); else if (value >= 3) cell.classList.add('matrix-high'); else cell.classList.add('matrix-low'); }); }
+function showError(error) { showLoader(false); alert(error.message || 'Error'); console.error(error); }
+function showLoader(show, text = 'Loading...') { const l = document.getElementById('loader'), o = document.getElementById('output'), g = document.getElementById('generate-btn'); if (l) l.style.display = show ? 'block' : 'none'; if (l) l.innerHTML = `<div class="spinner"></div>${text}`; if (o) o.style.display = show ? 'none' : 'block'; if (g) g.disabled = show; }
 
 function parseCsv(csvContent) {
   const lines = csvContent.trim().split('\n');
@@ -1343,6 +1865,74 @@ function parseCsv(csvContent) {
     row.push(currentField); return row;
   });
   return { data, header };
+}
+
+function applyUpgradesAndRecalculate(currentAcceptedList, csvContent, rules, fileName) {
+  const { data, header } = parseCsv(csvContent);
+  let allReservations = [];
+  const isSynxisArrivals = header.includes('Guest_Nm');
+  if (isSynxisArrivals) allReservations = parseSynxisArrivals(data, header);
+  else allReservations = parseAllReservations(data, header, fileName);
+  currentAcceptedList.forEach(rec => {
+    const r = allReservations.find(res => res.resId === rec.resId);
+    if (r) r.roomType = rec.upgradeTo;
+  });
+  const results = generateScenariosFromData(allReservations, rules);
+  results.acceptedUpgrades = currentAcceptedList;
+  return results;
+}
+
+function processUpgradeData(csvContent, rules, fileName) {
+  const { data, header } = parseCsv(csvContent);
+  if (!data || !data.length) throw new Error('Empty CSV');
+  const isSynxisArrivals = header.includes('Guest_Nm');
+  let allReservations = [];
+  if (isSynxisArrivals) allReservations = parseSynxisArrivals(data, header);
+  else allReservations = parseAllReservations(data, header, fileName);
+  currentAllReservations = allReservations;
+  originalAllReservations = JSON.parse(JSON.stringify(allReservations));
+  return generateScenariosFromData(allReservations, rules);
+}
+
+function parseSynxisArrivals(data, header) {
+  const nameIndex = header.indexOf('Guest_Nm');
+  const resIdIndex = header.indexOf('CRS_Confirm_No');
+  const roomTypeIndex = header.indexOf('Rm_Typ_Cd');
+  const rateNameIndex = header.indexOf('Rate_Type_Name_Code_Offshore');
+  const arrivalIndex = header.indexOf('Arrival_Date');
+  const departureIndex = header.indexOf('Depart_Date');
+  const statusIndex = header.indexOf('Rez_Status');
+  const rateIndex = header.indexOf('Avg_Rate_Offshore');
+  
+  // SynXis typically uses 'create_dt' or similar
+  const createDtIndex = header.indexOf('create_dt'); 
+  
+  const ids = new Set();
+  return data.map(values => {
+    if (values.length < header.length) return null;
+    const resId = values[resIdIndex]?.trim();
+    if (!resId || ids.has(resId)) return null;
+    ids.add(resId);
+    const arrival = values[arrivalIndex] ? parseDate(values[arrivalIndex]) : null;
+    const departure = values[departureIndex] ? parseDate(values[departureIndex]) : null;
+    
+    // Parse Creation Date for SynXis
+    const bookDate = (createDtIndex > -1 && values[createDtIndex]) ? parseDate(values[createDtIndex]) : null;
+    let leadTime = 0;
+    if (arrival && bookDate) {
+      const timeDiff = arrival.getTime() - bookDate.getTime();
+      leadTime = Math.ceil(timeDiff / (1000 * 3600 * 24));
+    }
+
+    let nights = 0; if (arrival && departure) nights = Math.max(1, Math.ceil((departure - arrival) / (1000 * 60 * 60 * 24)));
+    const dailyRate = parseFloat(values[rateIndex]) || 0;
+    let fullName = values[nameIndex] || "";
+    if (fullName.includes(',')) { const parts = fullName.split(','); if (parts.length >= 2) fullName = `${parts[1].trim()} ${parts[0].trim()}`; }
+    let status = values[statusIndex]?.trim().toUpperCase() || 'RESERVATION';
+    if (status === 'CONFIRMED') status = 'RESERVATION'; if (status === 'CANCELLED') status = 'CANCELED';
+    
+    return { name: fullName, resId, roomType: values[roomTypeIndex]?.trim().toUpperCase(), rate: values[rateNameIndex]?.trim(), nights, arrival, departure, status, revenue: (dailyRate * nights).toLocaleString('en-US', { style: 'currency', currency: 'USD' }), marketCode: '', leadTime };
+  }).filter(r => r && r.roomType && r.arrival && r.departure && r.nights > 0);
 }
 
 function parseAllReservations(data, header, fileName) {
@@ -1365,6 +1955,8 @@ function parseAllReservations(data, header, fileName) {
     vipIndex = header.indexOf('Vip');
     if (vipIndex === -1) vipIndex = header.indexOf('VIPDescription');
     dnmIndex = header.indexOf('Do Not Move');
+    
+    // Attempt to find booking date in SNT headers
     const bookDateCandidates = ['Book Date', 'Booked Date', 'Creation Date', 'Create Date', 'Entered On'];
     bookDateIndex = header.findIndex(h => bookDateCandidates.includes(h));
 
@@ -1379,6 +1971,8 @@ function parseAllReservations(data, header, fileName) {
     statusIndex = header.indexOf('Status');
     rateIndex = header.indexOf('Rate');
     vipIndex = header.indexOf('VIPDescription');
+    
+    // Attempt to find booking date in generic CSV headers
     const bookDateCandidates = ['Book Date', 'Booked Date', 'Booked On', 'Creation Date', 'Create Date', 'Entered On'];
     bookDateIndex = header.findIndex(h => bookDateCandidates.includes(h));
 
@@ -1389,12 +1983,15 @@ function parseAllReservations(data, header, fileName) {
     if (values.length < header.length) return null;
     const arrival = values[arrivalIndex] ? parseDate(values[arrivalIndex]) : null;
     const departure = values[departureIndex] ? parseDate(values[departureIndex]) : null;
+    
+    // Parse Book Date
     const bookDate = (bookDateIndex > -1 && values[bookDateIndex]) ? parseDate(values[bookDateIndex]) : null;
     
+    // Calculate Lead Time
     let leadTime = 0;
     if (arrival && bookDate) {
       const timeDiff = arrival.getTime() - bookDate.getTime();
-      leadTime = Math.ceil(timeDiff / (1000 * 3600 * 24));
+      leadTime = Math.ceil(timeDiff / (1000 * 3600 * 24)); // Days
     }
 
     let nights = 0;
@@ -1426,23 +2023,6 @@ function parseAllReservations(data, header, fileName) {
     };
   }).filter(r => r && r.roomType && r.arrival && r.departure && r.nights > 0);
 }
-
-function processUpgradeData(csvContent, rules, fileName) {
-    const { data, header } = parseCsv(csvContent);
-    if (!data || !data.length) throw new Error('Empty CSV');
-    const isSynxisArrivals = header.includes('Guest_Nm');
-    let allReservations = [];
-    if (isSynxisArrivals) allReservations = parseSynxisArrivals(data, header);
-    else allReservations = parseAllReservations(data, header, fileName);
-    currentAllReservations = allReservations;
-    originalAllReservations = JSON.parse(JSON.stringify(allReservations)); 
-    return generateScenariosFromData(allReservations, rules);
-}
-
-// ... [generateScenariosFromData, runSimulation, buildReservationsByDate, getInventoryForDate, getMasterInventory, parseDate, generateMatrixHTML, getBedType, downloadAcceptedUpgradesCsv, applyUpgradesAndRecalculate] ...
-
-// Note: Ensure the standard matrix/simulation functions defined earlier are present here.
-// I will include them below for completeness to ensure "Every Line" is covered.
 
 function generateScenariosFromData(allReservations, rules) {
   const masterInventory = getMasterInventory(rules.profile);
@@ -1526,9 +2106,16 @@ function runSimulation(strategy, allReservations, masterInv, rules, completedIds
       });
     }
     if (strategy === 'Revenue Focus') {
-      candidates.sort((a, b) => { if (b.score !== a.score) return b.score - a.score; return b.rank - a.rank; });
+      candidates.sort((a, b) => {
+        if (b.score !== a.score) return b.score - a.score;
+        return b.rank - a.rank;
+      });
     } else if (strategy === 'VIP Focus') {
-      candidates.sort((a, b) => { if (b.vip !== a.vip) return b.vip - a.vip; if (b.score !== a.score) return b.score - a.score; return b.rank - a.rank; });
+      candidates.sort((a, b) => {
+        if (b.vip !== a.vip) return b.vip - a.vip;
+        if (b.score !== a.score) return b.score - a.score;
+        return b.rank - a.rank;
+      });
     } else {
       candidates.sort((a, b) => a.nights - b.nights);
     }
@@ -1599,21 +2186,6 @@ function downloadAcceptedUpgradesCsv() {
   const csvContent = [headers.join(','), ...rows].join('\n');
   const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' }); const link = document.createElement('a'); const url = URL.createObjectURL(blob); const dateStr = new Date().toISOString().slice(0, 10); link.setAttribute('href', url); link.setAttribute('download', `accepted_upgrades_${dateStr}.csv`); link.style.visibility = 'hidden'; document.body.appendChild(link); link.click(); document.body.removeChild(link);
 }
-function displayMatrixOnlyView(results) { showLoader(false); const acceptedContainer = document.getElementById('accepted-container'); if (acceptedContainer) acceptedContainer.style.display = 'block'; displayAcceptedUpgrades(); const container = document.getElementById('recommendations-container'); container.innerHTML = ''; const matDiv = document.createElement('div'); matDiv.style.marginTop = '20px'; const startDate = parseDate(currentRules.selectedDate); const dates = Array.from({ length: 14 }, (_, i) => { const d = new Date(startDate); d.setUTCDate(d.getUTCDate() + i); return d; }); const headers = ['Room Type', ...dates.map(date => `${date.toLocaleDateString('en-US', { weekday: 'short', timeZone: 'UTC' })}<br>${date.getUTCMonth() + 1}/${date.getUTCDate()}`)]; const numCols = dates.length; const colTotals = new Array(numCols).fill(0); const rowsForHelper = results.matrixData.rows.map(row => { row.availability.forEach((val, i) => colTotals[i] += val); return { roomCode: row.roomCode, data: row.availability }; }); matDiv.innerHTML = generateMatrixHTML("Updated Availability (Post-Acceptance)", rowsForHelper, headers, colTotals); container.appendChild(matDiv); const continueBtn = document.createElement('button'); continueBtn.textContent = "Continue / Review More"; continueBtn.style.cssText = "margin-top: 20px; padding: 12px 24px; background: #4343FF; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 16px; display: block; margin-left: auto; margin-right: auto;"; continueBtn.addEventListener('click', () => { displayResults(results); }); container.appendChild(continueBtn); }
-function handlePmsUpdateClick(event) { const user = auth.currentUser; if (!user) { showError({ message: "Login req" }); return; } const recIndex = event.target.dataset.index; const item = acceptedUpgrades[recIndex]; if (item) { const toComplete = acceptedUpgrades.splice(recIndex, 1)[0]; toComplete.completedTimestamp = new Date(); toComplete.profile = document.getElementById('profile-dropdown').value; completedUpgrades.push(toComplete); db.collection('users').doc(user.uid).collection('completedUpgrades').add(toComplete).then((doc) => { toComplete.firestoreId = doc.id; displayCompletedUpgrades(); displayDemandInsights(); }).catch((e) => { completedUpgrades.pop(); acceptedUpgrades.splice(recIndex, 0, toComplete); showError({ message: "Save failed" }); }); displayAcceptedUpgrades(); displayCompletedUpgrades(); } }
-async function handleUndoCompletedClick(event) { const user = auth.currentUser; if (!user) return; if (!confirm("Undo?")) return; const fid = event.target.dataset.firestoreId; const idx = completedUpgrades.findIndex(u => u.firestoreId === fid); if (idx === -1) return; const item = completedUpgrades[idx]; event.target.disabled = true; try { await db.collection('users').doc(user.uid).collection('completedUpgrades').doc(fid).delete(); completedUpgrades.splice(idx, 1); delete item.completedTimestamp; delete item.firestoreId; acceptedUpgrades.push(item); displayCompletedUpgrades(); displayDemandInsights(); displayAcceptedUpgrades(); if (currentCsvContent) { const results = applyUpgradesAndRecalculate(acceptedUpgrades, currentCsvContent, currentRules, currentFileName); displayResults(results); } } catch (e) { alert("Undo failed."); } }
-function displayResults(data) { showLoader(false); if (data.error) { showError({ message: data.error }); return; } if (data.acceptedUpgrades) acceptedUpgrades = data.acceptedUpgrades; currentScenarios = data.scenarios || {}; const accCont = document.getElementById('accepted-container'); if (accCont) accCont.style.display = 'block'; displayAcceptedUpgrades(); displayScenarios(currentScenarios); document.getElementById('output').style.display = 'block'; const messageEl = document.getElementById('message'); messageEl.style.display = data.message ? 'block' : 'none'; messageEl.innerHTML = data.message || ''; displayInventory(data.inventory); }
-function displayInventory(inventory) { const container = document.getElementById('inventory'); let rooms = []; for (const r in inventory) if (inventory[r] > 0) rooms.push(`<strong>${r}:</strong> ${inventory[r]}`); container.innerHTML = '<h3>Available Rooms</h3>' + (rooms.length ? rooms.join(' | ') : '<p>None.</p>'); }
-function displayScenarios(scenarios) { const container = document.getElementById('recommendations-container'); container.innerHTML = ''; if (scenarios['Revenue Focus'] && scenarios['VIP Focus']) { const revPath = scenarios['Revenue Focus']; const vipPath = scenarios['VIP Focus']; const getSig = (u) => `${u.resId}|${u.upgradeTo}`; let isIdentical = revPath.length === vipPath.length; if (isIdentical) { const revSet = new Set(revPath.map(getSig)); for (const u of vipPath) { if (!revSet.has(getSig(u))) { isIdentical = false; break; } } } if (isIdentical) { delete scenarios['VIP Focus']; } } const keys = Object.keys(scenarios); if (!keys.length) { container.innerHTML = '<p>No upgrade paths.</p>'; return; } const header = document.createElement('div'); header.style.cssText = 'display:flex; gap:10px; margin-bottom:20px; border-bottom:2px solid #eee; padding-bottom:10px;'; keys.forEach((key, i) => { const tab = document.createElement('button'); tab.textContent = key; tab.style.cssText = `padding:10px 20px; border:none; cursor:pointer; border-radius:5px; background:${i === 0 ? '#4343FF' : '#f0f0f0'}; color:${i === 0 ? 'white' : '#333'};`; tab.className = 'scenario-tab'; tab.addEventListener('click', () => { container.querySelectorAll('.scenario-tab').forEach(b => { b.style.background = '#f0f0f0'; b.style.color = '#333'; }); tab.style.background = '#4343FF'; tab.style.color = 'white'; renderScenarioContent(key, scenarios[key], container); }); header.appendChild(tab); }); container.appendChild(header); renderScenarioContent(keys[0], scenarios[keys[0]], container); }
-function generateMatrixHTML(title, rows, headers, colTotals) { const styleTable = 'width:100%; border-collapse:collapse; font-size:13px; font-family:sans-serif; min-width:100%;'; const styleTh = 'padding:12px 8px; background-color:#f8f9fa; color:#495057; font-weight:600; border-bottom:2px solid #e9ecef; text-align:center;'; const styleTd = 'padding:10px 8px; border-bottom:1px solid #e9ecef; text-align:center; color:#333;'; const styleRowLabel = 'padding:10px 8px; border-bottom:1px solid #e9ecef; text-align:left; font-weight:600; color:#333; background-color:#fff; position:sticky; left:0;'; const styleTotalRow = 'background-color:#f1f3f5; font-weight:bold;'; const getCellColor = (val) => { if (val < 0) return 'background-color:#ffebee; color:#c62828; font-weight:bold;'; if (val < 3) return 'background-color:#fff3e0; color:#ef6c00;'; return 'background-color:#e8f5e9; color:#2e7d32;'; }; let html = `<div style="background:white; border-radius:8px; box-shadow:0 2px 4px rgba(0,0,0,0.05); overflow:hidden; margin-bottom:25px; border:1px solid #eee;"> <div style="padding:15px; border-bottom:1px solid #eee; background:#fff;"> <h4 style="margin:0; color:#4343FF; font-size:16px;">${title}</h4> </div> <div style="overflow-x:auto;"> <table style="${styleTable}"> <thead> <tr>${headers.map(h => `<th style="${styleTh}">${h}</th>`).join('')}</tr> </thead> <tbody>`; rows.forEach(row => { html += `<tr><td style="${styleRowLabel}">${row.roomCode}</td>`; row.data.forEach(avail => { html += `<td style="${styleTd} ${getCellColor(avail)}">${avail}</td>`; }); html += '</tr>'; }); html += `<tr style="${styleTotalRow}"> <td style="${styleRowLabel} background-color:#f1f3f5;">TOTAL</td>`; colTotals.forEach(total => { html += `<td style="${styleTd}">${total}</td>`; }); html += '</tr></tbody></table></div></div>'; return html; }
-function renderScenarioContent(name, recs, parent) { const old = parent.querySelector('.scenario-content'); if (old) old.remove(); const wrapper = document.createElement('div'); wrapper.className = 'scenario-content'; const totalRev = recs.reduce((sum, r) => sum + r.score, 0); const head = document.createElement('div'); head.style.cssText = 'display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; padding:15px; background:#f9f9f9; border-radius:8px;'; head.innerHTML = `<div><h3 style="margin:0;">${name} Path</h3><span style="color:#666;">${recs.length} Upgrades | Potential: <strong>$${totalRev.toLocaleString()}</strong></span></div>`; const btn = document.createElement('button'); btn.textContent = "Accept Entire Path"; btn.style.cssText = 'background:#4361ee; color:white; border:none; padding:10px 20px; border-radius:5px; cursor:pointer;'; btn.addEventListener('click', () => handleAcceptScenario(name)); head.appendChild(btn); wrapper.appendChild(head); const startDate = parseDate(currentRules.selectedDate); const hierarchy = currentRules.hierarchy.toUpperCase().split(',').map(r => r.trim()).filter(Boolean); const baseReservations = buildReservationsByDate(currentAllReservations); const masterInv = getMasterInventory(currentRules.profile); const dates = Array.from({ length: 14 }, (_, i) => { const d = new Date(startDate); d.setUTCDate(d.getUTCDate() + i); return d; }); const headers = ['Room Type', ...dates.map(date => `${date.toLocaleDateString('en-US', { weekday: 'short', timeZone: 'UTC' })}<br>${date.getUTCMonth() + 1}/${date.getUTCDate()}`)]; const projectedRows = []; const currentRows = []; const numCols = dates.length; const projColTotals = new Array(numCols).fill(0); const currColTotals = new Array(numCols).fill(0); hierarchy.forEach(roomCode => { const pRow = { roomCode, data: [] }; const cRow = { roomCode, data: [] }; dates.forEach((date, i) => { const dateString = date.toISOString().split('T')[0]; let baseAvail = 0; if (currentInventoryMap && currentInventoryMap[dateString] && currentInventoryMap[dateString][roomCode] !== undefined) { baseAvail = currentInventoryMap[dateString][roomCode]; } else { const dTime = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate())).getTime(); const oooCount = oooRecords.reduce((t, r) => { const rS = r.startDate.getTime(); const rE = r.endDate.getTime(); if (r.roomType === roomCode && dTime >= rS && dTime <= rE) return t + (r.count || 1); return t; }, 0); baseAvail = (masterInv[roomCode] || 0) - (baseReservations[dateString]?.[roomCode] || 0) - oooCount; } let projAvail = baseAvail; recs.forEach(upgrade => { if (dateString >= upgrade.isoArrival && dateString < upgrade.isoDeparture) { if (upgrade.room === roomCode) projAvail += 1; if (upgrade.upgradeTo === roomCode) projAvail -= 1; } }); pRow.data.push(projAvail); cRow.data.push(baseAvail); projColTotals[i] += projAvail; currColTotals[i] += baseAvail; }); projectedRows.push(pRow); currentRows.push(cRow); }); const matrixContainer = document.createElement('div'); matrixContainer.innerHTML = generateMatrixHTML("Projected Availability (With Scenario)", projectedRows, headers, projColTotals) + generateMatrixHTML("Current Availability (Base)", currentRows, headers, currColTotals); wrapper.appendChild(matrixContainer); parent.appendChild(wrapper); }
-function displayAcceptedUpgrades() { const container = document.getElementById('accepted-container'); container.innerHTML = ''; if (acceptedUpgrades.length > 0) { const c = document.createElement('div'); c.style.cssText = 'display:flex;justify-content:flex-end;margin-bottom:20px;padding:10px;background:#f8f9fa;border-radius:5px;'; const b = document.createElement('button'); b.textContent = 'Download CSV'; b.style.cssText = 'background:#4343FF;color:white;border:none;padding:10px 15px;border-radius:4px;cursor:pointer;'; b.addEventListener('click', downloadAcceptedUpgradesCsv); c.appendChild(b); container.appendChild(c); acceptedUpgrades.forEach((rec, i) => { const card = document.createElement('div'); card.className = 'rec-card'; const vipHtml = rec.vipStatus ? `<div style="color: red; font-weight: bold; margin-bottom: 4px; font-size: 14px;">${rec.vipStatus}</div>` : ''; card.innerHTML = `<div class="rec-info"><h3>${rec.name} (${rec.resId})</h3>${vipHtml}<div class="rec-details">Original: <b>${rec.room}</b> | Upgraded To: <strong>${rec.upgradeTo}</strong><br>Value: <strong>${rec.revenue}</strong></div></div><div class="rec-actions"><button class="pms-btn" data-index="${i}" style="margin-right:5px;">Mark as PMS Updated</button></div>`; container.appendChild(card); }); container.querySelectorAll('.pms-btn').forEach(btn => btn.addEventListener('click', handlePmsUpdateClick)); } else container.innerHTML = '<p>No accepted upgrades.</p>'; }
-function displayDemandInsights() { const container = document.getElementById('demand-insights-container'); const profileDropdown = document.getElementById('profile-dropdown'); if (!container || !profileDropdown) return; const currentProfile = profileDropdown.value; const profileUpgrades = completedUpgrades.filter(rec => rec.profile === currentProfile); container.innerHTML = ''; if (profileUpgrades.length === 0) { container.innerHTML = '<p style="text-align:center; color:#888;">No completed upgrade data available for Demand Insights.</p>'; return; } const roomTypeCounts = {}; let totalRevenue = 0; profileUpgrades.forEach(rec => { const type = rec.upgradeTo; roomTypeCounts[type] = (roomTypeCounts[type] || 0) + 1; const val = parseFloat(rec.revenue.replace(/[$,]/g, '')) || 0; totalRevenue += val; }); const sortedRooms = Object.entries(roomTypeCounts).sort((a, b) => b[1] - a[1]); const avgRevenue = profileUpgrades.length > 0 ? (totalRevenue / profileUpgrades.length) : 0; let html = ` <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 25px;"> <div style="background: #f0f7ff; padding: 15px; border-radius: 8px; text-align: center;"> <h4 style="margin:0; color:#555;">Total Completed Upgrades</h4> <div style="font-size: 24px; font-weight: bold; color: #4343FF;">${profileUpgrades.length}</div> </div> <div style="background: #f0fff4; padding: 15px; border-radius: 8px; text-align: center;"> <h4 style="margin:0; color:#555;">Total Revenue Value</h4> <div style="font-size: 24px; font-weight: bold; color: #28a745;">${totalRevenue.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</div> </div> <div style="background: #fff8f0; padding: 15px; border-radius: 8px; text-align: center;"> <h4 style="margin:0; color:#555;">Avg. Upgrade Value</h4> <div style="font-size: 24px; font-weight: bold; color: #fd7e14;">${avgRevenue.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</div> </div> </div> <h3>Top Performing Upgrade Rooms</h3> <table style="width: 100%; border-collapse: collapse; margin-top: 10px;"> <thead> <tr style="background: #f8f9fa; text-align: left;"> <th style="padding: 10px; border-bottom: 2px solid #ddd;">Room Type</th> <th style="padding: 10px; border-bottom: 2px solid #ddd;">Upgrade Count</th> <th style="padding: 10px; border-bottom: 2px solid #ddd;">% of Total</th> </tr> </thead> <tbody> `; sortedRooms.forEach(([room, count]) => { const percentage = ((count / profileUpgrades.length) * 100).toFixed(1); html += ` <tr> <td style="padding: 10px; border-bottom: 1px solid #eee;"><strong>${room}</strong></td> <td style="padding: 10px; border-bottom: 1px solid #eee;">${count}</td> <td style="padding: 10px; border-bottom: 1px solid #eee;"> <div style="display: flex; align-items: center;"> <span style="width: 40px;">${percentage}%</span> <div style="flex-grow: 1; height: 6px; background: #eee; border-radius: 3px; margin-left: 10px;"> <div style="width: ${percentage}%; height: 100%; background: #4343FF; border-radius: 3px;"></div> </div> </div> </td> </tr> `; }); html += ` </tbody> </table> `; container.innerHTML = html; }
-function displayCompletedUpgrades() { const container = document.getElementById('completed-container'); const dateDropdown = document.getElementById('sort-date-dropdown'); const profileDropdown = document.getElementById('profile-dropdown'); if (!container || !dateDropdown || !profileDropdown) return; const selectedDate = dateDropdown.value; const currentProfile = profileDropdown.value; let totalValue = 0; const profileUpgrades = completedUpgrades.filter(rec => rec.profile === currentProfile); while (dateDropdown.options.length > 1) { dateDropdown.remove(1); } const existingOptions = new Set(Array.from(dateDropdown.options).map(opt => opt.value)); const uniqueDates = new Set(profileUpgrades.map(rec => rec.completedTimestamp.toLocaleDateString())); uniqueDates.forEach(date => { if (!existingOptions.has(date)) { const option = document.createElement('option'); option.value = date; option.textContent = date; dateDropdown.appendChild(option); } }); container.innerHTML = ''; const dateFilteredUpgrades = selectedDate === 'all' ? profileUpgrades : profileUpgrades.filter(rec => rec.completedTimestamp.toLocaleDateString() === selectedDate); if (dateFilteredUpgrades && dateFilteredUpgrades.length > 0) { dateFilteredUpgrades.sort((a, b) => b.completedTimestamp - a.completedTimestamp); dateFilteredUpgrades.forEach(rec => { totalValue += parseFloat(rec.revenue.replace(/[$,]/g, '')) || 0; const card = document.createElement('div'); card.className = 'rec-card completed'; card.innerHTML = ` <div class="rec-info"> <h3>${rec.name} (${rec.resId})</h3> <div class="rec-details"> Original: <b>${rec.room}</b> | Upgraded To: <strong>${rec.upgradeTo}</strong><br> Value of Reservation: <strong>${rec.revenue}</strong><br> Completed On: <strong>${rec.completedTimestamp.toLocaleDateString()}</strong> </div> </div> <div class="rec-actions" style="flex-direction: column; align-items: flex-end;"> <div style="color: var(--success-color); margin-bottom: 5px;"> <strong style="color: #4343FF;">✓ Completed</strong> </div> <button class="undo-completed-btn" data-firestore-id="${rec.firestoreId}" style="background-color: #dc3545; color: white; padding: 5px 10px; font-size: 12px; border: none; border-radius: 4px; cursor: pointer;">Undo</button> </div> `; container.appendChild(card); }); const totalHeader = document.createElement('h3'); totalHeader.style.textAlign = 'right'; totalHeader.style.marginTop = '20px'; totalHeader.textContent = `Total Value: ${totalValue.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}`; container.appendChild(totalHeader); container.querySelectorAll('.undo-completed-btn').forEach(btn => { btn.addEventListener('click', handleUndoCompletedClick); }); } else { container.innerHTML = '<p>No upgrades have been marked as completed for this profile and date.</p>'; } }
-function displayMatrix(matrix) { const container = document.getElementById('matrix-container'); if (!matrix || !matrix.headers || !matrix.rows) { container.innerHTML = '<p>Could not generate the availability matrix.</p>'; return; } const numDateColumns = matrix.headers.length - 1; const columnTotals = new Array(numDateColumns).fill(0); let html = '<table><thead><tr>' + matrix.headers.map(h => `<th>${h}</th>`).join('') + '</tr></thead><tbody>'; matrix.rows.forEach(row => { html += `<tr><td><strong>${row.roomCode}</strong></td>`; row.availability.forEach((avail, index) => { html += `<td>${avail}</td>`; columnTotals[index] += (typeof avail === 'number' ? avail : 0); }); html += '</tr>'; }); html += '<tr style="background-color: #f8f9fa; border-top: 2px solid #ccc;">'; html += '<td><strong>TOTAL AVAILABLE</strong></td>'; columnTotals.forEach(total => { html += `<td><strong>${total}</strong></td>`; }); html += '</tr>'; html += '</tbody></table>'; container.innerHTML = html; colorMatrixCells(); }
-function colorMatrixCells() { const cells = document.querySelectorAll("#matrix-container td:not(:first-child)"); cells.forEach(cell => { const value = parseInt(cell.textContent, 10); if (isNaN(value)) return; cell.classList.remove('matrix-neg', 'matrix-low', 'matrix-high'); if (value < 0) cell.classList.add('matrix-neg'); else if (value >= 3) cell.classList.add('matrix-high'); else cell.classList.add('matrix-low'); }); }
-function showError(error) { showLoader(false); alert(error.message || 'Error'); console.error(error); }
-function showLoader(show, text = 'Loading...') { const l = document.getElementById('loader'), o = document.getElementById('output'), g = document.getElementById('generate-btn'); if (l) l.style.display = show ? 'block' : 'none'; if (l) l.innerHTML = `<div class="spinner"></div>${text}`; if (o) o.style.display = show ? 'none' : 'block'; if (g) g.disabled = show; }
 
 // ==========================================
 // --- MANUAL UPGRADE SECTION ---
@@ -1857,166 +2429,115 @@ function renderHistoricalStats(data, type) {
 function displayLeadTimeAnalytics() {
   const container = document.getElementById('lead-time-container');
   if (!container) return;
+  
+  if (!currentAllReservations || currentAllReservations.length === 0) {
+    container.innerHTML = '<p style="text-align:center; padding:20px; color:#666;">Please load reservation data to calculate lead times.</p>';
+    return;
+  }
 
-  const currentProfile = document.getElementById('profile-dropdown').value;
-  const rules = profiles[currentProfile];
-  const hierarchy = rules ? rules.hierarchy.split(',').map(s => s.trim()).filter(Boolean) : [];
+  // Calculate Statistics
+  const stats = {};
+  currentAllReservations.forEach(res => {
+    if (['CANCELED', 'CANCELLED', 'NO SHOW'].includes(res.status)) return;
+    if (typeof res.leadTime !== 'number') return; // Skip if no book date found
 
+    if (!stats[res.roomType]) {
+      stats[res.roomType] = { totalLeadTime: 0, count: 0 };
+    }
+    stats[res.roomType].totalLeadTime += res.leadTime;
+    stats[res.roomType].count++;
+  });
+
+  if (Object.keys(stats).length === 0) {
+    container.innerHTML = '<p style="text-align:center; padding:20px; color:#666;">Booking Date information not found in the uploaded file.</p>';
+    return;
+  }
+
+  // Sort by Room Type
+  const sortedKeys = Object.keys(stats).sort();
+
+  // Render Table
   let html = `
-    <div class="lt-helper-box">
-        <h4 style="margin-top:0;">Manual Entry (Previous Year Data)</h4>
-        <p style="font-size:13px; color:#555;">
-            Upload a PMS report from the <strong>previous year</strong> to auto-calculate the average lead time, 
-            OR manually type the values below.
-        </p>
-        <div style="display:flex; align-items:center; gap:10px; margin-top:10px;">
-            <input type="file" id="lt-helper-csv" accept=".csv" style="background:white; border:1px solid #ccc; padding:5px; border-radius:4px;">
-            <button onclick="handlePopulateLeadTimeFromCsv()" style="background:#0d6efd; color:white; border:none; padding:8px 12px; border-radius:4px; cursor:pointer;">Calculate from File</button>
-        </div>
-    </div>
-
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
-        <h3>Lead Time Settings</h3>
-        <button id="save-lead-time-btn" onclick="handleSaveLeadTime()" style="background:#198754; color:white; border:none; padding:10px 20px; border-radius:4px; font-weight:bold; cursor:pointer;">Save to Cloud</button>
+      <h3>Average Lead Time by Room Type</h3>
+      <button id="save-lead-time-btn" onclick="handleSaveLeadTime()" style="background:#28a745; color:white; border:none; padding:10px 15px; border-radius:5px; cursor:pointer;">Save to Cloud</button>
     </div>
-
     <table style="width:100%; border-collapse:collapse; background:white; border-radius:8px; overflow:hidden; box-shadow:0 2px 5px rgba(0,0,0,0.05);">
-        <thead style="background:#f8f9fa; border-bottom:2px solid #eee;">
-            <tr>
-                <th style="padding:12px 15px; text-align:left;">Room Type</th>
-                <th style="padding:12px 15px; text-align:center;">Avg. Lead Time (Days)</th>
-            </tr>
-        </thead>
-        <tbody>
+      <thead style="background:#f8f9fa; border-bottom:2px solid #eee;">
+        <tr>
+          <th style="padding:12px 15px; text-align:left;">Room Type</th>
+          <th style="padding:12px 15px; text-align:center;">Total Bookings</th>
+          <th style="padding:12px 15px; text-align:center;">Avg. Lead Time (Days)</th>
+        </tr>
+      </thead>
+      <tbody>
   `;
 
-  if(hierarchy.length === 0) {
-      html += `<tr><td colspan="2" style="padding:20px; text-align:center;">No room hierarchy defined for this property.</td></tr>`;
-  } else {
-      hierarchy.forEach(room => {
-        const cleanRoom = room.trim().toUpperCase();
-        html += `
-            <tr style="border-bottom:1px solid #eee;">
-                <td style="padding:10px 15px;"><strong>${cleanRoom}</strong></td>
-                <td style="padding:10px 15px; text-align:center;">
-                    <input type="number" class="lead-time-input" id="lt-input-${cleanRoom}" placeholder="0" min="0">
-                </td>
-            </tr>
-        `;
-      });
-  }
+  sortedKeys.forEach(roomType => {
+    const data = stats[roomType];
+    const avg = (data.totalLeadTime / data.count).toFixed(1);
+    html += `
+      <tr style="border-bottom:1px solid #eee;">
+        <td style="padding:10px 15px;"><strong>${roomType}</strong></td>
+        <td style="padding:10px 15px; text-align:center;">${data.count}</td>
+        <td style="padding:10px 15px; text-align:center;">
+          <span style="background:${avg > 30 ? '#e3f2fd' : '#fff3cd'}; padding:3px 8px; border-radius:4px; font-weight:bold;">${avg} days</span>
+        </td>
+      </tr>
+    `;
+  });
 
   html += '</tbody></table>';
   container.innerHTML = html;
-
-  loadSavedLeadTimes(currentProfile);
 }
 
-// 1. Helper: Load from DB
-async function loadSavedLeadTimes(profile) {
-    try {
-        const doc = await db.collection('property_analytics').doc(profile).get();
-        if (doc.exists && doc.data().leadTimeStats) {
-            const stats = doc.data().leadTimeStats.roomTypes;
-            Object.keys(stats).forEach(room => {
-                const input = document.getElementById(`lt-input-${room}`);
-                if(input) input.value = stats[room].avgLeadTime || '';
-            });
-        }
-    } catch (e) { console.error("Error loading LT stats", e); }
-}
-
-// 2. Helper: Calculate from CSV (Previous Year Only)
-window.handlePopulateLeadTimeFromCsv = function() {
-    const fileInput = document.getElementById('lt-helper-csv');
-    if (!fileInput.files.length) { alert("Please select a CSV file first."); return; }
-    
-    const file = fileInput.files[0];
-    const reader = new FileReader();
-    
-    reader.onload = function(e) {
-        const content = e.target.result;
-        try {
-            const { data, header } = parseCsv(content);
-            const reservations = parseAllReservations(data, header, file.name);
-            
-            const prevYear = new Date().getFullYear() - 1;
-            const validRes = reservations.filter(r => 
-                r.arrival && r.arrival.getFullYear() === prevYear && 
-                !['CANCELED', 'CANCELLED', 'NO SHOW'].includes(r.status) &&
-                typeof r.leadTime === 'number'
-            );
-
-            if(validRes.length === 0) {
-                alert(`No valid reservations found for ${prevYear}. Ensure your CSV contains data for that year and has a Booking Date column.`);
-                return;
-            }
-
-            const aggregates = {};
-            validRes.forEach(r => {
-                if(!aggregates[r.roomType]) aggregates[r.roomType] = { total: 0, count: 0 };
-                aggregates[r.roomType].total += r.leadTime;
-                aggregates[r.roomType].count++;
-            });
-
-            let filled = 0;
-            Object.keys(aggregates).forEach(room => {
-                const input = document.getElementById(`lt-input-${room}`);
-                if(input) {
-                    const avg = (aggregates[room].total / aggregates[room].count).toFixed(0);
-                    input.value = avg;
-                    filled++;
-                }
-            });
-            alert(`Calculated stats from ${validRes.length} bookings. Populated ${filled} fields.`);
-
-        } catch (err) {
-            console.error(err);
-            alert("Error parsing CSV: " + err.message);
-        }
-    };
-    reader.readAsText(file);
-};
-
-// 3. Helper: Save
+// Global function for the save button onclick
 window.handleSaveLeadTime = async function() {
-    const btn = document.getElementById('save-lead-time-btn');
-    const currentProfile = document.getElementById('profile-dropdown').value;
-    const inputs = document.querySelectorAll('.lead-time-input');
-    
-    if(inputs.length === 0) return;
+  const btn = document.getElementById('save-lead-time-btn');
+  const currentProfile = document.getElementById('profile-dropdown').value;
+  
+  if (!currentAllReservations || currentAllReservations.length === 0) {
+    alert("No data to save."); return;
+  }
 
-    btn.disabled = true;
-    btn.textContent = "Saving...";
+  btn.disabled = true;
+  btn.textContent = "Saving...";
 
-    const storageData = {
-        lastUpdated: new Date(),
-        roomTypes: {}
-    };
-
-    inputs.forEach(input => {
-        const room = input.id.replace('lt-input-', '');
-        const val = parseFloat(input.value);
-        if(!isNaN(val)) {
-            storageData.roomTypes[room] = {
-                avgLeadTime: val,
-                count: 0
-            };
-        }
+  try {
+    // Re-calculate stats to save clean object
+    const statsToSave = {};
+    currentAllReservations.forEach(res => {
+      if (['CANCELED', 'CANCELLED', 'NO SHOW'].includes(res.status)) return;
+      if (typeof res.leadTime !== 'number') return;
+      if (!statsToSave[res.roomType]) statsToSave[res.roomType] = { totalLeadTime: 0, count: 0 };
+      statsToSave[res.roomType].totalLeadTime += res.leadTime;
+      statsToSave[res.roomType].count++;
     });
 
-    try {
-        await db.collection('property_analytics').doc(currentProfile).set({
-            leadTimeStats: storageData
-        }, { merge: true });
-        alert("Saved!");
-    } catch(e) {
-        console.error(e);
-        alert("Error saving.");
-    } finally {
-        btn.disabled = false;
-        btn.textContent = "Save to Cloud";
-    }
-};
+    // Flatten for storage
+    const storageData = {
+      lastUpdated: new Date(),
+      roomTypes: {}
+    };
 
+    Object.keys(statsToSave).forEach(rt => {
+      storageData.roomTypes[rt] = {
+        avgLeadTime: parseFloat((statsToSave[rt].totalLeadTime / statsToSave[rt].count).toFixed(2)),
+        count: statsToSave[rt].count
+      };
+    });
+
+    await db.collection('property_analytics').doc(currentProfile).set({
+      leadTimeStats: storageData
+    }, { merge: true });
+
+    alert("Lead Time data saved successfully!");
+  } catch (error) {
+    console.error("Error saving lead time:", error);
+    alert("Failed to save data.");
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "Save to Cloud";
+  }
+};
 
