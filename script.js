@@ -748,7 +748,8 @@ function handleRefresh() {
       otaRates: document.getElementById('ota-rates').value,
       ineligibleUpgrades: document.getElementById('ineligible-upgrades').value,
       selectedDate: document.getElementById('selected-date').value,
-      profile: document.getElementById('profile-dropdown').value
+      profile: document.getElementById('profile-dropdown').value,
+      manualLeadTime: document.getElementById('manual-lead-time') ? parseInt(document.getElementById('manual-lead-time').value, 10) : null
     };
 
     showLoader(true, 'Refreshing Data...');
@@ -1479,7 +1480,8 @@ async function handleAutoLoad() {
       otaRates: document.getElementById('ota-rates').value,
       ineligibleUpgrades: document.getElementById('ineligible-upgrades').value,
       selectedDate: document.getElementById('selected-date').value,
-      profile: currentProfile
+      profile: currentProfile,
+      manualLeadTime: document.getElementById('manual-lead-time') ? parseInt(document.getElementById('manual-lead-time').value, 10) : null
     };
 
     setTimeout(() => {
@@ -1513,7 +1515,8 @@ function handleGenerateClick() {
     otaRates: document.getElementById('ota-rates').value,
     ineligibleUpgrades: document.getElementById('ineligible-upgrades').value,
     selectedDate: document.getElementById('selected-date').value,
-    profile: document.getElementById('profile-dropdown').value
+    profile: document.getElementById('profile-dropdown').value,
+    manualLeadTime: document.getElementById('manual-lead-time') ? parseInt(document.getElementById('manual-lead-time').value, 10) : null
   };
 
   const reader = new FileReader();
@@ -1871,8 +1874,8 @@ function applyUpgradesAndRecalculate(currentAcceptedList, csvContent, rules, fil
   const { data, header } = parseCsv(csvContent);
   let allReservations = [];
   const isSynxisArrivals = header.includes('Guest_Nm');
-  if (isSynxisArrivals) allReservations = parseSynxisArrivals(data, header);
-  else allReservations = parseAllReservations(data, header, fileName);
+  if (isSynxisArrivals) allReservations = parseSynxisArrivals(data, header, rules);
+  else allReservations = parseAllReservations(data, header, fileName, rules);
   currentAcceptedList.forEach(rec => {
     const r = allReservations.find(res => res.resId === rec.resId);
     if (r) r.roomType = rec.upgradeTo;
@@ -1887,14 +1890,14 @@ function processUpgradeData(csvContent, rules, fileName) {
   if (!data || !data.length) throw new Error('Empty CSV');
   const isSynxisArrivals = header.includes('Guest_Nm');
   let allReservations = [];
-  if (isSynxisArrivals) allReservations = parseSynxisArrivals(data, header);
-  else allReservations = parseAllReservations(data, header, fileName);
+  if (isSynxisArrivals) allReservations = parseSynxisArrivals(data, header, rules);
+  else allReservations = parseAllReservations(data, header, fileName, rules);
   currentAllReservations = allReservations;
   originalAllReservations = JSON.parse(JSON.stringify(allReservations));
   return generateScenariosFromData(allReservations, rules);
 }
 
-function parseSynxisArrivals(data, header) {
+function parseSynxisArrivals(data, header, rules) {
   const nameIndex = header.indexOf('Guest_Nm');
   const resIdIndex = header.indexOf('CRS_Confirm_No');
   const roomTypeIndex = header.indexOf('Rm_Typ_Cd');
@@ -1904,7 +1907,6 @@ function parseSynxisArrivals(data, header) {
   const statusIndex = header.indexOf('Rez_Status');
   const rateIndex = header.indexOf('Avg_Rate_Offshore');
   
-  // SynXis typically uses 'create_dt' or similar
   const createDtIndex = header.indexOf('create_dt'); 
   
   const ids = new Set();
@@ -1916,12 +1918,16 @@ function parseSynxisArrivals(data, header) {
     const arrival = values[arrivalIndex] ? parseDate(values[arrivalIndex]) : null;
     const departure = values[departureIndex] ? parseDate(values[departureIndex]) : null;
     
-    // Parse Creation Date for SynXis
-    const bookDate = (createDtIndex > -1 && values[createDtIndex]) ? parseDate(values[createDtIndex]) : null;
+    // Check Manual Lead Time override
     let leadTime = 0;
-    if (arrival && bookDate) {
-      const timeDiff = arrival.getTime() - bookDate.getTime();
-      leadTime = Math.ceil(timeDiff / (1000 * 3600 * 24));
+    if (rules && rules.manualLeadTime !== null) {
+      leadTime = rules.manualLeadTime;
+    } else {
+      const bookDate = (createDtIndex > -1 && values[createDtIndex]) ? parseDate(values[createDtIndex]) : null;
+      if (arrival && bookDate) {
+        const timeDiff = arrival.getTime() - bookDate.getTime();
+        leadTime = Math.ceil(timeDiff / (1000 * 3600 * 24));
+      }
     }
 
     let nights = 0; if (arrival && departure) nights = Math.max(1, Math.ceil((departure - arrival) / (1000 * 60 * 60 * 24)));
@@ -1935,7 +1941,7 @@ function parseSynxisArrivals(data, header) {
   }).filter(r => r && r.roomType && r.arrival && r.departure && r.nights > 0);
 }
 
-function parseAllReservations(data, header, fileName) {
+function parseAllReservations(data, header, fileName, rules) {
   const isSnt = fileName && (fileName.startsWith('SNT') || fileName.startsWith('LTRL') || fileName.startsWith('VERD') || fileName.startsWith('LCKWD') || fileName.startsWith('TBH') || fileName.startsWith('DARLING'));
   let nameIndex, resIdIndex, roomTypeIndex, rateNameIndex, arrivalIndex, departureIndex, statusIndex, rateIndex;
   let firstNameIndex, lastNameIndex, marketCodeIndex, vipIndex, dnmIndex = -1;
@@ -1956,7 +1962,6 @@ function parseAllReservations(data, header, fileName) {
     if (vipIndex === -1) vipIndex = header.indexOf('VIPDescription');
     dnmIndex = header.indexOf('Do Not Move');
     
-    // Attempt to find booking date in SNT headers
     const bookDateCandidates = ['Book Date', 'Booked Date', 'Creation Date', 'Create Date', 'Entered On'];
     bookDateIndex = header.findIndex(h => bookDateCandidates.includes(h));
 
@@ -1972,7 +1977,6 @@ function parseAllReservations(data, header, fileName) {
     rateIndex = header.indexOf('Rate');
     vipIndex = header.indexOf('VIPDescription');
     
-    // Attempt to find booking date in generic CSV headers
     const bookDateCandidates = ['Book Date', 'Booked Date', 'Booked On', 'Creation Date', 'Create Date', 'Entered On'];
     bookDateIndex = header.findIndex(h => bookDateCandidates.includes(h));
 
@@ -1984,14 +1988,15 @@ function parseAllReservations(data, header, fileName) {
     const arrival = values[arrivalIndex] ? parseDate(values[arrivalIndex]) : null;
     const departure = values[departureIndex] ? parseDate(values[departureIndex]) : null;
     
-    // Parse Book Date
-    const bookDate = (bookDateIndex > -1 && values[bookDateIndex]) ? parseDate(values[bookDateIndex]) : null;
-    
-    // Calculate Lead Time
     let leadTime = 0;
-    if (arrival && bookDate) {
-      const timeDiff = arrival.getTime() - bookDate.getTime();
-      leadTime = Math.ceil(timeDiff / (1000 * 3600 * 24)); // Days
+    if (rules && rules.manualLeadTime !== null) {
+      leadTime = rules.manualLeadTime;
+    } else {
+      const bookDate = (bookDateIndex > -1 && values[bookDateIndex]) ? parseDate(values[bookDateIndex]) : null;
+      if (arrival && bookDate) {
+        const timeDiff = arrival.getTime() - bookDate.getTime();
+        leadTime = Math.ceil(timeDiff / (1000 * 3600 * 24));
+      }
     }
 
     let nights = 0;
@@ -2046,6 +2051,10 @@ function runSimulation(strategy, allReservations, masterInv, rules, completedIds
   const hierarchy = rules.hierarchy.toUpperCase().split(',').map(r => r.trim()).filter(Boolean);
   const ineligible = rules.ineligibleUpgrades.toUpperCase().split(',');
   const otaRates = rules.otaRates.toLowerCase().split(',');
+  
+  // Use Manual Lead Time if provided, otherwise default to 7 days
+  const simulationLimit = (rules.manualLeadTime !== null && rules.manualLeadTime !== undefined) ? rules.manualLeadTime : 7;
+
   const simInventory = {};
   for (let i = 0; i < 14; i++) {
     const d = new Date(startDate); d.setUTCDate(d.getUTCDate() + i);
@@ -2075,7 +2084,9 @@ function runSimulation(strategy, allReservations, masterInv, rules, completedIds
   for (let pass = 0; pass < 20; pass++) {
     let activity = false;
     let candidates = [];
-    for (let i = 0; i < 7; i++) {
+    
+    // Apply lead time limit here
+    for (let i = 0; i < simulationLimit; i++) {
       const d = new Date(startDate); d.setUTCDate(d.getUTCDate() + i);
       const dTime = d.getTime();
       const dailyArrivals = allReservations.filter(r => r.arrival && r.arrival.getTime() === dTime && r.status === 'RESERVATION');
@@ -2297,7 +2308,7 @@ function handleHistoricalUpload(event) {
       const headerStr = header.join(' ').toLowerCase();
       const fileName = file.name;
       if (headerStr.includes('guest name') || headerStr.includes('arrival date')) {
-        const reservations = parseAllReservations(data, header, fileName);
+        const reservations = parseAllReservations(data, header, fileName, currentRules);
         const validStays = reservations.filter(r => !['CANCELED', 'CANCELLED', 'NO SHOW'].includes(r.status));
         if (validStays.length === 0) { alert("No valid reservations found."); return; }
         renderHistoricalStats(validStays, 'detailed');
@@ -2439,7 +2450,7 @@ function displayLeadTimeAnalytics() {
   const stats = {};
   currentAllReservations.forEach(res => {
     if (['CANCELED', 'CANCELLED', 'NO SHOW'].includes(res.status)) return;
-    if (typeof res.leadTime !== 'number') return; // Skip if no book date found
+    if (typeof res.leadTime !== 'number') return;
 
     if (!stats[res.roomType]) {
       stats[res.roomType] = { totalLeadTime: 0, count: 0 };
@@ -2504,7 +2515,6 @@ window.handleSaveLeadTime = async function() {
   btn.textContent = "Saving...";
 
   try {
-    // Re-calculate stats to save clean object
     const statsToSave = {};
     currentAllReservations.forEach(res => {
       if (['CANCELED', 'CANCELLED', 'NO SHOW'].includes(res.status)) return;
@@ -2514,7 +2524,6 @@ window.handleSaveLeadTime = async function() {
       statsToSave[res.roomType].count++;
     });
 
-    // Flatten for storage
     const storageData = {
       lastUpdated: new Date(),
       roomTypes: {}
