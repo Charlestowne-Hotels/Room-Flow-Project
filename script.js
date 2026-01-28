@@ -1993,7 +1993,7 @@ function runSimulation(strategy, allReservations, masterInv, rules, completedIds
       });
     }
 
-    if (strategy === 'Guesa Focus') candidates.sort((a, b) => (b.score - a.score) || (b.rank - a.rank));
+    if (strategy === 'Guest Focus') candidates.sort((a, b) => (b.score - a.score) || (b.rank - a.rank));
     else if (strategy === 'VIP Focus') candidates.sort((a, b) => (b.vip - a.vip) || (b.score - a.score) || (b.rank - a.rank));
     else if (strategy === 'Optimized') candidates.sort((a, b) => a.nights - b.nights);
     
@@ -2121,5 +2121,6 @@ window.handleSaveLeadTime = async function() {
     btn.textContent = "Save to Cloud";
   }
 };
+
 
 
