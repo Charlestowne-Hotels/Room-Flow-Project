@@ -1629,21 +1629,6 @@ function displayScenarios(scenarios) {
   const container = document.getElementById('recommendations-container');
   container.innerHTML = '';
   
-  // Update focus names in scenarios if they exist
-  if (scenarios['Guesa Focus'] && scenarios['VIP Focus']) {
-    const revPath = scenarios['Guesa Focus'];
-    const vipPath = scenarios['VIP Focus'];
-    const getSig = (u) => `${u.resId}|${u.upgradeTo}`;
-    let isIdentical = revPath.length === vipPath.length;
-    if (isIdentical) {
-      const revSet = new Set(revPath.map(getSig));
-      for (const u of vipPath) {
-        if (!revSet.has(getSig(u))) { isIdentical = false; break; }
-      }
-    }
-    if (isIdentical) delete scenarios['VIP Focus'];
-  }
-
   const keys = Object.keys(scenarios);
   if (!keys.length) { container.innerHTML = '<p>No upgrade paths.</p>'; return; }
 
@@ -1957,7 +1942,7 @@ function generateScenariosFromData(allReservations, rules) {
   const todayInventory = getInventoryForDate(masterInventory, reservationsByDate, startDate);
   const matrixData = generateMatrixData(masterInventory, reservationsByDate, startDate, rules.hierarchy.toUpperCase().split(',').map(r => r.trim()).filter(Boolean));
   
-  // Updated strategy labels
+  // Strategy labels updated
   const strategies = ['Guesa Focus', 'VIP Focus', 'Optimized'];
   const scenarios = {};
   strategies.forEach(strategy => { scenarios[strategy] = runSimulation(strategy, activeReservations, masterInventory, rules, completedResIds); });
@@ -2007,7 +1992,7 @@ function runSimulation(strategy, allReservations, masterInv, rules, completedIds
         }
       });
     }
-    // Updated logic conditions for renamed strategies
+
     if (strategy === 'Guesa Focus') candidates.sort((a, b) => (b.score - a.score) || (b.rank - a.rank));
     else if (strategy === 'VIP Focus') candidates.sort((a, b) => (b.vip - a.vip) || (b.score - a.score) || (b.rank - a.rank));
     else if (strategy === 'Optimized') candidates.sort((a, b) => a.nights - b.nights);
@@ -2016,10 +2001,21 @@ function runSimulation(strategy, allReservations, masterInv, rules, completedIds
     candidates.forEach(cand => {
       if (processedPass.has(cand.resObj.resId)) return;
       let canMove = true; let checkDate = new Date(cand.resObj.arrival);
-      while (checkDate < cand.resObj.departure) { const dStr = checkDate.toISOString().split('T')[0]; if (!simInventory[dStr] || (simInventory[dStr][cand.targetRoom] || 0) <= 0) { canMove = false; break; } checkDate.setUTCDate(checkDate.getUTCDate() + i); }
+      while (checkDate < cand.resObj.departure) { 
+        const dStr = checkDate.toISOString().split('T')[0]; 
+        if (!simInventory[dStr] || (simInventory[dStr][cand.targetRoom] || 0) <= 0) { canMove = false; break; } 
+        checkDate.setUTCDate(checkDate.getUTCDate() + 1); 
+      }
       if (canMove) {
         activity = true; processedPass.add(cand.resObj.resId); checkDate = new Date(cand.resObj.arrival);
-        while (checkDate < cand.resObj.departure) { const dStr = checkDate.toISOString().split('T')[0]; if (simInventory[dStr]) { simInventory[dStr][cand.targetRoom]--; if (simInventory[dStr][cand.currentRoom] !== undefined) simInventory[dStr][cand.currentRoom]++; } checkDate.setUTCDate(checkDate.getUTCDate() + 1); }
+        while (checkDate < cand.resObj.departure) { 
+          const dStr = checkDate.toISOString().split('T')[0]; 
+          if (simInventory[dStr]) { 
+            simInventory[dStr][cand.targetRoom]--; 
+            if (simInventory[dStr][cand.currentRoom] !== undefined) simInventory[dStr][cand.currentRoom]++; 
+          } 
+          checkDate.setUTCDate(checkDate.getUTCDate() + 1); 
+        }
         guestState[cand.resObj.resId] = cand.targetRoom;
         pendingUpgrades[cand.resObj.resId] = { name: cand.resObj.name, resId: cand.resObj.resId, revenue: cand.resObj.revenue, room: cand.resObj.roomType, rate: cand.resObj.rate, nights: cand.resObj.nights, upgradeTo: cand.targetRoom, score: cand.score, arrivalDate: cand.resObj.arrival.toLocaleDateString('en-US', { timeZone: 'UTC' }), departureDate: cand.resObj.departure.toLocaleDateString('en-US', { timeZone: 'UTC' }), isoArrival: cand.resObj.arrival.toISOString().split('T')[0], isoDeparture: cand.resObj.departure.toISOString().split('T')[0], vipStatus: cand.resObj.vipStatus };
       }
@@ -2125,3 +2121,4 @@ window.handleSaveLeadTime = async function() {
     btn.textContent = "Save to Cloud";
   }
 };
+
