@@ -1773,7 +1773,7 @@ function displayAcceptedUpgrades() {
     acceptedUpgrades.forEach((rec, i) => {
       const card = document.createElement('div'); card.className = 'rec-card';
       const vipHtml = rec.vipStatus ? `<div style="color: red; font-weight: bold; margin-bottom: 4px; font-size: 14px;">${rec.vipStatus}</div>` : '';
-      card.innerHTML = `<div class="rec-info"><h3>${rec.name} (${rec.resId})</h3>${vipHtml}<div class="rec-details">Original: <b>${rec.room}</b> | Upgraded: <strong>${rec.upgradeTo}</strong><br>Value: <strong>${rec.revenue}</strong></div></div><div class="rec-actions"><button class="pms-btn" data-index="${i}">Mark PMS Updated</button></div>`;
+      card.innerHTML = `<div class="rec-info"><h3>${rec.name} (${rec.resId})</h3>${vipHtml}<div class="rec-details">Original: <b>${rec.room}</b> | Upgraded To: <strong>${rec.upgradeTo}</strong><br>Value: <strong>${rec.revenue}</strong></div></div><div class="rec-actions"><button class="pms-btn" data-index="${i}">Mark PMS Updated</button></div>`;
       container.appendChild(card);
     });
     container.querySelectorAll('.pms-btn').forEach(btn => btn.addEventListener('click', handlePmsUpdateClick));
@@ -1942,8 +1942,8 @@ function generateScenariosFromData(allReservations, rules) {
   const todayInventory = getInventoryForDate(masterInventory, reservationsByDate, startDate);
   const matrixData = generateMatrixData(masterInventory, reservationsByDate, startDate, rules.hierarchy.toUpperCase().split(',').map(r => r.trim()).filter(Boolean));
   
-  // Strategy labels updated
-  const strategies = ['Guest Focus', 'VIP Focus', 'Optimized'];
+  // Strategy labels: Optimized is first to make it default
+  const strategies = ['Optimized', 'Guest Focus', 'VIP Focus'];
   const scenarios = {};
   strategies.forEach(strategy => { scenarios[strategy] = runSimulation(strategy, activeReservations, masterInventory, rules, completedResIds); });
   return { scenarios, inventory: todayInventory, matrixData, message: null };
@@ -2121,6 +2121,5 @@ window.handleSaveLeadTime = async function() {
     btn.textContent = "Save to Cloud";
   }
 };
-
 
 
