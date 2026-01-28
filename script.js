@@ -1943,7 +1943,7 @@ function generateScenariosFromData(allReservations, rules) {
   const matrixData = generateMatrixData(masterInventory, reservationsByDate, startDate, rules.hierarchy.toUpperCase().split(',').map(r => r.trim()).filter(Boolean));
   
   // Strategy labels updated
-  const strategies = ['Guesa Focus', 'VIP Focus', 'Optimized'];
+  const strategies = ['Guest Focus', 'VIP Focus', 'Optimized'];
   const scenarios = {};
   strategies.forEach(strategy => { scenarios[strategy] = runSimulation(strategy, activeReservations, masterInventory, rules, completedResIds); });
   return { scenarios, inventory: todayInventory, matrixData, message: null };
@@ -2121,4 +2121,5 @@ window.handleSaveLeadTime = async function() {
     btn.textContent = "Save to Cloud";
   }
 };
+
 
