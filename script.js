@@ -688,7 +688,6 @@ const MASTER_INVENTORIES = {
   ]
 };
 
-
 // --- STATE MANAGEMENT ---
 let currentCsvContent = null;
 let currentFileName = null;
@@ -1945,7 +1944,7 @@ function generateScenariosFromData(allReservations, rules) {
   const todayInventory = getInventoryForDate(masterInventory, reservationsByDate, startDate);
   const matrixData = generateMatrixData(masterInventory, reservationsByDate, startDate, rules.hierarchy.toUpperCase().split(',').map(r => r.trim()).filter(Boolean));
   
-  // Strategy labels: Optimized is first to make it default
+  // Strategy labels: Optimized is default
   const strategies = ['Optimized', 'Guest Focus', 'VIP Focus'];
   const scenarios = {};
   strategies.forEach(strategy => { scenarios[strategy] = runSimulation(strategy, activeReservations, masterInventory, rules, completedResIds); });
@@ -2138,7 +2137,7 @@ function executeManualUpgrade(resId, index) {
 }
 
 // ==========================================
-// --- LEAD TIME ANALYTICS ---
+// --- LEAD TIME ANALYTICS (FIXED SAVE) ---
 // ==========================================
 function displayLeadTimeAnalytics() {
   const container = document.getElementById('lead-time-container');
@@ -2175,7 +2174,6 @@ window.handleSaveLeadTime = async function() {
         avgLeadTime: val,
         count: "Manual Entry"
       };
-      // Local update for immediate feedback
       currentAllReservations.forEach(res => {
         if (res.roomType === room) res.leadTime = val;
       });
