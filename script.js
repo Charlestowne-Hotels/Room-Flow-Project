@@ -688,6 +688,7 @@ const MASTER_INVENTORIES = {
   ]
 };
 
+
 // --- STATE MANAGEMENT ---
 let currentCsvContent = null;
 let currentFileName = null;
@@ -762,7 +763,7 @@ function handleRefresh() {
           displayResults(results);
         }
         displayLeadTimeAnalytics(); 
-        renderManualUpgradeView(); // Ensure manual list refreshes with new data
+        renderManualUpgradeView();
       } catch (err) {
         console.error("Refresh error:", err);
         showLoader(false);
@@ -1618,7 +1619,7 @@ function displayResults(data) {
   messageEl.style.display = data.message ? 'block' : 'none';
   messageEl.innerHTML = data.message || '';
   displayInventory(data.inventory);
-  renderManualUpgradeView(); // Ensure manual view loads data immediately
+  renderManualUpgradeView();
 }
 
 function displayInventory(inventory) {
@@ -1792,7 +1793,7 @@ function displayDemandInsights() {
 }
 
 function displayCompletedUpgrades() {
-  const container = document.getElementById('completed-container'); const dateDropdown = document.getElementById('sort-date-dropdown'); const profileDropdown = document.getElementById('profile-dropdown'); if (!container || !dateDropdown || !profileDropdown) return; const selectedDate = dateDropdown.value; const currentProfile = profileDropdown.value; let totalValue = 0; const profileUpgrades = completedUpgrades.filter(rec => rec.profile === currentProfile); while (dateDropdown.options.length > 1) { dateDropdown.remove(1); } const existingOptions = new Set(Array.from(dateDropdown.options).map(opt => opt.value)); const uniqueDates = new Set(profileUpgrades.map(rec => rec.completedTimestamp.toLocaleDateString())); uniqueDates.forEach(date => { if (!existingOptions.has(date)) { const option = document.createElement('option'); option.value = date; option.textContent = date; dateDropdown.appendChild(option); } }); container.innerHTML = ''; const dateFilteredUpgrades = selectedDate === 'all' ? profileUpgrades : profileUpgrades.filter(rec => rec.completedTimestamp.toLocaleDateString() === selectedDate); if (dateFilteredUpgrades.length > 0) { dateFilteredUpgrades.sort((a, b) => b.completedTimestamp - a.completedTimestamp); dateFilteredUpgrades.forEach(rec => { totalValue += parseFloat(rec.revenue.replace(/[$,]/g, '')) || 0; const card = document.createElement('div'); card.className = 'rec-card completed'; card.innerHTML = `<div class="rec-info"> <h3>${rec.name} (${rec.resId})</h3> <div class="rec-details"> Original: <b>${rec.room}</b> | Upgraded: <strong>${rec.upgradeTo}</strong><br> Value: <strong>${rec.revenue}</strong><br> Date: <strong>${rec.completedTimestamp.toLocaleDateString()}</strong> </div> </div> <div class="rec-actions"> <button class="undo-completed-btn" data-firestore-id="${rec.firestoreId}">Undo</button> </div>`; container.appendChild(card); }); const totalHeader = document.createElement('h3'); totalHeader.style.textAlign = 'right'; totalHeader.textContent = `Total: ${totalValue.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}`; container.appendChild(totalHeader); container.querySelectorAll('.undo-completed-btn').forEach(btn => { btn.addEventListener('click', handleUndoCompletedClick); }); } else container.innerHTML = '<p>No data found.</p>';
+  const container = document.getElementById('completed-container'); const dateDropdown = document.getElementById('sort-date-dropdown'); const profileDropdown = document.getElementById('profile-dropdown'); if (!container || !dateDropdown || !profileDropdown) return; const selectedDate = dateDropdown.value; const currentProfile = profileDropdown.value; let totalValue = 0; const profileUpgrades = completedUpgrades.filter(rec => rec.profile === currentProfile); while (dateDropdown.options.length > 1) { dateDropdown.remove(1); } const existingOptions = new Set(Array.from(dateDropdown.options).map(opt => opt.value)); const uniqueDates = new Set(profileUpgrades.map(rec => rec.completedTimestamp.toLocaleDateString())); uniqueDates.forEach(date => { if (!existingOptions.has(date)) { const option = document.createElement('option'); option.value = date; option.textContent = date; dateDropdown.appendChild(option); } }); container.innerHTML = ''; const dateFilteredUpgrades = selectedDate === 'all' ? profileUpgrades : profileUpgrades.filter(rec => rec.completedTimestamp.toLocaleDateString() === selectedDate); if (dateFilteredUpgrades.length > 0) { dateFilteredUpgrades.sort((a, b) => b.completedTimestamp - a.completedTimestamp); dateFilteredUpgrades.forEach(rec => { totalValue += parseFloat(rec.revenue.replace(/[$,]/g, '')) || 0; const card = document.createElement('div'); card.className = 'rec-card completed'; card.innerHTML = `<div class="rec-info"> <h3>${rec.name} (${rec.resId})</h3> <div class="rec-details"> Original: <b>${rec.room}</b> | Upgraded To: <strong>${rec.upgradeTo}</strong><br> Value: <strong>${rec.revenue}</strong><br> Date: <strong>${rec.completedTimestamp.toLocaleDateString()}</strong> </div> </div> <div class="rec-actions"> <button class="undo-completed-btn" data-firestore-id="${rec.firestoreId}">Undo</button> </div>`; container.appendChild(card); }); const totalHeader = document.createElement('h3'); totalHeader.style.textAlign = 'right'; totalHeader.textContent = `Total: ${totalValue.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}`; container.appendChild(totalHeader); container.querySelectorAll('.undo-completed-btn').forEach(btn => { btn.addEventListener('click', handleUndoCompletedClick); }); } else container.innerHTML = '<p>No data found.</p>';
 }
 
 function displayMatrix(matrix) {
@@ -1944,6 +1945,7 @@ function generateScenariosFromData(allReservations, rules) {
   const todayInventory = getInventoryForDate(masterInventory, reservationsByDate, startDate);
   const matrixData = generateMatrixData(masterInventory, reservationsByDate, startDate, rules.hierarchy.toUpperCase().split(',').map(r => r.trim()).filter(Boolean));
   
+  // Strategy labels: Optimized is first to make it default
   const strategies = ['Optimized', 'Guest Focus', 'VIP Focus'];
   const scenarios = {};
   strategies.forEach(strategy => { scenarios[strategy] = runSimulation(strategy, activeReservations, masterInventory, rules, completedResIds); });
@@ -2032,7 +2034,6 @@ function getMasterInventory(profileName) { const masterRoomList = MASTER_INVENTO
 function parseDate(dateStr) { if (!dateStr) return null; const parts = dateStr.split(/[-\/ ]/); if (parts.length >= 3) { if (parts[0].length === 4) return new Date(Date.UTC(parts[0], parts[1] - 1, parts[2])); return new Date(Date.UTC(parts[2], parts[0] - 1, parts[1])); } return new Date(dateStr); }
 function generateMatrixData(totalInventory, reservationsByDate, startDate, roomHierarchy) { const matrix = { headers: ['Room Type'], rows: [] }; const dates = Array.from({ length: 14 }, (_, i) => { const date = new Date(startDate); date.setUTCDate(date.getUTCDate() + i); return date; }); matrix.headers.push(...dates.map(date => `${date.toLocaleDateString('en-US', { weekday: 'short', timeZone: 'UTC' })}<br>${date.getUTCMonth() + 1}/${date.getUTCDate()}`)); roomHierarchy.forEach(roomCode => { const row = { roomCode, availability: [] }; dates.forEach(date => { const dateString = date.toISOString().split('T')[0]; let finalAvail = 0; if (currentInventoryMap && currentInventoryMap[dateString] && currentInventoryMap[dateString][roomCode] !== undefined) finalAvail = currentInventoryMap[dateString][roomCode]; else { const oooCount = oooRecords.reduce((total, rec) => { if (rec.roomType === roomCode && (date.getTime() >= rec.startDate.getTime() && date.getTime() <= rec.endDate.getTime())) return total + (rec.count || 1); return total; }, 0); finalAvail = (totalInventory[roomCode] || 0) - (reservationsByDate[dateString]?.[roomCode] || 0) - oooCount; } row.availability.push(finalAvail); }); matrix.rows.push(row); }); return matrix; }
 
-// Bed type logic fixed to support PKR, TKR, LKR etc for STS
 function getBedType(roomCode) { 
   if (!roomCode) return 'OTHER'; 
   const code = roomCode.toUpperCase();
@@ -2045,7 +2046,7 @@ function getBedType(roomCode) {
 function downloadAcceptedUpgradesCsv() { if (!acceptedUpgrades.length) return; const headers = ['Guest Name', 'Res ID', 'Current Room', 'Upgrade To', 'Arrival', 'Departure']; const rows = acceptedUpgrades.map(rec => [`"${rec.name}"`, `"${rec.resId}"`, `"${rec.room}"`, `"${rec.upgradeTo}"`, `"${rec.arrivalDate}"`, `"${rec.departureDate}"`].join(',')); const blob = new Blob([[headers.join(','), ...rows].join('\n')], { type: 'text/csv' }); const link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.download = `upgrades_${new Date().toISOString().slice(0, 10)}.csv`; link.click(); }
 
 // ==========================================
-// --- MANUAL UPGRADE SECTION (FIXED) ---
+// --- MANUAL UPGRADE SECTION ---
 // ==========================================
 function renderManualUpgradeView() {
   const container = document.getElementById('manual-upgrade-list-container');
@@ -2056,7 +2057,6 @@ function renderManualUpgradeView() {
   const acceptedIds = new Set(acceptedUpgrades.map(u => u.resId));
   const completedIds = new Set(completedUpgrades.map(u => u.resId));
 
-  // Fix: Broaden date window (within 7 days of analysis date) to match simulation
   const candidates = currentAllReservations.filter(res => {
     const arrTime = res.arrival.getTime();
     const startTime = startDate.getTime();
@@ -2074,8 +2074,6 @@ function renderManualUpgradeView() {
 
   candidates.sort((a, b) => a.name.localeCompare(b.name));
   const hierarchy = currentRules.hierarchy.toUpperCase().split(',').map(r => r.trim()).filter(Boolean);
-  
-  // Re-calculate projection to ensure accurate dropdown availability
   const simResult = applyUpgradesAndRecalculate(acceptedUpgrades, currentCsvContent, currentRules, currentFileName);
   const projectedInvMap = {}; 
   simResult.matrixData.rows.forEach(row => { projectedInvMap[row.roomCode] = row.availability; });
@@ -2094,10 +2092,8 @@ function renderManualUpgradeView() {
     if (currentIdx !== -1 && guestBed !== 'OTHER') {
       for (let i = currentIdx + 1; i < hierarchy.length; i++) {
         const target = hierarchy[i];
-        if (getBedType(target) !== guestBed) continue; // Enforce bed type consistency
-
+        if (getBedType(target) !== guestBed) continue;
         let isAvail = true;
-        // Check availability for full length of stay
         for (let d = 0; d < Math.min(guest.nights, 14); d++) {
           if ((projectedInvMap[target]?.[d] || 0) <= 0) { isAvail = false; break; }
         }
@@ -2118,7 +2114,7 @@ function renderManualUpgradeView() {
     }
   });
 
-  container.innerHTML = eligibleFound > 0 ? rowsHtml + '</tbody></table>' : '<p style="text-align:center; padding:20px; color:#666;">Guests found, but no inventory matches their bed type for their full stay.</p>';
+  container.innerHTML = eligibleFound > 0 ? rowsHtml + '</tbody></table>' : '<p style="text-align:center; padding:20px; color:#666;">No valid inventory matches for full length of stay.</p>';
 }
 
 function executeManualUpgrade(resId, index) {
@@ -2164,21 +2160,43 @@ window.handleSaveLeadTime = async function() {
   const btn = document.getElementById('save-lead-time-btn');
   const currentProfile = document.getElementById('profile-dropdown').value;
   const inputs = document.querySelectorAll('.manual-room-lt-input');
-  btn.disabled = true; btn.textContent = "Saving...";
-  const leadTimeStats = { lastUpdated: new Date(), roomTypes: {} };
+  
+  if (!currentProfile) { alert("No profile selected."); return; }
 
+  btn.disabled = true;
+  btn.textContent = "Saving...";
+
+  const roomData = {};
   inputs.forEach(input => {
     const room = input.dataset.room;
     const val = parseInt(input.value, 10);
     if (!isNaN(val)) {
-      leadTimeStats.roomTypes[room] = { avgLeadTime: val, count: "Manual Entry" };
-      currentAllReservations.forEach(res => { if (res.roomType === room) res.leadTime = val; });
+      roomData[room] = {
+        avgLeadTime: val,
+        count: "Manual Entry"
+      };
+      // Local update for immediate feedback
+      currentAllReservations.forEach(res => {
+        if (res.roomType === room) res.leadTime = val;
+      });
     }
   });
 
   try {
-    await db.collection('property_analytics').doc(currentProfile).set({ leadTimeStats }, { merge: true });
-    alert("Saved!"); handleRefresh(); 
-  } catch (error) { alert("Failed."); } finally { btn.disabled = false; btn.textContent = "Save to Cloud"; }
+    const docRef = db.collection('property_analytics').doc(currentProfile);
+    await docRef.set({
+      leadTimeStats: roomData,
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    }, { merge: true });
+
+    alert("Room Lead Times saved to cloud!");
+    handleRefresh(); 
+  } catch (error) {
+    console.error("Save Error:", error);
+    alert("Save failed: " + error.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "Save to Cloud";
+  }
 };
 
