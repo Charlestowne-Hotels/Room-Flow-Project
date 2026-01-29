@@ -699,6 +699,7 @@ let acceptedUpgrades = [];
 let completedUpgrades = [];
 let oooRecords = [];
 let currentInventoryMap = null;
+let savedLeadTimes = {}; // New state to track cloud lead times locally
 
 // --- FUNCTIONS ---
 function resetAppState() {
@@ -738,7 +739,7 @@ function resetAppState() {
   displayAcceptedUpgrades();
 }
 
-function handleRefresh() {
+async function handleRefresh() {
   if (currentCsvContent) {
     currentRules = {
       hierarchy: document.getElementById('hierarchy').value,
@@ -751,6 +752,9 @@ function handleRefresh() {
     };
 
     showLoader(true, 'Refreshing Data...');
+
+    // Load saved lead times before running logic
+    await fetchSavedLeadTimes(currentRules.profile);
 
     setTimeout(() => {
       try {
@@ -771,7 +775,7 @@ function handleRefresh() {
   }
 }
 
-function updateRulesForm(profileName) {
+async function updateRulesForm(profileName) {
   const profile = profiles[profileName];
   if (!profile) return;
   document.getElementById('hierarchy').value = profile.hierarchy;
@@ -779,6 +783,9 @@ function updateRulesForm(profileName) {
   document.getElementById('prioritized-rates').value = profile.prioritizedRates;
   document.getElementById('ota-rates').value = profile.otaRates;
   document.getElementById('ineligible-upgrades').value = profile.ineligibleUpgrades;
+  
+  // Load lead times specifically for this profile
+  await fetchSavedLeadTimes(profileName);
   populateOooDropdown();
 }
 
@@ -867,7 +874,7 @@ async function handleSaveNewProperty() {
 
     rebuildProfileDropdown();
     document.getElementById('profile-dropdown').value = code;
-    updateRulesForm(code);
+    await updateRulesForm(code);
 
     alert(`Property ${code.toUpperCase()} saved successfully!`);
     document.getElementById('add-property-modal').classList.add('hidden');
@@ -1054,7 +1061,7 @@ async function loadRemoteProfiles() {
         if (profiles[key]) profiles[key] = { ...profiles[key], ...savedData[key] };
       });
     }
-    updateRulesForm(document.getElementById('profile-dropdown').value);
+    await updateRulesForm(document.getElementById('profile-dropdown').value);
   } catch (error) {
     console.error("Error loading remote profiles:", error);
   }
@@ -1358,8 +1365,8 @@ document.addEventListener('DOMContentLoaded', function() {
   if (autoLoadBtn) autoLoadBtn.addEventListener('click', handleAutoLoad);
 
   const profileDropdown = document.getElementById('profile-dropdown');
-  profileDropdown.addEventListener('change', (event) => {
-    updateRulesForm(event.target.value);
+  profileDropdown.addEventListener('change', async (event) => {
+    await updateRulesForm(event.target.value);
     resetAppState();
     displayCompletedUpgrades();
     displayDemandInsights();
@@ -1468,8 +1475,9 @@ async function handleAutoLoad() {
       profile: currentProfile
     };
 
-    setTimeout(() => {
+    setTimeout(async () => {
       try {
+        await fetchSavedLeadTimes(currentProfile);
         const results = processUpgradeData(currentCsvContent, currentRules, currentFileName);
         displayResults(results);
         alert(`Loaded: ${currentFileName}\nInventory: ${currentInventoryMap ? "SynXis" : "Calculated"}`);
@@ -1507,8 +1515,9 @@ function handleGenerateClick() {
     currentCsvContent = e.target.result;
     currentRules = rules;
     showLoader(true, 'Generating...');
-    setTimeout(() => {
+    setTimeout(async () => {
       try {
+        await fetchSavedLeadTimes(rules.profile);
         const results = processUpgradeData(currentCsvContent, currentRules, currentFileName);
         displayResults(results);
       } catch (err) { showError(err); }
@@ -1867,11 +1876,17 @@ function parseSynxisArrivals(data, header, rules) {
     const arrival = values[arrivalIndex] ? parseDate(values[arrivalIndex]) : null;
     const departure = values[departureIndex] ? parseDate(values[departureIndex]) : null;
     
-    let leadTime = 0;
-    const bookDate = (createDtIndex > -1 && values[createDtIndex]) ? parseDate(values[createDtIndex]) : null;
-    if (arrival instanceof Date && !isNaN(arrival) && bookDate instanceof Date && !isNaN(bookDate)) {
-        const timeDiff = arrival.getTime() - bookDate.getTime();
-        leadTime = Math.ceil(timeDiff / (1000 * 3600 * 24));
+    // Check local saved state for Lead Time first
+    const roomType = values[roomTypeIndex]?.trim().toUpperCase();
+    let leadTime = savedLeadTimes[roomType]?.avgLeadTime || 0;
+
+    // Fallback to calculation if no manual entry exists
+    if (!leadTime) {
+      const bookDate = (createDtIndex > -1 && values[createDtIndex]) ? parseDate(values[createDtIndex]) : null;
+      if (arrival instanceof Date && !isNaN(arrival) && bookDate instanceof Date && !isNaN(bookDate)) {
+          const timeDiff = arrival.getTime() - bookDate.getTime();
+          leadTime = Math.ceil(timeDiff / (1000 * 3600 * 24));
+      }
     }
 
     let nights = 0; if (arrival && departure) nights = Math.max(1, Math.ceil((departure - arrival) / (1000 * 60 * 60 * 24)));
@@ -1880,7 +1895,7 @@ function parseSynxisArrivals(data, header, rules) {
     if (fullName.includes(',')) { const parts = fullName.split(','); if (parts.length >= 2) fullName = `${parts[1].trim()} ${parts[0].trim()}`; }
     let status = values[statusIndex]?.trim().toUpperCase() || 'RESERVATION';
     if (status === 'CONFIRMED') status = 'RESERVATION'; if (status === 'CANCELLED') status = 'CANCELED';
-    return { name: fullName, resId, roomType: values[roomTypeIndex]?.trim().toUpperCase(), rate: values[rateNameIndex]?.trim(), nights, arrival, departure, status, revenue: (dailyRate * nights).toLocaleString('en-US', { style: 'currency', currency: 'USD' }), marketCode: '', leadTime };
+    return { name: fullName, resId, roomType, rate: values[rateNameIndex]?.trim(), nights, arrival, departure, status, revenue: (dailyRate * nights).toLocaleString('en-US', { style: 'currency', currency: 'USD' }), marketCode: '', leadTime };
   }).filter(r => r && r.roomType && r.arrival && r.departure && r.nights > 0);
 }
 
@@ -1914,11 +1929,17 @@ function parseAllReservations(data, header, fileName, rules) {
     const arrival = values[arrivalIndex] ? parseDate(values[arrivalIndex]) : null;
     const departure = values[departureIndex] ? parseDate(values[departureIndex]) : null;
     
-    let leadTime = 0;
-    const bookDate = (bookDateIndex > -1 && values[bookDateIndex]) ? parseDate(values[bookDateIndex]) : null;
-    if (arrival instanceof Date && !isNaN(arrival) && bookDate instanceof Date && !isNaN(bookDate)) {
-        const timeDiff = arrival.getTime() - bookDate.getTime();
-        leadTime = Math.ceil(timeDiff / (1000 * 3600 * 24));
+    // Check local saved state for Lead Time first
+    const roomType = values[roomTypeIndex]?.trim().toUpperCase();
+    let leadTime = savedLeadTimes[roomType]?.avgLeadTime || 0;
+
+    // Fallback to calculation if no manual entry exists
+    if (!leadTime) {
+      const bookDate = (bookDateIndex > -1 && values[bookDateIndex]) ? parseDate(values[bookDateIndex]) : null;
+      if (arrival instanceof Date && !isNaN(arrival) && bookDate instanceof Date && !isNaN(bookDate)) {
+          const timeDiff = arrival.getTime() - bookDate.getTime();
+          leadTime = Math.ceil(timeDiff / (1000 * 3600 * 24));
+      }
     }
 
     let nights = 0; if (arrival && departure) nights = Math.max(1, Math.ceil((departure - arrival) / (1000 * 60 * 60 * 24)));
@@ -1931,7 +1952,7 @@ function parseAllReservations(data, header, fileName, rules) {
     if (vipStatus.toUpperCase() === 'NO') vipStatus = "";
     const isDoNotMove = (dnmIndex > -1 && values[dnmIndex]) ? (values[dnmIndex].trim().toUpperCase() === 'YES') : false;
     
-    return { name: fullName, resId: values[resIdIndex]?.trim(), roomType: values[roomTypeIndex]?.trim().toUpperCase(), rate: values[rateNameIndex]?.trim(), nights, arrival, departure, status, revenue: (dailyRate * nights).toLocaleString('en-US', { style: 'currency', currency: 'USD' }), marketCode, vipStatus, isDoNotMove, leadTime };
+    return { name: fullName, resId: values[resIdIndex]?.trim(), roomType, rate: values[rateNameIndex]?.trim(), nights, arrival, departure, status, revenue: (dailyRate * nights).toLocaleString('en-US', { style: 'currency', currency: 'USD' }), marketCode, vipStatus, isDoNotMove, leadTime };
   }).filter(r => r && r.roomType && r.arrival && r.departure && r.nights > 0);
 }
 
@@ -1944,7 +1965,6 @@ function generateScenariosFromData(allReservations, rules) {
   const todayInventory = getInventoryForDate(masterInventory, reservationsByDate, startDate);
   const matrixData = generateMatrixData(masterInventory, reservationsByDate, startDate, rules.hierarchy.toUpperCase().split(',').map(r => r.trim()).filter(Boolean));
   
-  // Strategy labels: Optimized is default
   const strategies = ['Optimized', 'Guest Focus', 'VIP Focus'];
   const scenarios = {};
   strategies.forEach(strategy => { scenarios[strategy] = runSimulation(strategy, activeReservations, masterInventory, rules, completedResIds); });
@@ -2137,8 +2157,24 @@ function executeManualUpgrade(resId, index) {
 }
 
 // ==========================================
-// --- LEAD TIME ANALYTICS (FIXED SAVE) ---
+// --- LEAD TIME ANALYTICS (SAVE & AUTO-LOAD) ---
 // ==========================================
+
+// New helper to fetch data from Firestore
+async function fetchSavedLeadTimes(profile) {
+  try {
+    const docRef = db.collection('property_analytics').doc(profile);
+    const doc = await docRef.get();
+    if (doc.exists && doc.data().leadTimeStats) {
+      savedLeadTimes = doc.data().leadTimeStats;
+    } else {
+      savedLeadTimes = {}; // Reset if none found
+    }
+  } catch (error) {
+    console.error("Error fetching lead times:", error);
+  }
+}
+
 function displayLeadTimeAnalytics() {
   const container = document.getElementById('lead-time-container');
   if (!container) return;
@@ -2149,7 +2185,8 @@ function displayLeadTimeAnalytics() {
   let html = `<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;"><h3>Manual Lead Time Entry</h3><button id="save-lead-time-btn" onclick="handleSaveLeadTime()" style="background:#28a745; color:white; border:none; padding:8px 12px; border-radius:5px; cursor:pointer;">Save to Cloud</button></div><table style="width:100%; border-collapse:collapse; background:white;"><thead><tr style="background:#f8f9fa;"><th>Room Type</th><th>Avg. Lead Time (Days)</th></tr></thead><tbody>`;
 
   roomTypes.forEach(roomType => {
-    const existingVal = currentAllReservations.find(r => r.roomType === roomType)?.leadTime || "";
+    // Priority: Cloud Saved Value > Local Reservation Data
+    const existingVal = savedLeadTimes[roomType]?.avgLeadTime || "";
     html += `<tr><td style="padding:10px;"><strong>${roomType}</strong></td><td style="padding:10px; text-align:center;"><input type="number" class="manual-room-lt-input" data-room="${roomType}" value="${existingVal}" style="width: 80px; text-align: center;"></td></tr>`;
   });
   container.innerHTML = html + '</tbody></table>';
@@ -2174,9 +2211,12 @@ window.handleSaveLeadTime = async function() {
         avgLeadTime: val,
         count: "Manual Entry"
       };
-      currentAllReservations.forEach(res => {
-        if (res.roomType === room) res.leadTime = val;
-      });
+      // Update global reservations locally
+      if (currentAllReservations) {
+        currentAllReservations.forEach(res => {
+          if (res.roomType === room) res.leadTime = val;
+        });
+      }
     }
   });
 
@@ -2187,6 +2227,7 @@ window.handleSaveLeadTime = async function() {
       updatedAt: firebase.firestore.FieldValue.serverTimestamp()
     }, { merge: true });
 
+    savedLeadTimes = roomData; // Update local tracker
     alert("Room Lead Times saved to cloud!");
     handleRefresh(); 
   } catch (error) {
@@ -2197,4 +2238,5 @@ window.handleSaveLeadTime = async function() {
     btn.textContent = "Save to Cloud";
   }
 };
+
 
