@@ -1898,13 +1898,13 @@ function parseAllReservations(data, header, fileName, rules) {
   const isSnt = fileName && (fileName.startsWith('SNT') || fileName.startsWith('LTRL') || fileName.startsWith('VERD') || fileName.startsWith('LCKWD') || fileName.startsWith('TBH') || fileName.startsWith('DARLING'));
   let nameIndex, resIdIndex, roomTypeIndex, rateNameIndex, arrivalIndex, departureIndex, statusIndex, rateIndex, bookDateIndex = -1;
   let firstNameIndex, lastNameIndex, marketCodeIndex, vipIndex, dnmIndex = -1;
-  let groupNameIndex = -1; // New column for fallback
+  let groupNameIndex = -1;
 
   if (isSnt) {
     firstNameIndex = header.indexOf('First Name'); lastNameIndex = header.indexOf('Last Name');
     resIdIndex = header.indexOf('Reservation Id'); roomTypeIndex = header.indexOf('Arrival Room Type');
     rateNameIndex = header.indexOf('Arrival Rate Code'); 
-    groupNameIndex = header.indexOf('Group Name'); // prioritized fallback
+    groupNameIndex = header.indexOf('Group Name');
     arrivalIndex = header.indexOf('Arrival Date');
     departureIndex = header.indexOf('Departure Date'); statusIndex = header.indexOf('Reservation Status');
     rateIndex = header.indexOf('Adr'); marketCodeIndex = header.indexOf('Market Code');
@@ -1948,7 +1948,6 @@ function parseAllReservations(data, header, fileName, rules) {
     if (vipStatus.toUpperCase() === 'NO') vipStatus = "";
     const isDoNotMove = (dnmIndex > -1 && values[dnmIndex]) ? (values[dnmIndex].trim().toUpperCase() === 'YES') : false;
     
-    // Logic: Use Rate Code, if empty use Group Name
     let finalRate = values[rateNameIndex]?.trim();
     if (!finalRate && isSnt && groupNameIndex > -1) {
         finalRate = values[groupNameIndex]?.trim();
@@ -2005,6 +2004,7 @@ function runSimulation(strategy, allReservations, masterInv, rules, completedIds
       dailyArrivals.forEach(res => {
         if (completedIds.has(res.resId) || res.isDoNotMove) return;
         
+        // RATE/GROUP NAME FILTERING
         if (otaRates.some(ota => res.rate && res.rate.toLowerCase().includes(ota))) return;
         
         const currentRoom = guestState[res.resId]; const currentIdx = hierarchy.indexOf(currentRoom);
@@ -2069,7 +2069,7 @@ function getBedType(roomCode) {
 function downloadAcceptedUpgradesCsv() { if (!acceptedUpgrades.length) return; const headers = ['Guest Name', 'Res ID', 'Current Room', 'Upgrade To', 'Arrival', 'Departure']; const rows = acceptedUpgrades.map(rec => [`"${rec.name}"`, `"${rec.resId}"`, `"${rec.room}"`, `"${rec.upgradeTo}"`, `"${rec.arrivalDate}"`, `"${rec.departureDate}"`].join(',')); const blob = new Blob([[headers.join(','), ...rows].join('\n')], { type: 'text/csv' }); const link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.download = `upgrades_${new Date().toISOString().slice(0, 10)}.csv`; link.click(); }
 
 // ==========================================
-// --- MANUAL UPGRADE SECTION ---
+// --- MANUAL UPGRADE SECTION (WITH RATE FILTERING) ---
 // ==========================================
 function renderManualUpgradeView() {
   const container = document.getElementById('manual-upgrade-list-container');
@@ -2079,19 +2079,26 @@ function renderManualUpgradeView() {
   const startDate = parseDate(startStr);
   const acceptedIds = new Set(acceptedUpgrades.map(u => u.resId));
   const completedIds = new Set(completedUpgrades.map(u => u.resId));
+  
+  // APPLY RATE FILTERING TO MANUAL LIST
+  const otaRates = currentRules.otaRates.toLowerCase().split(',').map(r => r.trim()).filter(Boolean);
 
   const candidates = currentAllReservations.filter(res => {
     const arrTime = res.arrival.getTime();
     const startTime = startDate.getTime();
     const diffDays = Math.floor((arrTime - startTime) / (1000 * 3600 * 24));
+    
+    const isRateIneligible = otaRates.some(ota => res.rate && res.rate.toLowerCase().includes(ota));
+
     return diffDays >= 0 && diffDays < 7 && 
            !acceptedIds.has(res.resId) && 
            !completedIds.has(res.resId) && 
+           !isRateIneligible && // Filter out ineligible rates
            !['CANCELED', 'CANCELLED', 'NO SHOW', 'CHECKED OUT'].includes(res.status);
   });
 
   if (!candidates.length) {
-    container.innerHTML = '<p style="text-align:center; padding:20px; color:#666;">No eligible guests found in the path window.</p>';
+    container.innerHTML = '<p style="text-align:center; padding:20px; color:#666;">No eligible guests found after rate filtering.</p>';
     return;
   }
 
@@ -2104,7 +2111,7 @@ function renderManualUpgradeView() {
   let rowsHtml = `<table style="width:100%; border-collapse:collapse; background:white; font-size:14px; border-radius:8px; overflow:hidden; box-shadow:0 2px 5px rgba(0,0,0,0.05);">
     <thead style="background:#f8f9fa; border-bottom:2px solid #eee;">
       <tr>
-        <th style="padding:12px; text-align:left;">Guest & Rate Code / Group</th>
+        <th style="padding:12px; text-align:left;">Guest & Rate / Group</th>
         <th style="padding:12px; text-align:left;">Arrival</th>
         <th style="padding:12px; text-align:left;">Current</th>
         <th style="padding:12px; text-align:left;">Upgrade Option</th>
@@ -2133,7 +2140,6 @@ function renderManualUpgradeView() {
     if (optionsHtml) {
       eligibleFound++;
       const arrStr = guest.arrival.toLocaleDateString('en-US', { month: 'numeric', day: 'numeric', timeZone: 'UTC' });
-      // Displaying final assigned Rate Code or fallback Group Name
       const rateDisplay = guest.rate ? `<br><small style="color:#d63384; font-weight:bold;">${guest.rate}</small>` : '';
       
       rowsHtml += `<tr style="border-bottom:1px solid #eee;">
@@ -2248,8 +2254,5 @@ window.handleSaveLeadTime = async function() {
     btn.textContent = "Save to Cloud";
   }
 };
-
-
-
 
 
