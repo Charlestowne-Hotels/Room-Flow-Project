@@ -1320,11 +1320,11 @@ document.addEventListener('DOMContentLoaded', function() {
       const isUserAdmin = ADMIN_UIDS.includes(user.uid);
       if (isUserAdmin) {
         if (adminButton) adminButton.classList.remove('hidden');
-        if (saveBtn) saveBtn.classList.remove('hidden');
+        if (saveBtn) saveRulesBtn.classList.remove('hidden');
         if (settingsTriggerBtn) settingsTriggerBtn.classList.remove('hidden');
         if (addPropBtn) addPropBtn.classList.remove('hidden');
       } else {
-        if (saveBtn) saveBtn.classList.add('hidden');
+        if (saveBtn) saveRulesBtn.classList.add('hidden');
         if (adminButton) adminButton.classList.add('hidden');
         if (settingsTriggerBtn) settingsTriggerBtn.classList.add('hidden');
         if (addPropBtn) addPropBtn.classList.add('hidden');
@@ -1690,7 +1690,11 @@ function generateMatrixHTML(title, rows, headers, colTotals) {
   rows.forEach(row => {
     html += `<tr><td style="${styleRowLabel}">${row.roomCode}</td>`;
     row.data.forEach(avail => {
-      html += `<td style="${styleTd} ${getCellColor(avail)}">${avail}</td>`;
+      // Logic for overlay: wrap cell content in span if delta is detected
+      const content = row.deltas && row.deltas[row.data.indexOf(avail)] ? 
+        `<span style="color:#666;">${avail}</span> <b style="color:${row.deltas[row.data.indexOf(avail)] > 0 ? '#2e7d32' : '#c62828'}">(${row.deltas[row.data.indexOf(avail)] > 0 ? '+' : ''}${row.deltas[row.data.indexOf(avail)]})</b>` : 
+        avail;
+      html += `<td style="${styleTd} ${getCellColor(avail)}">${content}</td>`;
     });
     html += '</tr>';
   });
@@ -1701,6 +1705,7 @@ function generateMatrixHTML(title, rows, headers, colTotals) {
   return html;
 }
 
+// --- UPDATED Scenario Content Logic (Overlay Mode) ---
 function renderScenarioContent(name, recs, parent) {
   const old = parent.querySelector('.scenario-content');
   if (old) old.remove();
@@ -1721,136 +1726,51 @@ function renderScenarioContent(name, recs, parent) {
 
   const startDate = parseDate(currentRules.selectedDate);
   const hierarchy = currentRules.hierarchy.toUpperCase().split(',').map(r => r.trim()).filter(Boolean);
-  const baseReservations = buildReservationsByDate(currentAllReservations);
+  const baseReservationsByDate = buildReservationsByDate(currentAllReservations);
   const masterInv = getMasterInventory(currentRules.profile);
   const dates = Array.from({ length: 14 }, (_, i) => { const d = new Date(startDate); d.setUTCDate(d.getUTCDate() + i); return d; });
   const headers = ['Room Type', ...dates.map(date => `${date.toLocaleDateString('en-US', { weekday: 'short', timeZone: 'UTC' })}<br>${date.getUTCMonth() + 1}/${date.getUTCDate()}`)];
 
-  const projectedRows = [];
-  const currentRows = [];
+  const matrixRows = [];
   const numCols = dates.length;
-  const projColTotals = new Array(numCols).fill(0);
-  const currColTotals = new Array(numCols).fill(0);
+  const colTotals = new Array(numCols).fill(0);
 
   hierarchy.forEach(roomCode => {
-    const pRow = { roomCode, data: [] };
-    const cRow = { roomCode, data: [] };
+    const row = { roomCode, data: [], deltas: new Array(numCols).fill(0) };
     dates.forEach((date, i) => {
       const dateString = date.toISOString().split('T')[0];
       let baseAvail = 0;
+      
+      // Calculate original base availability
       if (currentInventoryMap && currentInventoryMap[dateString] && currentInventoryMap[dateString][roomCode] !== undefined) {
         baseAvail = currentInventoryMap[dateString][roomCode];
       } else {
         const dTime = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate())).getTime();
         const oooCount = oooRecords.reduce((t, r) => {
-          const rS = r.startDate.getTime(); const rE = r.endDate.getTime();
-          if (r.roomType === roomCode && dTime >= rS && dTime <= rE) return t + (r.count || 1);
+          if (r.roomType === roomCode && dTime >= r.startDate.getTime() && dTime <= r.endDate.getTime()) return t + (r.count || 1);
           return t;
         }, 0);
-        baseAvail = (masterInv[roomCode] || 0) - (baseReservations[dateString]?.[roomCode] || 0) - oooCount;
+        baseAvail = (masterInv[roomCode] || 0) - (baseReservationsByDate[dateString]?.[roomCode] || 0) - oooCount;
       }
 
-      let projAvail = baseAvail;
+      // Calculate Deltas for this scenario
       recs.forEach(upgrade => {
         if (dateString >= upgrade.isoArrival && dateString < upgrade.isoDeparture) {
-          if (upgrade.room === roomCode) projAvail += 1;
-          if (upgrade.upgradeTo === roomCode) projAvail -= 1;
+          if (upgrade.room === roomCode) row.deltas[i] += 1; // Room freed up
+          if (upgrade.upgradeTo === roomCode) row.deltas[i] -= 1; // Room occupied
         }
       });
-      pRow.data.push(projAvail);
-      cRow.data.push(baseAvail);
-      projColTotals[i] += projAvail;
-      currColTotals[i] += baseAvail;
+
+      row.data.push(baseAvail);
+      colTotals[i] += baseAvail;
     });
-    projectedRows.push(pRow);
-    currentRows.push(cRow);
+    matrixRows.push(row);
   });
+
   const matrixContainer = document.createElement('div');
-  matrixContainer.innerHTML = generateMatrixHTML("Projected Availability", projectedRows, headers, projColTotals) +
-    generateMatrixHTML("Current Availability", currentRows, headers, currColTotals);
+  matrixContainer.innerHTML = generateMatrixHTML("Current Base Availability with Scenario Overlay (+/-)", matrixRows, headers, colTotals);
   wrapper.appendChild(matrixContainer);
   parent.appendChild(wrapper);
-}
-
-function displayAcceptedUpgrades() {
-  const container = document.getElementById('accepted-container'); container.innerHTML = '';
-  if (acceptedUpgrades.length > 0) {
-    const c = document.createElement('div'); c.style.cssText = 'display:flex;justify-content:flex-end;margin-bottom:20px;padding:10px;background:#f8f9fa;border-radius:5px;';
-    const b = document.createElement('button'); b.textContent = 'Download CSV'; b.style.cssText = 'background:#4343FF;color:white;border:none;padding:10px 15px;border-radius:4px;cursor:pointer;';
-    b.addEventListener('click', downloadAcceptedUpgradesCsv); c.appendChild(b); container.appendChild(c);
-    acceptedUpgrades.forEach((rec, i) => {
-      const card = document.createElement('div'); card.className = 'rec-card';
-      const vipHtml = rec.vipStatus ? `<div style="color: red; font-weight: bold; margin-bottom: 4px; font-size: 14px;">${rec.vipStatus}</div>` : '';
-      card.innerHTML = `<div class="rec-info"><h3>${rec.name} (${rec.resId})</h3>${vipHtml}<div class="rec-details">Original: <b>${rec.room}</b> | Upgraded To: <strong>${rec.upgradeTo}</strong><br>Value: <strong>${rec.revenue}</strong></div></div><div class="rec-actions"><button class="pms-btn" data-index="${i}">Mark PMS Updated</button></div>`;
-      container.appendChild(card);
-    });
-    container.querySelectorAll('.pms-btn').forEach(btn => btn.addEventListener('click', handlePmsUpdateClick));
-  } else container.innerHTML = '<p>No accepted upgrades.</p>';
-}
-
-function displayDemandInsights() {
-  const container = document.getElementById('demand-insights-container'); const profileDropdown = document.getElementById('profile-dropdown'); if (!container || !profileDropdown) return; const currentProfile = profileDropdown.value; const profileUpgrades = completedUpgrades.filter(rec => rec.profile === currentProfile); container.innerHTML = ''; if (profileUpgrades.length === 0) { container.innerHTML = '<p style="text-align:center; color:#888;">No data available.</p>'; return; } const roomTypeCounts = {}; let totalRevenue = 0; profileUpgrades.forEach(rec => { const type = rec.upgradeTo; roomTypeCounts[type] = (roomTypeCounts[type] || 0) + 1; const val = parseFloat(rec.revenue.replace(/[$,]/g, '')) || 0; totalRevenue += val; }); const sortedRooms = Object.entries(roomTypeCounts).sort((a, b) => b[1] - a[1]); const avgRevenue = (totalRevenue / profileUpgrades.length); let html = `<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 25px;"> <div style="background: #f0f7ff; padding: 15px; border-radius: 8px; text-align: center;"> <h4 style="margin:0;">Total Completed</h4> <div style="font-size: 24px; font-weight: bold; color: #4343FF;">${profileUpgrades.length}</div> </div> <div style="background: #f0fff4; padding: 15px; border-radius: 8px; text-align: center;"> <h4 style="margin:0;">Total Revenue</h4> <div style="font-size: 24px; font-weight: bold; color: #28a745;">${totalRevenue.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</div> </div> </div> <h3>Upgrade Performance</h3> <table> <thead> <tr> <th>Room Type</th> <th>Count</th> <th>Share</th> </tr> </thead> <tbody>`;
-  sortedRooms.forEach(([room, count]) => {
-    const percentage = ((count / profileUpgrades.length) * 100).toFixed(1);
-    html += `<tr> <td><strong>${room}</strong></td> <td>${count}</td> <td> <div style="display: flex; align-items: center;"> <span>${percentage}%</span> <div style="flex-grow: 1; height: 6px; background: #eee; border-radius: 3px; margin-left: 10px;"> <div style="width: ${percentage}%; height: 100%; background: #4343FF; border-radius: 3px;"></div> </div> </div> </td> </tr>`;
-  });
-  html += `</tbody></table>`; container.innerHTML = html;
-}
-
-function displayCompletedUpgrades() {
-  const container = document.getElementById('completed-container'); const dateDropdown = document.getElementById('sort-date-dropdown'); const profileDropdown = document.getElementById('profile-dropdown'); if (!container || !dateDropdown || !profileDropdown) return; const selectedDate = dateDropdown.value; const currentProfile = profileDropdown.value; let totalValue = 0; const profileUpgrades = completedUpgrades.filter(rec => rec.profile === currentProfile); while (dateDropdown.options.length > 1) { dateDropdown.remove(1); } const existingOptions = new Set(Array.from(dateDropdown.options).map(opt => opt.value)); const uniqueDates = new Set(profileUpgrades.map(rec => rec.completedTimestamp.toLocaleDateString())); uniqueDates.forEach(date => { if (!existingOptions.has(date)) { const option = document.createElement('option'); option.value = date; option.textContent = date; dateDropdown.appendChild(option); } }); container.innerHTML = ''; const dateFilteredUpgrades = selectedDate === 'all' ? profileUpgrades : profileUpgrades.filter(rec => rec.completedTimestamp.toLocaleDateString() === selectedDate); if (dateFilteredUpgrades.length > 0) { dateFilteredUpgrades.sort((a, b) => b.completedTimestamp - a.completedTimestamp); dateFilteredUpgrades.forEach(rec => { totalValue += parseFloat(rec.revenue.replace(/[$,]/g, '')) || 0; const card = document.createElement('div'); card.className = 'rec-card completed'; card.innerHTML = `<div class="rec-info"> <h3>${rec.name} (${rec.resId})</h3> <div class="rec-details"> Original: <b>${rec.room}</b> | Upgraded To: <strong>${rec.upgradeTo}</strong><br> Value: <strong>${rec.revenue}</strong><br> Date: <strong>${rec.completedTimestamp.toLocaleDateString()}</strong> </div> </div> <div class="rec-actions"> <button class="undo-completed-btn" data-firestore-id="${rec.firestoreId}">Undo</button> </div>`; container.appendChild(card); }); const totalHeader = document.createElement('h3'); totalHeader.style.textAlign = 'right'; totalHeader.textContent = `Total: ${totalValue.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}`; container.appendChild(totalHeader); container.querySelectorAll('.undo-completed-btn').forEach(btn => { btn.addEventListener('click', handleUndoCompletedClick); }); } else container.innerHTML = '<p>No data found.</p>';
-}
-
-function displayMatrix(matrix) {
-  const container = document.getElementById('matrix-container'); if (!matrix || !matrix.headers || !matrix.rows) return; const numDateColumns = matrix.headers.length - 1; const columnTotals = new Array(numDateColumns).fill(0); let html = '<table><thead><tr>' + matrix.headers.map(h => `<th>${h}</th>`).join('') + '</tr></thead><tbody>'; matrix.rows.forEach(row => { html += `<tr><td><strong>${row.roomCode}</strong></td>`; row.availability.forEach((avail, index) => { html += `<td>${avail}</td>`; columnTotals[index] += (typeof avail === 'number' ? avail : 0); }); html += '</tr>'; }); html += '<tr><td><strong>TOTAL</strong></td>'; columnTotals.forEach(total => { html += `<td><strong>${total}</strong></td>`; }); html += '</tr></tbody></table>'; container.innerHTML = html; colorMatrixCells();
-}
-
-function colorMatrixCells() { const cells = document.querySelectorAll("#matrix-container td:not(:first-child)"); cells.forEach(cell => { const value = parseInt(cell.textContent, 10); if (isNaN(value)) return; if (value < 0) cell.classList.add('matrix-neg'); else if (value >= 3) cell.classList.add('matrix-high'); else cell.classList.add('matrix-low'); }); }
-function showError(error) { showLoader(false); alert(error.message || 'Error'); console.error(error); }
-function showLoader(show, text = 'Loading...') { const l = document.getElementById('loader'), o = document.getElementById('output'), g = document.getElementById('generate-btn'); if (l) l.style.display = show ? 'block' : 'none'; if (l) l.innerHTML = `<div class="spinner"></div>${text}`; if (o) o.style.display = show ? 'none' : 'block'; if (g) g.disabled = show; }
-
-function parseCsv(csvContent) {
-  const lines = csvContent.trim().split('\n');
-  const headerLine = lines.shift();
-  const header = headerLine.split(',').map(h => h.trim().replace(/"/g, ''));
-  const data = lines.map(line => {
-    const row = []; let currentField = ''; let inQuotes = false;
-    for (let i = 0; i < line.length; i++) {
-      const char = line[i];
-      if (char === '"') inQuotes = !inQuotes;
-      else if (char === ',' && !inQuotes) { row.push(currentField); currentField = ''; }
-      else currentField += char;
-    }
-    row.push(currentField); return row;
-  });
-  return { data, header };
-}
-
-function applyUpgradesAndRecalculate(currentAcceptedList, csvContent, rules, fileName) {
-  const { data, header } = parseCsv(csvContent);
-  let allReservations = [];
-  const isSynxisArrivals = header.includes('Guest_Nm');
-  if (isSynxisArrivals) allReservations = parseSynxisArrivals(data, header, rules);
-  else allReservations = parseAllReservations(data, header, fileName, rules);
-  currentAcceptedList.forEach(rec => {
-    const r = allReservations.find(res => res.resId === rec.resId);
-    if (r) r.roomType = rec.upgradeTo;
-  });
-  const results = generateScenariosFromData(allReservations, rules);
-  results.acceptedUpgrades = currentAcceptedList;
-  return results;
-}
-
-function processUpgradeData(csvContent, rules, fileName) {
-  const { data, header } = parseCsv(csvContent);
-  if (!data || !data.length) throw new Error('Empty CSV');
-  const isSynxisArrivals = header.includes('Guest_Nm');
-  let allReservations = [];
-  if (isSynxisArrivals) allReservations = parseSynxisArrivals(data, header, rules);
-  else allReservations = parseAllReservations(data, header, fileName, rules);
-  currentAllReservations = allReservations;
-  originalAllReservations = JSON.parse(JSON.stringify(allReservations));
-  return generateScenariosFromData(allReservations, rules);
 }
 
 function parseSynxisArrivals(data, header, rules) {
@@ -1957,21 +1877,6 @@ function parseAllReservations(data, header, fileName, rules) {
   }).filter(r => r && r.roomType && r.arrival && r.departure && r.nights > 0);
 }
 
-function generateScenariosFromData(allReservations, rules) {
-  const masterInventory = getMasterInventory(rules.profile);
-  const activeReservations = allReservations.filter(res => res.status !== 'CANCELED' && res.status !== 'CANCELLED' && res.status !== 'NO SHOW');
-  const completedResIds = new Set(completedUpgrades.filter(up => up.profile === rules.profile).map(up => up.resId));
-  const startDate = parseDate(rules.selectedDate);
-  const reservationsByDate = buildReservationsByDate(activeReservations);
-  const todayInventory = getInventoryForDate(masterInventory, reservationsByDate, startDate);
-  const matrixData = generateMatrixData(masterInventory, reservationsByDate, startDate, rules.hierarchy.toUpperCase().split(',').map(r => r.trim()).filter(Boolean));
-  
-  const strategies = ['Optimized', 'Guest Focus', 'VIP Focus'];
-  const scenarios = {};
-  strategies.forEach(strategy => { scenarios[strategy] = runSimulation(strategy, activeReservations, masterInventory, rules, completedResIds); });
-  return { scenarios, inventory: todayInventory, matrixData, message: null };
-}
-
 function runSimulation(strategy, allReservations, masterInv, rules, completedIds) {
   const startDate = parseDate(rules.selectedDate);
   const hierarchy = rules.hierarchy.toUpperCase().split(',').map(r => r.trim()).filter(Boolean);
@@ -2003,10 +1908,7 @@ function runSimulation(strategy, allReservations, masterInv, rules, completedIds
       const dailyArrivals = allReservations.filter(r => r.arrival && r.arrival.getTime() === dTime && r.status === 'RESERVATION');
       dailyArrivals.forEach(res => {
         if (completedIds.has(res.resId) || res.isDoNotMove) return;
-        
-        // RATE/GROUP NAME FILTERING
         if (otaRates.some(ota => res.rate && res.rate.toLowerCase().includes(ota))) return;
-        
         const currentRoom = guestState[res.resId]; const currentIdx = hierarchy.indexOf(currentRoom);
         if (currentIdx === -1) return; const originalBed = getBedType(res.roomType);
         if (originalBed === 'OTHER') return;
@@ -2068,9 +1970,6 @@ function getBedType(roomCode) {
 
 function downloadAcceptedUpgradesCsv() { if (!acceptedUpgrades.length) return; const headers = ['Guest Name', 'Res ID', 'Current Room', 'Upgrade To', 'Arrival', 'Departure']; const rows = acceptedUpgrades.map(rec => [`"${rec.name}"`, `"${rec.resId}"`, `"${rec.room}"`, `"${rec.upgradeTo}"`, `"${rec.arrivalDate}"`, `"${rec.departureDate}"`].join(',')); const blob = new Blob([[headers.join(','), ...rows].join('\n')], { type: 'text/csv' }); const link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.download = `upgrades_${new Date().toISOString().slice(0, 10)}.csv`; link.click(); }
 
-// ==========================================
-// --- MANUAL UPGRADE SECTION (WITH RATE FILTERING) ---
-// ==========================================
 function renderManualUpgradeView() {
   const container = document.getElementById('manual-upgrade-list-container');
   if (!container || !currentCsvContent || !currentAllReservations.length) return;
@@ -2080,7 +1979,6 @@ function renderManualUpgradeView() {
   const acceptedIds = new Set(acceptedUpgrades.map(u => u.resId));
   const completedIds = new Set(completedUpgrades.map(u => u.resId));
   
-  // APPLY RATE FILTERING TO MANUAL LIST
   const otaRates = currentRules.otaRates.toLowerCase().split(',').map(r => r.trim()).filter(Boolean);
 
   const candidates = currentAllReservations.filter(res => {
@@ -2093,7 +1991,7 @@ function renderManualUpgradeView() {
     return diffDays >= 0 && diffDays < 7 && 
            !acceptedIds.has(res.resId) && 
            !completedIds.has(res.resId) && 
-           !isRateIneligible && // Filter out ineligible rates
+           !isRateIneligible && 
            !['CANCELED', 'CANCELLED', 'NO SHOW', 'CHECKED OUT'].includes(res.status);
   });
 
@@ -2174,10 +2072,6 @@ function executeManualUpgrade(resId, index) {
     acceptedUpgrades.push(upgrade);
     handleRefresh();
 }
-
-// ==========================================
-// --- LEAD TIME ANALYTICS ---
-// ==========================================
 
 async function fetchSavedLeadTimes(profile) {
   try {
