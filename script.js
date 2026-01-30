@@ -1898,10 +1898,7 @@ function parseAllReservations(data, header, fileName, rules) {
   if (isSnt) {
     firstNameIndex = header.indexOf('First Name'); lastNameIndex = header.indexOf('Last Name');
     resIdIndex = header.indexOf('Reservation Id'); roomTypeIndex = header.indexOf('Arrival Room Type');
-    
-    // UPDATED FOR STS RATE CODE
-    rateNameIndex = header.indexOf('Arrival Rate Code'); 
-    
+    rateNameIndex = header.indexOf('Arrival Rate Code'); //standard rate code from SNT arrivals report
     arrivalIndex = header.indexOf('Arrival Date');
     departureIndex = header.indexOf('Departure Date'); statusIndex = header.indexOf('Reservation Status');
     rateIndex = header.indexOf('Adr'); marketCodeIndex = header.indexOf('Market Code');
@@ -1945,21 +1942,7 @@ function parseAllReservations(data, header, fileName, rules) {
     if (vipStatus.toUpperCase() === 'NO') vipStatus = "";
     const isDoNotMove = (dnmIndex > -1 && values[dnmIndex]) ? (values[dnmIndex].trim().toUpperCase() === 'YES') : false;
     
-    return { 
-        name: fullName, 
-        resId: values[resIdIndex]?.trim(), 
-        roomType, 
-        rate: values[rateNameIndex]?.trim(), //standard rate code from SNT arrivals report
-        nights, 
-        arrival, 
-        departure, 
-        status, 
-        revenue: (dailyRate * nights).toLocaleString('en-US', { style: 'currency', currency: 'USD' }), 
-        marketCode, 
-        vipStatus, 
-        isDoNotMove, 
-        leadTime 
-    };
+    return { name: fullName, resId: values[resIdIndex]?.trim(), roomType, rate: values[rateNameIndex]?.trim(), nights, arrival, departure, status, revenue: (dailyRate * nights).toLocaleString('en-US', { style: 'currency', currency: 'USD' }), marketCode, vipStatus, isDoNotMove, leadTime };
   }).filter(r => r && r.roomType && r.arrival && r.departure && r.nights > 0);
 }
 
@@ -1982,10 +1965,7 @@ function runSimulation(strategy, allReservations, masterInv, rules, completedIds
   const startDate = parseDate(rules.selectedDate);
   const hierarchy = rules.hierarchy.toUpperCase().split(',').map(r => r.trim()).filter(Boolean);
   const ineligible = rules.ineligibleUpgrades.toUpperCase().split(',');
-  
-  // INELIGIBLE RATES LOGIC
   const otaRates = rules.otaRates.toLowerCase().split(',').map(r => r.trim()).filter(Boolean);
-  
   const simulationLimit = 7; 
 
   const simInventory = {};
@@ -2012,14 +1992,10 @@ function runSimulation(strategy, allReservations, masterInv, rules, completedIds
       const dailyArrivals = allReservations.filter(r => r.arrival && r.arrival.getTime() === dTime && r.status === 'RESERVATION');
       dailyArrivals.forEach(res => {
         if (completedIds.has(res.resId) || res.isDoNotMove) return;
-        
-        // CHECK AGAINST INELIGIBLE RATES
         if (otaRates.some(ota => res.rate && res.rate.toLowerCase().includes(ota))) return;
-        
         const currentRoom = guestState[res.resId]; const currentIdx = hierarchy.indexOf(currentRoom);
         if (currentIdx === -1) return; const originalBed = getBedType(res.roomType);
         if (originalBed === 'OTHER') return;
-        
         for (let u = currentIdx + 1; u < hierarchy.length; u++) {
           const targetRoom = hierarchy[u];
           if (ineligible.includes(targetRoom)) continue;
@@ -2079,7 +2055,7 @@ function getBedType(roomCode) {
 function downloadAcceptedUpgradesCsv() { if (!acceptedUpgrades.length) return; const headers = ['Guest Name', 'Res ID', 'Current Room', 'Upgrade To', 'Arrival', 'Departure']; const rows = acceptedUpgrades.map(rec => [`"${rec.name}"`, `"${rec.resId}"`, `"${rec.room}"`, `"${rec.upgradeTo}"`, `"${rec.arrivalDate}"`, `"${rec.departureDate}"`].join(',')); const blob = new Blob([[headers.join(','), ...rows].join('\n')], { type: 'text/csv' }); const link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.download = `upgrades_${new Date().toISOString().slice(0, 10)}.csv`; link.click(); }
 
 // ==========================================
-// --- MANUAL UPGRADE SECTION ---
+// --- MANUAL UPGRADE SECTION (WITH RATES) ---
 // ==========================================
 function renderManualUpgradeView() {
   const container = document.getElementById('manual-upgrade-list-container');
@@ -2113,7 +2089,13 @@ function renderManualUpgradeView() {
 
   let rowsHtml = `<table style="width:100%; border-collapse:collapse; background:white; font-size:14px; border-radius:8px; overflow:hidden; box-shadow:0 2px 5px rgba(0,0,0,0.05);">
     <thead style="background:#f8f9fa; border-bottom:2px solid #eee;">
-      <tr><th style="padding:12px; text-align:left;">Guest</th><th style="padding:12px; text-align:left;">Arrival</th><th style="padding:12px; text-align:left;">Current</th><th style="padding:12px; text-align:left;">Upgrade Option</th><th style="padding:12px; text-align:right;">Action</th></tr>
+      <tr>
+        <th style="padding:12px; text-align:left;">Guest & Rate</th>
+        <th style="padding:12px; text-align:left;">Arrival</th>
+        <th style="padding:12px; text-align:left;">Current</th>
+        <th style="padding:12px; text-align:left;">Upgrade Option</th>
+        <th style="padding:12px; text-align:right;">Action</th>
+      </tr>
     </thead><tbody>`;
 
   let eligibleFound = 0;
@@ -2137,8 +2119,9 @@ function renderManualUpgradeView() {
     if (optionsHtml) {
       eligibleFound++;
       const arrStr = guest.arrival.toLocaleDateString('en-US', { month: 'numeric', day: 'numeric', timeZone: 'UTC' });
+      const rateDisplay = guest.rate ? `<br><small style="color:#28a745; font-weight:bold;">${guest.rate}</small>` : '';
       rowsHtml += `<tr style="border-bottom:1px solid #eee;">
-        <td style="padding:10px;"><strong>${guest.name}</strong><br><small>${guest.resId}</small></td>
+        <td style="padding:10px;"><strong>${guest.name}</strong><br><small>${guest.resId}</small>${rateDisplay}</td>
         <td style="padding:10px;">${arrStr}<br><small>${guest.nights} nts</small></td>
         <td style="padding:10px;"><span style="background:#eee; padding:3px 6px; border-radius:4px; font-weight:bold;">${guest.roomType}</span></td>
         <td style="padding:10px;"><select id="manual-select-${index}" style="width:100%; padding:5px;">${optionsHtml}</select></td>
@@ -2173,7 +2156,6 @@ function executeManualUpgrade(resId, index) {
 // ==========================================
 // --- LEAD TIME ANALYTICS ---
 // ==========================================
-
 async function fetchSavedLeadTimes(profile) {
   try {
     const docRef = db.collection('property_analytics').doc(profile);
@@ -2249,6 +2231,7 @@ window.handleSaveLeadTime = async function() {
     btn.textContent = "Save to Cloud";
   }
 };
+
 
 
 
