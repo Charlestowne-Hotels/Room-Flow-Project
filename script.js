@@ -1898,11 +1898,13 @@ function parseAllReservations(data, header, fileName, rules) {
   const isSnt = fileName && (fileName.startsWith('SNT') || fileName.startsWith('LTRL') || fileName.startsWith('VERD') || fileName.startsWith('LCKWD') || fileName.startsWith('TBH') || fileName.startsWith('DARLING'));
   let nameIndex, resIdIndex, roomTypeIndex, rateNameIndex, arrivalIndex, departureIndex, statusIndex, rateIndex, bookDateIndex = -1;
   let firstNameIndex, lastNameIndex, marketCodeIndex, vipIndex, dnmIndex = -1;
+  let groupNameIndex = -1; // New column for fallback
 
   if (isSnt) {
     firstNameIndex = header.indexOf('First Name'); lastNameIndex = header.indexOf('Last Name');
     resIdIndex = header.indexOf('Reservation Id'); roomTypeIndex = header.indexOf('Arrival Room Type');
     rateNameIndex = header.indexOf('Arrival Rate Code'); 
+    groupNameIndex = header.indexOf('Group Name'); // prioritized fallback
     arrivalIndex = header.indexOf('Arrival Date');
     departureIndex = header.indexOf('Departure Date'); statusIndex = header.indexOf('Reservation Status');
     rateIndex = header.indexOf('Adr'); marketCodeIndex = header.indexOf('Market Code');
@@ -1946,7 +1948,13 @@ function parseAllReservations(data, header, fileName, rules) {
     if (vipStatus.toUpperCase() === 'NO') vipStatus = "";
     const isDoNotMove = (dnmIndex > -1 && values[dnmIndex]) ? (values[dnmIndex].trim().toUpperCase() === 'YES') : false;
     
-    return { name: fullName, resId: values[resIdIndex]?.trim(), roomType, rate: values[rateNameIndex]?.trim(), nights, arrival, departure, status, revenue: (dailyRate * nights).toLocaleString('en-US', { style: 'currency', currency: 'USD' }), marketCode, vipStatus, isDoNotMove, leadTime };
+    // Logic: Use Rate Code, if empty use Group Name
+    let finalRate = values[rateNameIndex]?.trim();
+    if (!finalRate && isSnt && groupNameIndex > -1) {
+        finalRate = values[groupNameIndex]?.trim();
+    }
+    
+    return { name: fullName, resId: values[resIdIndex]?.trim(), roomType, rate: finalRate, nights, arrival, departure, status, revenue: (dailyRate * nights).toLocaleString('en-US', { style: 'currency', currency: 'USD' }), marketCode, vipStatus, isDoNotMove, leadTime };
   }).filter(r => r && r.roomType && r.arrival && r.departure && r.nights > 0);
 }
 
@@ -1997,7 +2005,6 @@ function runSimulation(strategy, allReservations, masterInv, rules, completedIds
       dailyArrivals.forEach(res => {
         if (completedIds.has(res.resId) || res.isDoNotMove) return;
         
-        // RATE PLAN FILTERING
         if (otaRates.some(ota => res.rate && res.rate.toLowerCase().includes(ota))) return;
         
         const currentRoom = guestState[res.resId]; const currentIdx = hierarchy.indexOf(currentRoom);
@@ -2097,7 +2104,7 @@ function renderManualUpgradeView() {
   let rowsHtml = `<table style="width:100%; border-collapse:collapse; background:white; font-size:14px; border-radius:8px; overflow:hidden; box-shadow:0 2px 5px rgba(0,0,0,0.05);">
     <thead style="background:#f8f9fa; border-bottom:2px solid #eee;">
       <tr>
-        <th style="padding:12px; text-align:left;">Guest & Rate Code</th>
+        <th style="padding:12px; text-align:left;">Guest & Rate Code / Group</th>
         <th style="padding:12px; text-align:left;">Arrival</th>
         <th style="padding:12px; text-align:left;">Current</th>
         <th style="padding:12px; text-align:left;">Upgrade Option</th>
@@ -2126,7 +2133,7 @@ function renderManualUpgradeView() {
     if (optionsHtml) {
       eligibleFound++;
       const arrStr = guest.arrival.toLocaleDateString('en-US', { month: 'numeric', day: 'numeric', timeZone: 'UTC' });
-      // Displaying Rate Code prominently below name
+      // Displaying final assigned Rate Code or fallback Group Name
       const rateDisplay = guest.rate ? `<br><small style="color:#d63384; font-weight:bold;">${guest.rate}</small>` : '';
       
       rowsHtml += `<tr style="border-bottom:1px solid #eee;">
