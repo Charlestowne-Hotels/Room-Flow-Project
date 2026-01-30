@@ -699,7 +699,7 @@ let acceptedUpgrades = [];
 let completedUpgrades = [];
 let oooRecords = [];
 let currentInventoryMap = null;
-let savedLeadTimes = {}; // New state to track cloud lead times locally
+let savedLeadTimes = {}; 
 
 // --- FUNCTIONS ---
 function resetAppState() {
@@ -752,8 +752,6 @@ async function handleRefresh() {
     };
 
     showLoader(true, 'Refreshing Data...');
-
-    // Load saved lead times before running logic
     await fetchSavedLeadTimes(currentRules.profile);
 
     setTimeout(() => {
@@ -784,7 +782,6 @@ async function updateRulesForm(profileName) {
   document.getElementById('ota-rates').value = profile.otaRates;
   document.getElementById('ineligible-upgrades').value = profile.ineligibleUpgrades;
   
-  // Load lead times specifically for this profile
   await fetchSavedLeadTimes(profileName);
   populateOooDropdown();
 }
@@ -1876,17 +1873,11 @@ function parseSynxisArrivals(data, header, rules) {
     const arrival = values[arrivalIndex] ? parseDate(values[arrivalIndex]) : null;
     const departure = values[departureIndex] ? parseDate(values[departureIndex]) : null;
     
-    // Check local saved state for Lead Time first
-    const roomType = values[roomTypeIndex]?.trim().toUpperCase();
-    let leadTime = savedLeadTimes[roomType]?.avgLeadTime || 0;
-
-    // Fallback to calculation if no manual entry exists
-    if (!leadTime) {
-      const bookDate = (createDtIndex > -1 && values[createDtIndex]) ? parseDate(values[createDtIndex]) : null;
-      if (arrival instanceof Date && !isNaN(arrival) && bookDate instanceof Date && !isNaN(bookDate)) {
-          const timeDiff = arrival.getTime() - bookDate.getTime();
-          leadTime = Math.ceil(timeDiff / (1000 * 3600 * 24));
-      }
+    let leadTime = 0;
+    const bookDate = (createDtIndex > -1 && values[createDtIndex]) ? parseDate(values[createDtIndex]) : null;
+    if (arrival instanceof Date && !isNaN(arrival) && bookDate instanceof Date && !isNaN(bookDate)) {
+        const timeDiff = arrival.getTime() - bookDate.getTime();
+        leadTime = Math.ceil(timeDiff / (1000 * 3600 * 24));
     }
 
     let nights = 0; if (arrival && departure) nights = Math.max(1, Math.ceil((departure - arrival) / (1000 * 60 * 60 * 24)));
@@ -1895,7 +1886,7 @@ function parseSynxisArrivals(data, header, rules) {
     if (fullName.includes(',')) { const parts = fullName.split(','); if (parts.length >= 2) fullName = `${parts[1].trim()} ${parts[0].trim()}`; }
     let status = values[statusIndex]?.trim().toUpperCase() || 'RESERVATION';
     if (status === 'CONFIRMED') status = 'RESERVATION'; if (status === 'CANCELLED') status = 'CANCELED';
-    return { name: fullName, resId, roomType, rate: values[rateNameIndex]?.trim(), nights, arrival, departure, status, revenue: (dailyRate * nights).toLocaleString('en-US', { style: 'currency', currency: 'USD' }), marketCode: '', leadTime };
+    return { name: fullName, resId, roomType: values[roomTypeIndex]?.trim().toUpperCase(), rate: values[rateNameIndex]?.trim(), nights, arrival, departure, status, revenue: (dailyRate * nights).toLocaleString('en-US', { style: 'currency', currency: 'USD' }), marketCode: '', leadTime };
   }).filter(r => r && r.roomType && r.arrival && r.departure && r.nights > 0);
 }
 
@@ -1907,7 +1898,11 @@ function parseAllReservations(data, header, fileName, rules) {
   if (isSnt) {
     firstNameIndex = header.indexOf('First Name'); lastNameIndex = header.indexOf('Last Name');
     resIdIndex = header.indexOf('Reservation Id'); roomTypeIndex = header.indexOf('Arrival Room Type');
-    rateNameIndex = header.indexOf('Arrival Rate Code'); arrivalIndex = header.indexOf('Arrival Date');
+    
+    // UPDATED FOR STS RATE CODE
+    rateNameIndex = header.indexOf('Arrival Rate Code'); 
+    
+    arrivalIndex = header.indexOf('Arrival Date');
     departureIndex = header.indexOf('Departure Date'); statusIndex = header.indexOf('Reservation Status');
     rateIndex = header.indexOf('Adr'); marketCodeIndex = header.indexOf('Market Code');
     vipIndex = header.indexOf('Vip'); if (vipIndex === -1) vipIndex = header.indexOf('VIPDescription');
@@ -1929,11 +1924,9 @@ function parseAllReservations(data, header, fileName, rules) {
     const arrival = values[arrivalIndex] ? parseDate(values[arrivalIndex]) : null;
     const departure = values[departureIndex] ? parseDate(values[departureIndex]) : null;
     
-    // Check local saved state for Lead Time first
     const roomType = values[roomTypeIndex]?.trim().toUpperCase();
     let leadTime = savedLeadTimes[roomType]?.avgLeadTime || 0;
 
-    // Fallback to calculation if no manual entry exists
     if (!leadTime) {
       const bookDate = (bookDateIndex > -1 && values[bookDateIndex]) ? parseDate(values[bookDateIndex]) : null;
       if (arrival instanceof Date && !isNaN(arrival) && bookDate instanceof Date && !isNaN(bookDate)) {
@@ -1952,7 +1945,21 @@ function parseAllReservations(data, header, fileName, rules) {
     if (vipStatus.toUpperCase() === 'NO') vipStatus = "";
     const isDoNotMove = (dnmIndex > -1 && values[dnmIndex]) ? (values[dnmIndex].trim().toUpperCase() === 'YES') : false;
     
-    return { name: fullName, resId: values[resIdIndex]?.trim(), roomType, rate: values[rateNameIndex]?.trim(), nights, arrival, departure, status, revenue: (dailyRate * nights).toLocaleString('en-US', { style: 'currency', currency: 'USD' }), marketCode, vipStatus, isDoNotMove, leadTime };
+    return { 
+        name: fullName, 
+        resId: values[resIdIndex]?.trim(), 
+        roomType, 
+        rate: values[rateNameIndex]?.trim(), //standard rate code from SNT arrivals report
+        nights, 
+        arrival, 
+        departure, 
+        status, 
+        revenue: (dailyRate * nights).toLocaleString('en-US', { style: 'currency', currency: 'USD' }), 
+        marketCode, 
+        vipStatus, 
+        isDoNotMove, 
+        leadTime 
+    };
   }).filter(r => r && r.roomType && r.arrival && r.departure && r.nights > 0);
 }
 
@@ -1975,7 +1982,10 @@ function runSimulation(strategy, allReservations, masterInv, rules, completedIds
   const startDate = parseDate(rules.selectedDate);
   const hierarchy = rules.hierarchy.toUpperCase().split(',').map(r => r.trim()).filter(Boolean);
   const ineligible = rules.ineligibleUpgrades.toUpperCase().split(',');
-  const otaRates = rules.otaRates.toLowerCase().split(',');
+  
+  // INELIGIBLE RATES LOGIC
+  const otaRates = rules.otaRates.toLowerCase().split(',').map(r => r.trim()).filter(Boolean);
+  
   const simulationLimit = 7; 
 
   const simInventory = {};
@@ -2002,10 +2012,14 @@ function runSimulation(strategy, allReservations, masterInv, rules, completedIds
       const dailyArrivals = allReservations.filter(r => r.arrival && r.arrival.getTime() === dTime && r.status === 'RESERVATION');
       dailyArrivals.forEach(res => {
         if (completedIds.has(res.resId) || res.isDoNotMove) return;
+        
+        // CHECK AGAINST INELIGIBLE RATES
+        if (otaRates.some(ota => res.rate && res.rate.toLowerCase().includes(ota))) return;
+        
         const currentRoom = guestState[res.resId]; const currentIdx = hierarchy.indexOf(currentRoom);
         if (currentIdx === -1) return; const originalBed = getBedType(res.roomType);
         if (originalBed === 'OTHER') return;
-        if (otaRates.some(ota => res.rate.toLowerCase().includes(ota))) return;
+        
         for (let u = currentIdx + 1; u < hierarchy.length; u++) {
           const targetRoom = hierarchy[u];
           if (ineligible.includes(targetRoom)) continue;
@@ -2157,10 +2171,9 @@ function executeManualUpgrade(resId, index) {
 }
 
 // ==========================================
-// --- LEAD TIME ANALYTICS (SAVE & AUTO-LOAD) ---
+// --- LEAD TIME ANALYTICS ---
 // ==========================================
 
-// New helper to fetch data from Firestore
 async function fetchSavedLeadTimes(profile) {
   try {
     const docRef = db.collection('property_analytics').doc(profile);
@@ -2168,7 +2181,7 @@ async function fetchSavedLeadTimes(profile) {
     if (doc.exists && doc.data().leadTimeStats) {
       savedLeadTimes = doc.data().leadTimeStats;
     } else {
-      savedLeadTimes = {}; // Reset if none found
+      savedLeadTimes = {}; 
     }
   } catch (error) {
     console.error("Error fetching lead times:", error);
@@ -2185,7 +2198,6 @@ function displayLeadTimeAnalytics() {
   let html = `<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;"><h3>Manual Lead Time Entry</h3><button id="save-lead-time-btn" onclick="handleSaveLeadTime()" style="background:#28a745; color:white; border:none; padding:8px 12px; border-radius:5px; cursor:pointer;">Save to Cloud</button></div><table style="width:100%; border-collapse:collapse; background:white;"><thead><tr style="background:#f8f9fa;"><th>Room Type</th><th>Avg. Lead Time (Days)</th></tr></thead><tbody>`;
 
   roomTypes.forEach(roomType => {
-    // Priority: Cloud Saved Value > Local Reservation Data
     const existingVal = savedLeadTimes[roomType]?.avgLeadTime || "";
     html += `<tr><td style="padding:10px;"><strong>${roomType}</strong></td><td style="padding:10px; text-align:center;"><input type="number" class="manual-room-lt-input" data-room="${roomType}" value="${existingVal}" style="width: 80px; text-align: center;"></td></tr>`;
   });
@@ -2211,7 +2223,6 @@ window.handleSaveLeadTime = async function() {
         avgLeadTime: val,
         count: "Manual Entry"
       };
-      // Update global reservations locally
       if (currentAllReservations) {
         currentAllReservations.forEach(res => {
           if (res.roomType === room) res.leadTime = val;
@@ -2227,9 +2238,9 @@ window.handleSaveLeadTime = async function() {
       updatedAt: firebase.firestore.FieldValue.serverTimestamp()
     }, { merge: true });
 
-    savedLeadTimes = roomData; // Update local tracker
+    savedLeadTimes = roomData; 
     alert("Room Lead Times saved to cloud!");
-    handleRefresh(); 
+    await handleRefresh(); 
   } catch (error) {
     console.error("Save Error:", error);
     alert("Save failed: " + error.message);
@@ -2238,5 +2249,6 @@ window.handleSaveLeadTime = async function() {
     btn.textContent = "Save to Cloud";
   }
 };
+
 
 
