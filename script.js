@@ -1873,11 +1873,15 @@ function parseSynxisArrivals(data, header, rules) {
     const arrival = values[arrivalIndex] ? parseDate(values[arrivalIndex]) : null;
     const departure = values[departureIndex] ? parseDate(values[departureIndex]) : null;
     
-    let leadTime = 0;
-    const bookDate = (createDtIndex > -1 && values[createDtIndex]) ? parseDate(values[createDtIndex]) : null;
-    if (arrival instanceof Date && !isNaN(arrival) && bookDate instanceof Date && !isNaN(bookDate)) {
-        const timeDiff = arrival.getTime() - bookDate.getTime();
-        leadTime = Math.ceil(timeDiff / (1000 * 3600 * 24));
+    const roomType = values[roomTypeIndex]?.trim().toUpperCase();
+    let leadTime = savedLeadTimes[roomType]?.avgLeadTime || 0;
+
+    if (!leadTime) {
+      const bookDate = (createDtIndex > -1 && values[createDtIndex]) ? parseDate(values[createDtIndex]) : null;
+      if (arrival instanceof Date && !isNaN(arrival) && bookDate instanceof Date && !isNaN(bookDate)) {
+          const timeDiff = arrival.getTime() - bookDate.getTime();
+          leadTime = Math.ceil(timeDiff / (1000 * 3600 * 24));
+      }
     }
 
     let nights = 0; if (arrival && departure) nights = Math.max(1, Math.ceil((departure - arrival) / (1000 * 60 * 60 * 24)));
@@ -1886,7 +1890,7 @@ function parseSynxisArrivals(data, header, rules) {
     if (fullName.includes(',')) { const parts = fullName.split(','); if (parts.length >= 2) fullName = `${parts[1].trim()} ${parts[0].trim()}`; }
     let status = values[statusIndex]?.trim().toUpperCase() || 'RESERVATION';
     if (status === 'CONFIRMED') status = 'RESERVATION'; if (status === 'CANCELLED') status = 'CANCELED';
-    return { name: fullName, resId, roomType: values[roomTypeIndex]?.trim().toUpperCase(), rate: values[rateNameIndex]?.trim(), nights, arrival, departure, status, revenue: (dailyRate * nights).toLocaleString('en-US', { style: 'currency', currency: 'USD' }), marketCode: '', leadTime };
+    return { name: fullName, resId, roomType, rate: values[rateNameIndex]?.trim(), nights, arrival, departure, status, revenue: (dailyRate * nights).toLocaleString('en-US', { style: 'currency', currency: 'USD' }), marketCode: '', leadTime };
   }).filter(r => r && r.roomType && r.arrival && r.departure && r.nights > 0);
 }
 
@@ -1898,7 +1902,7 @@ function parseAllReservations(data, header, fileName, rules) {
   if (isSnt) {
     firstNameIndex = header.indexOf('First Name'); lastNameIndex = header.indexOf('Last Name');
     resIdIndex = header.indexOf('Reservation Id'); roomTypeIndex = header.indexOf('Arrival Room Type');
-    rateNameIndex = header.indexOf('Arrival Rate Code'); //standard rate code from SNT arrivals report
+    rateNameIndex = header.indexOf('Arrival Rate Code'); 
     arrivalIndex = header.indexOf('Arrival Date');
     departureIndex = header.indexOf('Departure Date'); statusIndex = header.indexOf('Reservation Status');
     rateIndex = header.indexOf('Adr'); marketCodeIndex = header.indexOf('Market Code');
@@ -1992,7 +1996,10 @@ function runSimulation(strategy, allReservations, masterInv, rules, completedIds
       const dailyArrivals = allReservations.filter(r => r.arrival && r.arrival.getTime() === dTime && r.status === 'RESERVATION');
       dailyArrivals.forEach(res => {
         if (completedIds.has(res.resId) || res.isDoNotMove) return;
+        
+        // RATE PLAN FILTERING
         if (otaRates.some(ota => res.rate && res.rate.toLowerCase().includes(ota))) return;
+        
         const currentRoom = guestState[res.resId]; const currentIdx = hierarchy.indexOf(currentRoom);
         if (currentIdx === -1) return; const originalBed = getBedType(res.roomType);
         if (originalBed === 'OTHER') return;
@@ -2055,7 +2062,7 @@ function getBedType(roomCode) {
 function downloadAcceptedUpgradesCsv() { if (!acceptedUpgrades.length) return; const headers = ['Guest Name', 'Res ID', 'Current Room', 'Upgrade To', 'Arrival', 'Departure']; const rows = acceptedUpgrades.map(rec => [`"${rec.name}"`, `"${rec.resId}"`, `"${rec.room}"`, `"${rec.upgradeTo}"`, `"${rec.arrivalDate}"`, `"${rec.departureDate}"`].join(',')); const blob = new Blob([[headers.join(','), ...rows].join('\n')], { type: 'text/csv' }); const link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.download = `upgrades_${new Date().toISOString().slice(0, 10)}.csv`; link.click(); }
 
 // ==========================================
-// --- MANUAL UPGRADE SECTION (WITH RATES) ---
+// --- MANUAL UPGRADE SECTION ---
 // ==========================================
 function renderManualUpgradeView() {
   const container = document.getElementById('manual-upgrade-list-container');
@@ -2090,7 +2097,7 @@ function renderManualUpgradeView() {
   let rowsHtml = `<table style="width:100%; border-collapse:collapse; background:white; font-size:14px; border-radius:8px; overflow:hidden; box-shadow:0 2px 5px rgba(0,0,0,0.05);">
     <thead style="background:#f8f9fa; border-bottom:2px solid #eee;">
       <tr>
-        <th style="padding:12px; text-align:left;">Guest & Rate</th>
+        <th style="padding:12px; text-align:left;">Guest & Rate Code</th>
         <th style="padding:12px; text-align:left;">Arrival</th>
         <th style="padding:12px; text-align:left;">Current</th>
         <th style="padding:12px; text-align:left;">Upgrade Option</th>
@@ -2119,7 +2126,9 @@ function renderManualUpgradeView() {
     if (optionsHtml) {
       eligibleFound++;
       const arrStr = guest.arrival.toLocaleDateString('en-US', { month: 'numeric', day: 'numeric', timeZone: 'UTC' });
-      const rateDisplay = guest.rate ? `<br><small style="color:#28a745; font-weight:bold;">${guest.rate}</small>` : '';
+      // Displaying Rate Code prominently below name
+      const rateDisplay = guest.rate ? `<br><small style="color:#d63384; font-weight:bold;">${guest.rate}</small>` : '';
+      
       rowsHtml += `<tr style="border-bottom:1px solid #eee;">
         <td style="padding:10px;"><strong>${guest.name}</strong><br><small>${guest.resId}</small>${rateDisplay}</td>
         <td style="padding:10px;">${arrStr}<br><small>${guest.nights} nts</small></td>
@@ -2156,6 +2165,7 @@ function executeManualUpgrade(resId, index) {
 // ==========================================
 // --- LEAD TIME ANALYTICS ---
 // ==========================================
+
 async function fetchSavedLeadTimes(profile) {
   try {
     const docRef = db.collection('property_analytics').doc(profile);
@@ -2231,6 +2241,7 @@ window.handleSaveLeadTime = async function() {
     btn.textContent = "Save to Cloud";
   }
 };
+
 
 
 
