@@ -712,9 +712,7 @@ function resetAppState() {
   acceptedUpgrades = [];
   currentInventoryMap = null;
 
-  const fileInput = document.getElementById('csv-file');
-  if (fileInput) fileInput.value = '';
-  
+  document.getElementById('csv-file').value = '';
   const outputEl = document.getElementById('output');
   if (outputEl) outputEl.style.display = 'block';
 
@@ -1960,10 +1958,6 @@ function parseAllReservations(data, header, fileName, rules) {
   }).filter(r => r && r.roomType && r.arrival && r.departure && r.nights > 0);
 }
 
-// =========================================================
-// ANALYTICS AND UPGRADE ENGINE
-// =========================================================
-
 function generateScenariosFromData(allReservations, rules) {
   const masterInventory = getMasterInventory(rules.profile);
   const activeReservations = allReservations.filter(res => res.status !== 'CANCELED' && res.status !== 'CANCELLED' && res.status !== 'NO SHOW');
@@ -1979,14 +1973,13 @@ function generateScenariosFromData(allReservations, rules) {
   return { scenarios, inventory: todayInventory, matrixData, message: null };
 }
 
-/**
- * EXHAUSTIVE CASCADING ENGINE
- * Overhauled to solve the discrepancy between auto and manual section.
- */
+// ==========================================
+// EXHAUSTIVE CASCADING UPGRADE SIMULATION
+// ==========================================
 function runSimulation(strategy, allReservations, masterInv, rules, completedIds) {
   const startDate = parseDate(rules.selectedDate);
   const hierarchy = rules.hierarchy.toUpperCase().split(',').map(r => r.trim()).filter(Boolean);
-  const ineligible = rules.ineligibleUpgrades.toUpperCase().split(',').map(i => i.trim());
+  const ineligible = rules.ineligibleUpgrades.toUpperCase().split(',');
   const otaRates = rules.otaRates.toLowerCase().split(',').map(r => r.trim()).filter(Boolean);
   const simulationLimit = 10; 
 
@@ -1996,77 +1989,92 @@ function runSimulation(strategy, allReservations, masterInv, rules, completedIds
     const dStr = d.toISOString().split('T')[0];
     simInventory[dStr] = {};
     for (let room in masterInv) {
-      const dTime = d.getTime();
-      const existingCount = allReservations.reduce((acc, res) => (res.roomType === room && res.arrival <= d && res.departure > d) ? acc + 1 : acc, 0);
-      const oooCount = oooRecords.reduce((acc, rec) => (rec.roomType === room && dTime >= rec.startDate.getTime() && dTime <= rec.endDate.getTime()) ? acc + (rec.count || 1) : acc, 0);
+      const dTime = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate())).getTime();
+      const existingCount = allReservations.reduce((acc, res) => { if (res.roomType === room && res.arrival <= d && res.departure > d) return acc + 1; return acc; }, 0);
+      const oooCount = oooRecords.reduce((acc, rec) => { if (rec.roomType === room && dTime >= rec.startDate.getTime() && dTime <= rec.endDate.getTime()) return acc + (rec.count || 1); return acc; }, 0);
       if (currentInventoryMap && currentInventoryMap[dStr] && currentInventoryMap[dStr][room] !== undefined) simInventory[dStr][room] = currentInventoryMap[dStr][room];
       else simInventory[dStr][room] = (masterInv[room] || 0) - existingCount - oooCount;
     }
   }
 
-  const guestState = {}; allReservations.forEach(r => guestState[r.resId] = r.roomType);
+  const guestState = {};
+  allReservations.forEach(r => guestState[r.resId] = r.roomType);
   const pendingUpgrades = {};
 
-  // PRE-SORT POOL based on strategy
-  let pool = allReservations.filter(res => {
+  // Sort eligible candidates globally once
+  let candidatesPool = allReservations.filter(res => {
       if (completedIds.has(res.resId) || res.isDoNotMove) return false;
-      const diffDays = Math.floor((res.arrival.getTime() - startDate.getTime()) / 86400000);
+      const arrTime = res.arrival.getTime();
+      const diffDays = Math.floor((arrTime - startDate.getTime()) / (1000 * 3600 * 24));
       if (diffDays < 0 || diffDays >= simulationLimit) return false;
       if (otaRates.some(ota => res.rate && res.rate.toLowerCase().includes(ota))) return false;
       if (['CANCELED', 'CANCELLED', 'NO SHOW', 'CHECKED OUT'].includes(res.status)) return false;
       return true;
   });
 
-  if (strategy === 'VIP Focus') pool.sort((a,b) => (b.vipStatus ? 1 : 0) - (a.vipStatus ? 1 : 0) || b.nights - a.nights);
-  else if (strategy === 'Guest Focus') pool.sort((a,b) => (parseFloat(b.revenue.replace(/[$,]/g,''))||0) - (parseFloat(a.revenue.replace(/[$,]/g,''))||0));
-  else pool.sort((a,b) => b.nights - a.nights);
+  // Apply primary sort based on chosen strategy
+  if (strategy === 'VIP Focus') {
+    candidatesPool.sort((a, b) => (b.vipStatus ? 1 : 0) - (a.vipStatus ? 1 : 0) || b.nights - a.nights);
+  } else if (strategy === 'Guest Focus') {
+    candidatesPool.sort((a, b) => (parseFloat(b.revenue.replace(/[$,]/g, '')) || 0) - (parseFloat(a.revenue.replace(/[$,]/g, '')) || 0));
+  } else {
+    candidatesPool.sort((a, b) => b.nights - a.nights);
+  }
 
-  // TOP-DOWN CASCADING LOOP
-  let activity = true;
-  while (activity) {
-    activity = false;
-    for (let u = hierarchy.length - 1; u > 0; u--) { 
+  // EXHAUSTIVE ENGINE
+  let iterationActivity = true;
+  while (iterationActivity) {
+    iterationActivity = false;
+    
+    // Iterate from Top of Hierarchy Downwards
+    for (let u = hierarchy.length - 1; u > 0; u--) {
       const targetRoom = hierarchy[u];
       if (ineligible.includes(targetRoom)) continue;
 
-      for (let res of pool) {
+      // For every guest in a tier below the current target
+      for (let g = 0; g < candidatesPool.length; g++) {
+        const res = candidatesPool[g];
         if (pendingUpgrades[res.resId]) continue;
 
         const currentRoom = guestState[res.resId];
         const currentIdx = hierarchy.indexOf(currentRoom);
-
-        // BED TYPE MATCHING LOGIC
-        const targetBed = getBedType(targetRoom);
-        const sourceBed = getBedType(res.roomType);
-        let bedMatch = false;
-
-        if (sourceBed === 'Q') {
-          if (targetBed === 'K' || targetBed === 'QQ' || targetBed === 'Q') bedMatch = true;
-        } else {
-          if (targetBed === sourceBed) bedMatch = true;
-        }
-
-        if (currentIdx !== -1 && currentIdx < u && bedMatch) {
-          let canMove = true, checkDate = new Date(res.arrival);
+        
+        // Only move them IF they are below the current target tier
+        if (currentIdx !== -1 && currentIdx < u) {
+          
+          // Strict Length of Stay Check
+          let canMove = true;
+          let checkDate = new Date(res.arrival);
           while (checkDate < res.departure) {
             const dStr = checkDate.toISOString().split('T')[0];
-            if (!simInventory[dStr] || (simInventory[dStr][targetRoom] || 0) <= 0) { canMove = false; break; }
+            if (!simInventory[dStr] || (simInventory[dStr][targetRoom] || 0) <= 0) {
+              canMove = false;
+              break;
+            }
             checkDate.setUTCDate(checkDate.getUTCDate() + 1);
           }
 
           if (canMove) {
-            activity = true;
+            // EXECUTE UPGRADE
+            iterationActivity = true;
             let updateDate = new Date(res.arrival);
             while (updateDate < res.departure) {
               const dStr = updateDate.toISOString().split('T')[0];
-              simInventory[dStr][targetRoom]--; 
-              if (simInventory[dStr][currentRoom] !== undefined) simInventory[dStr][currentRoom]++; 
+              simInventory[dStr][targetRoom]--; // Remove from higher
+              if (simInventory[dStr][currentRoom] !== undefined) {
+                  simInventory[dStr][currentRoom]++; // Add back to lower (VACANCY TRIGGER)
+              }
               updateDate.setUTCDate(updateDate.getUTCDate() + 1);
             }
 
             guestState[res.resId] = targetRoom;
             pendingUpgrades[res.resId] = {
-              name: res.name, resId: res.resId, revenue: res.revenue, room: res.roomType, upgradeTo: targetRoom, score: parseFloat(res.revenue.replace(/[$,]/g, '')) || 0,
+              name: res.name,
+              resId: res.resId,
+              revenue: res.revenue,
+              room: res.roomType,
+              upgradeTo: targetRoom,
+              score: parseFloat(res.revenue.replace(/[$,]/g, '')) || 0,
               arrivalDate: res.arrival.toLocaleDateString('en-US', { timeZone: 'UTC' }),
               departureDate: res.departure.toLocaleDateString('en-US', { timeZone: 'UTC' }),
               isoArrival: res.arrival.toISOString().split('T')[0],
@@ -2081,232 +2089,168 @@ function runSimulation(strategy, allReservations, masterInv, rules, completedIds
   return Object.values(pendingUpgrades);
 }
 
-function buildReservationsByDate(allReservations) {
-  const map = {};
-  allReservations.forEach(res => {
-    let curr = new Date(res.arrival);
-    while (curr < res.departure) {
-      const dStr = curr.toISOString().split('T')[0];
-      if (!map[dStr]) map[dStr] = {};
-      map[dStr][res.roomType] = (map[dStr][res.roomType] || 0) + 1;
-      curr.setUTCDate(curr.getUTCDate() + 1);
-    }
-  });
-  return map;
-}
+function buildReservationsByDate(allReservations) { const reservationsByDate = {}; allReservations.forEach(res => { if (!res.arrival || !res.departure) return; let currentDate = new Date(res.arrival); while (currentDate < res.departure) { const dateString = currentDate.toISOString().split('T')[0]; if (!reservationsByDate[dateString]) reservationsByDate[dateString] = {}; reservationsByDate[dateString][res.roomType] = (reservationsByDate[dateString][res.roomType] || 0) + 1; currentDate.setUTCDate(currentDate.getUTCDate() + 1); } }); return reservationsByDate; }
+function getInventoryForDate(masterInventory, reservationsByDate, date) { const inventory = {}; const dateString = date.toISOString().split('T')[0]; for (const roomCode in masterInventory) { const totalPhysical = masterInventory[roomCode]; const reservedCount = reservationsByDate[dateString]?.[roomCode] || 0; const oooDeduction = oooRecords.reduce((total, rec) => { if (rec.roomType === roomCode && (date.getTime() >= rec.startDate.getTime() && date.getTime() <= rec.endDate.getTime())) return total + (rec.count || 1); return total; }, 0); inventory[roomCode] = totalPhysical - reservedCount - oooDeduction; } return inventory; }
+function getMasterInventory(profileName) { const masterRoomList = MASTER_INVENTORIES[profileName]; if (!masterRoomList) return {}; const totalInventory = {}; masterRoomList.forEach(room => { totalInventory[room.code.toUpperCase()] = (totalInventory[room.code.toUpperCase()] || 0) + 1; }); return totalInventory; }
+function parseDate(dateStr) { if (!dateStr) return null; const parts = dateStr.split(/[-\/ ]/); if (parts.length >= 3) { if (parts[0].length === 4) return new Date(Date.UTC(parts[0], parts[1] - 1, parts[2])); return new Date(Date.UTC(parts[2], parts[0] - 1, parts[1])); } return new Date(dateStr); }
+function generateMatrixData(totalInventory, reservationsByDate, startDate, roomHierarchy) { const matrix = { headers: ['Room Type'], rows: [] }; const dates = Array.from({ length: 14 }, (_, i) => { const date = new Date(startDate); date.setUTCDate(date.getUTCDate() + i); return date; }); matrix.headers.push(...dates.map(date => `${date.toLocaleDateString('en-US', { weekday: 'short', timeZone: 'UTC' })}<br>${date.getUTCMonth() + 1}/${date.getUTCDate()}`)); roomHierarchy.forEach(roomCode => { const row = { roomCode, availability: [] }; dates.forEach(date => { const dateString = date.toISOString().split('T')[0]; let finalAvail = 0; if (currentInventoryMap && currentInventoryMap[dateString] && currentInventoryMap[dateString][roomCode] !== undefined) finalAvail = currentInventoryMap[dateString][roomCode]; else { const oooCount = oooRecords.reduce((total, rec) => { if (rec.roomType === roomCode && (date.getTime() >= rec.startDate.getTime() && date.getTime() <= rec.endDate.getTime())) return total + (rec.count || 1); return total; }, 0); finalAvail = (totalInventory[roomCode] || 0) - (reservationsByDate[dateString]?.[roomCode] || 0) - oooCount; } row.availability.push(finalAvail); }); matrix.rows.push(row); }); return matrix; }
 
 function getBedType(roomCode) { 
   if (!roomCode) return 'OTHER'; 
   const code = roomCode.toUpperCase();
-  if (['-K', 'DK', 'GK', 'PK', 'TK', 'PKR', 'TKR', 'LKR', 'CKR', 'AKR', 'HERT', 'AMER', 'LEST', 'LEAC', 'GPST', 'KING'].some(c => code.includes(c))) return 'K'; 
-  if (['-QQ', 'TQ', 'DQ', 'DD', 'QQR', 'AQQ', 'STQQ', 'PQNN', 'DQUEEN', 'ADADQ'].some(c => code.includes(c))) return 'QQ'; 
-  if (['-Q', 'Q', 'SQ', 'QUEEN'].some(c => code.includes(c))) return 'Q'; 
+  if (code.includes('-K') || code.startsWith('DK') || code.startsWith('GK') || code.startsWith('PK') || code.startsWith('TK') || ['PKR', 'TKR', 'LKR', 'CKR', 'AKR', 'HERT', 'AMER', 'LEST', 'LEAC', 'GPST', 'KING'].some(c => code.includes(c))) return 'K'; 
+  if (code.includes('-QQ') || code.startsWith('TQ') || code.startsWith('DQ') || code === 'DD' || ['QQR', 'AQQ', 'STQQ', 'PQNN', 'DQUEEN', 'ADADQ'].some(c => code.includes(c))) return 'QQ'; 
+  if (code.includes('-Q') || code === 'Q' || code === 'SQ' || code.includes('QUEEN')) return 'Q'; 
   return 'OTHER'; 
 }
 
-function parseDate(dateStr) { 
-  if (!dateStr) return null; 
-  const parts = dateStr.split(/[-\/ ]/); 
-  if (parts.length >= 3) { 
-    if (parts[0].length === 4) return new Date(Date.UTC(parts[0], parts[1] - 1, parts[2])); 
-    return new Date(Date.UTC(parts[2], parts[0] - 1, parts[1])); 
-  } return new Date(dateStr); 
-}
-
-function getMasterInventory(profileName) { 
-  const masterRoomList = MASTER_INVENTORIES[profileName]; 
-  if (!masterRoomList) return {}; 
-  const totalInventory = {}; 
-  masterRoomList.forEach(room => { totalInventory[room.code.toUpperCase()] = (totalInventory[room.code.toUpperCase()] || 0) + 1; }); 
-  return totalInventory; 
-}
-
-function getInventoryForDate(masterInventory, reservationsByDate, date) { 
-  const inventory = {}; 
-  const dateString = date.toISOString().split('T')[0]; 
-  for (const roomCode in masterInventory) { 
-    const totalPhysical = masterInventory[roomCode]; 
-    const reservedCount = reservationsByDate[dateString]?.[roomCode] || 0; 
-    inventory[roomCode] = totalPhysical - reservedCount; 
-  } return inventory; 
-}
-
-function generateMatrixData(totalInventory, reservationsByDate, startDate, roomHierarchy) { 
-  const matrix = { headers: ['Room Type'], rows: [] }; 
-  const dates = Array.from({ length: 14 }, (_, i) => { const date = new Date(startDate); date.setUTCDate(date.getUTCDate() + i); return date; }); 
-  matrix.headers.push(...dates.map(date => `${date.getUTCMonth() + 1}/${date.getUTCDate()}`)); 
-  roomHierarchy.forEach(roomCode => { 
-    const row = { roomCode, availability: [] }; 
-    dates.forEach(date => { 
-      const dateString = date.toISOString().split('T')[0]; 
-      let val = currentInventoryMap?.[dateString]?.[roomCode] ?? (totalInventory[roomCode] || 0) - (reservationsByDate[dateString]?.[roomCode] || 0);
-      row.availability.push(val); 
-    }); matrix.rows.push(row); 
-  }); return matrix; 
-}
+function downloadAcceptedUpgradesCsv() { if (!acceptedUpgrades.length) return; const headers = ['Guest Name', 'Res ID', 'Current Room', 'Upgrade To', 'Arrival', 'Departure']; const rows = acceptedUpgrades.map(rec => [`"${rec.name}"`, `"${rec.resId}"`, `"${rec.room}"`, `"${rec.upgradeTo}"`, `"${rec.arrivalDate}"`, `"${rec.departureDate}"`].join(',')); const blob = new Blob([[headers.join(','), ...rows].join('\n')], { type: 'text/csv' }); const link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.download = `upgrades_${new Date().toISOString().slice(0, 10)}.csv`; link.click(); }
 
 // ==========================================
-// UI AND DATA DISPLAY
+// --- MANUAL UPGRADE SECTION ---
 // ==========================================
-
-function displayResults(data) {
-  showLoader(false); if (data.acceptedUpgrades) acceptedUpgrades = data.acceptedUpgrades;
-  currentScenarios = data.scenarios || {};
-  if (document.getElementById('accepted-container')) document.getElementById('accepted-container').style.display = 'block';
-  displayAcceptedUpgrades(); displayScenarios(currentScenarios);
-  document.getElementById('output').style.display = 'block';
-  renderManualUpgradeView();
-}
-
-function displayScenarios(scenarios) {
-  const container = document.getElementById('recommendations-container'); container.innerHTML = '';
-  const keys = Object.keys(scenarios); if (!keys.length) return;
-  const head = document.createElement('div'); head.style.marginBottom = '20px';
-  head.innerHTML = `<label style="font-weight:bold;">Optimization Strategy:</label> `;
-  const select = document.createElement('select'); select.style.padding = '8px';
-  keys.forEach(k => { const opt = document.createElement('option'); opt.value = k; opt.textContent = k; select.appendChild(opt); });
-  select.addEventListener('change', e => renderScenarioContent(e.target.value, scenarios[e.target.value], container));
-  head.appendChild(select); container.appendChild(head);
-  renderScenarioContent(keys[0], scenarios[keys[0]], container);
-}
-
-function renderScenarioContent(name, recs, parent) {
-  const old = parent.querySelector('.scenario-content'); if (old) old.remove();
-  const wrapper = document.createElement('div'); wrapper.className = 'scenario-content';
-  const totalRev = recs.reduce((sum, r) => sum + r.score, 0);
-  const head = `<div style="display:flex;justify-content:space-between;align-items:center;background:#f9f9f9;padding:15px;border-radius:8px;margin-bottom:15px;border:1px solid #eee;">
-    <div><h3 style="margin:0;">${name} Path</h3><span>${recs.length} Upgrades | Potential Value: <strong>$${totalRev.toLocaleString()}</strong></span></div>
-    <button onclick="handleAcceptScenario('${name}')" style="background:#4361ee;color:white;border:none;padding:10px 20px;border-radius:5px;cursor:pointer;">Accept Entire Path</button>
-  </div>`;
-  wrapper.innerHTML = head;
-  const hierarchy = currentRules.hierarchy.toUpperCase().split(',').map(r => r.trim()).filter(Boolean);
-  const masterInv = getMasterInventory(currentRules.profile);
-  const baseRes = buildReservationsByDate(currentAllReservations);
-  const dates = Array.from({ length: 14 }, (_, i) => { const d = new Date(parseDate(currentRules.selectedDate)); d.setUTCDate(d.getUTCDate() + i); return d; });
-  const headers = ['Room Type', ...dates.map(d => `${d.getUTCMonth()+1}/${d.getUTCDate()}`)];
-  const projRows = [], projTotals = new Array(14).fill(0);
-  hierarchy.forEach(code => {
-    const pRow = { roomCode: code, data: [] };
-    dates.forEach((date, i) => {
-      const dStr = date.toISOString().split('T')[0];
-      let val = currentInventoryMap?.[dStr]?.[code] ?? (masterInv[code] || 0) - (baseRes[dStr]?.[code] || 0);
-      recs.forEach(up => { if (dStr >= up.isoArrival && dStr < up.isoDeparture) { if (up.room === code) val++; if (up.upgradeTo === code) val--; } });
-      pRow.data.push(val); projTotals[i] += val;
-    });
-    projRows.push(pRow);
-  });
-  wrapper.innerHTML += generateMatrixHTML("Projected Availability (After Path Applied)", projRows, headers, projTotals);
-  parent.appendChild(wrapper);
-}
-
-function generateMatrixHTML(title, rows, headers, colTotals) {
-  const getCellColor = (val) => val < 0 ? 'background:#ffebee;color:#c62828;' : (val < 3 ? 'background:#fff3e0;' : 'background:#e8f5e9;');
-  let html = `<div style="background:white;border-radius:8px;border:1px solid #eee;margin-bottom:20px;overflow:hidden;">
-    <div style="padding:15px;background:#f8f9fa;font-weight:bold;">${title}</div>
-    <div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:12px;"><thead><tr>${headers.map(h => `<th style="padding:10px;border-bottom:2px solid #ddd;">${h}</th>`).join('')}</tr></thead><tbody>`;
-  rows.forEach(row => {
-    html += `<tr><td style="padding:8px;border-bottom:1px solid #eee;font-weight:bold;">${row.roomCode}</td>`;
-    row.data.forEach(v => html += `<td style="padding:8px;border-bottom:1px solid #eee;text-align:center;${getCellColor(v)}">${v}</td>`);
-    html += '</tr>';
-  });
-  html += `<tr style="background:#f1f3f5;font-weight:bold;"><td>TOTAL</td>${colTotals.map(t => `<td style="text-align:center;padding:8px;">${t}</td>`).join('')}</tr></tbody></table></div></div>`;
-  return html;
-}
-
 function renderManualUpgradeView() {
-  const container = document.getElementById('manual-upgrade-list-container'); if (!container || !currentCsvContent) return;
-  const start = parseDate(document.getElementById('selected-date').value);
-  const acceptedIds = new Set(acceptedUpgrades.map(u => u.resId)), completedIds = new Set(completedUpgrades.map(u => u.resId));
-  const pool = currentAllReservations.filter(res => {
-    const diff = Math.floor((res.arrival.getTime() - start.getTime()) / 86400000);
-    return diff >= 0 && diff < 10 && !acceptedIds.has(res.resId) && !completedIds.has(res.resId) && !['CANCELED', 'CANCELLED', 'NO SHOW', 'CHECKED OUT'].includes(res.status);
+  const container = document.getElementById('manual-upgrade-list-container');
+  if (!container || !currentCsvContent || !currentAllReservations.length) return;
+  
+  const startStr = document.getElementById('selected-date').value;
+  const startDate = parseDate(startStr);
+  const acceptedIds = new Set(acceptedUpgrades.map(u => u.resId));
+  const completedIds = new Set(completedUpgrades.map(u => u.resId));
+  const otaRates = currentRules.otaRates.toLowerCase().split(',').map(r => r.trim()).filter(Boolean);
+
+  const candidates = currentAllReservations.filter(res => {
+    const arrTime = res.arrival.getTime();
+    const startTime = startDate.getTime();
+    const diffDays = Math.floor((arrTime - startTime) / (1000 * 3600 * 24));
+    const isRateIneligible = otaRates.some(ota => res.rate && res.rate.toLowerCase().includes(ota));
+
+    return diffDays >= 0 && diffDays < 10 && 
+           !acceptedIds.has(res.resId) && 
+           !completedIds.has(res.resId) && 
+           !isRateIneligible && 
+           !['CANCELED', 'CANCELLED', 'NO SHOW', 'CHECKED OUT'].includes(res.status);
   });
-  if (!pool.length) { container.innerHTML = '<p style="text-align:center;padding:20px;">All moves already captured.</p>'; return; }
+
+  if (!candidates.length) {
+    container.innerHTML = '<p style="text-align:center; padding:20px; color:#666;">No eligible guests found for manual upgrade.</p>';
+    return;
+  }
+
+  candidates.sort((a, b) => a.name.localeCompare(b.name));
   const hierarchy = currentRules.hierarchy.toUpperCase().split(',').map(r => r.trim()).filter(Boolean);
-  const sim = applyUpgradesAndRecalculate(acceptedUpgrades, currentCsvContent, currentRules, currentFileName);
-  const projMap = {}; sim.matrixData.rows.forEach(r => projMap[r.roomCode] = r.availability);
-  let html = `<table style="width:100%; border-collapse:collapse; font-size:14px;"><thead><tr style="background:#f8f9fa;"><th style="padding:10px;text-align:left;">Guest</th><th style="padding:10px;text-align:left;">Current</th><th style="padding:10px;text-align:left;">Upgrade Option</th><th style="padding:10px;">Action</th></tr></thead><tbody>`;
-  let count = 0;
-  pool.forEach((res, i) => {
-    const curIdx = hierarchy.indexOf(res.roomType); let opts = '';
-    if (curIdx !== -1) {
-      hierarchy.slice(curIdx + 1).forEach(target => {
-        const sBed = getBedType(res.roomType), tBed = getBedType(target);
-        if ((sBed === 'Q' && ['K', 'QQ', 'Q'].includes(tBed)) || (sBed !== 'Q' && sBed === tBed)) {
-          let ok = true; for (let d = 0; d < Math.min(res.nights, 14); d++) { if ((projMap[target]?.[d] || 0) <= 0) { ok = false; break; } }
-          if (ok) opts += `<option value="${target}">${target}</option>`;
+  const simResult = applyUpgradesAndRecalculate(acceptedUpgrades, currentCsvContent, currentRules, currentFileName);
+  const projectedInvMap = {}; 
+  simResult.matrixData.rows.forEach(row => { projectedInvMap[row.roomCode] = row.availability; });
+
+  let rowsHtml = `<table style="width:100%; border-collapse:collapse; background:white; font-size:14px; border-radius:8px; overflow:hidden; box-shadow:0 2px 5px rgba(0,0,0,0.05);">
+    <thead style="background:#f8f9fa; border-bottom:2px solid #eee;">
+      <tr>
+        <th style="padding:12px; text-align:left;">Guest & Rate / Group</th>
+        <th style="padding:12px; text-align:left;">Arrival</th>
+        <th style="padding:12px; text-align:left;">Current</th>
+        <th style="padding:12px; text-align:left;">Upgrade Option</th>
+        <th style="padding:12px; text-align:right;">Action</th>
+      </tr>
+    </thead><tbody>`;
+
+  let eligibleFound = 0;
+  candidates.forEach((guest, index) => {
+    const guestBed = getBedType(guest.roomType);
+    const currentIdx = hierarchy.indexOf(guest.roomType);
+    let optionsHtml = '';
+
+    if (currentIdx !== -1 && guestBed !== 'OTHER') {
+      for (let i = currentIdx + 1; i < hierarchy.length; i++) {
+        const target = hierarchy[i];
+        if (getBedType(target) !== guestBed) continue;
+        let isAvail = true;
+        for (let d = 0; d < Math.min(guest.nights, 14); d++) {
+          if ((projectedInvMap[target]?.[d] || 0) <= 0) { isAvail = false; break; }
         }
-      });
+        if (isAvail) optionsHtml += `<option value="${target}">${target}</option>`;
+      }
     }
-    if (opts) { count++; html += `<tr style="border-bottom:1px solid #eee;"><td style="padding:10px;">${res.name}</td><td style="padding:10px;">${res.roomType}</td><td><select id="man-sel-${i}" style="padding:5px;">${opts}</select></td><td style="text-align:center;"><button onclick="executeManualUpgrade('${res.resId}', ${i})" style="padding:5px 10px;background:#4343FF;color:white;border:none;border-radius:4px;cursor:pointer;">Upgrade</button></td></tr>`; }
+
+    if (optionsHtml) {
+      eligibleFound++;
+      const arrStr = guest.arrival.toLocaleDateString('en-US', { month: 'numeric', day: 'numeric', timeZone: 'UTC' });
+      const rateDisplay = guest.rate ? `<br><small style="color:#d63384; font-weight:bold;">${guest.rate}</small>` : '';
+      
+      rowsHtml += `<tr style="border-bottom:1px solid #eee;">
+        <td style="padding:10px;"><strong>${guest.name}</strong><br><small>${guest.resId}</small>${rateDisplay}</td>
+        <td style="padding:10px;">${arrStr}<br><small>${guest.nights} nts</small></td>
+        <td style="padding:10px;"><span style="background:#eee; padding:3px 6px; border-radius:4px; font-weight:bold;">${guest.roomType}</span></td>
+        <td style="padding:10px;"><select id="manual-select-${index}" style="width:100%; padding:5px;">${optionsHtml}</select></td>
+        <td style="padding:10px; text-align:right;"><button onclick="executeManualUpgrade('${guest.resId}', ${index})" class="pms-btn" style="background:#4343FF; color:white; border:none; padding:6px 12px; border-radius:4px; cursor:pointer;">Upgrade</button></td>
+      </tr>`;
+    }
   });
-  container.innerHTML = count > 0 ? html + '</tbody></table>' : '<p style="text-align:center;padding:20px;">No further manual upgrades are mathematically possible.</p>';
+
+  container.innerHTML = eligibleFound > 0 ? rowsHtml + '</tbody></table>' : '<p style="text-align:center; padding:20px; color:#666;">No valid inventory matches for full length of stay.</p>';
 }
 
-function executeManualUpgrade(resId, idx) {
-  const target = document.getElementById(`man-sel-${idx}`).value;
-  const res = currentAllReservations.find(r => r.resId === resId);
-  if (!res) return;
-  acceptedUpgrades.push({ name: res.name, resId: res.resId, revenue: res.revenue, room: res.roomType, upgradeTo: target, score: parseFloat(res.revenue.replace(/[$,]/g,''))||0, arrivalDate: res.arrival.toLocaleDateString(), isoArrival: res.arrival.toISOString().split('T')[0], isoDeparture: res.departure.toISOString().split('T')[0], vipStatus: res.vipStatus });
-  handleRefresh();
+function executeManualUpgrade(resId, index) {
+    const dropdown = document.getElementById(`manual-select-${index}`);
+    if (!dropdown) return;
+    const targetRoom = dropdown.value;
+    const res = currentAllReservations.find(r => r.resId === resId);
+    if (!res) return;
+    
+    const upgrade = {
+        name: res.name, resId: res.resId, revenue: res.revenue, room: res.roomType, rate: res.rate, nights: res.nights,
+        upgradeTo: targetRoom, score: parseFloat(res.revenue.replace(/[$,]/g, '')) || 0,
+        arrivalDate: res.arrival.toLocaleDateString('en-US', { timeZone: 'UTC' }),
+        departureDate: res.departure.toLocaleDateString('en-US', { timeZone: 'UTC' }),
+        isoArrival: res.arrival.toISOString().split('T')[0],
+        isoDeparture: res.departure.toISOString().split('T')[0],
+        vipStatus: res.vipStatus
+    };
+    acceptedUpgrades.push(upgrade);
+    handleRefresh();
 }
 
-function displayAcceptedUpgrades() {
-  const container = document.getElementById('accepted-container'); if (!container) return;
-  container.innerHTML = '';
-  if (acceptedUpgrades.length) {
-    acceptedUpgrades.forEach((u, i) => {
-      const card = `<div class="rec-card" style="border:1px solid #ddd;padding:15px;margin-bottom:10px;border-radius:8px;display:flex;justify-content:space-between;align-items:center;background:white;">
-        <div><strong>${u.name}</strong><br><small>${u.room} → <b>${u.upgradeTo}</b></small></div>
-        <button onclick="handlePmsUpdateClick({target:{dataset:{index:${i}}}})" class="pms-btn" style="background:#28a745;">Mark Updated</button>
-      </div>`;
-      container.innerHTML += card;
-    });
-  } else container.innerHTML = '<p>No upgrades accepted yet.</p>';
-}
-
-function downloadAcceptedUpgradesCsv() {
-  if (!acceptedUpgrades.length) return;
-  let csv = 'Guest Name,Res ID,Original Room,Upgrade To,Arrival\n';
-  acceptedUpgrades.forEach(r => csv += `"${r.name}","${r.resId}","${r.room}","${r.upgradeTo}","${r.arrivalDate}"\n`);
-  const link = document.createElement('a'); link.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
-  link.download = `upgrades_${new Date().toISOString().slice(0, 10)}.csv`; link.click();
-}
-
-async function fetchSavedLeadTimes(profile) { 
-  try { const doc = await db.collection('property_analytics').doc(profile).get(); savedLeadTimes = doc.exists ? doc.data().leadTimeStats : {}; } catch (e) { console.error(e); } 
+// --- LEAD TIME ANALYTICS ---
+async function fetchSavedLeadTimes(profile) {
+  try {
+    const docRef = db.collection('property_analytics').doc(profile);
+    const doc = await docRef.get();
+    if (doc.exists && doc.data().leadTimeStats) savedLeadTimes = doc.data().leadTimeStats;
+    else savedLeadTimes = {}; 
+  } catch (error) { console.error("Error fetching lead times:", error); }
 }
 
 function displayLeadTimeAnalytics() {
-  const container = document.getElementById('lead-time-container'); if (!container) return;
-  const types = document.getElementById('hierarchy').value.split(',').map(r => r.trim().toUpperCase()).filter(Boolean);
-  let html = `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:15px;"><h3>Manual Lead Time</h3><button onclick="handleSaveLeadTime()" style="background:#28a745;color:white;padding:5px 10px;border:none;border-radius:4px;cursor:pointer;">Save</button></div><table style="width:100%;">`;
-  types.forEach(t => html += `<tr><td>${t}</td><td><input type="number" class="manual-room-lt-input" data-room="${t}" value="${savedLeadTimes[t]?.avgLeadTime || ""}"></td></tr>`);
-  container.innerHTML = html + `</table>`;
+  const container = document.getElementById('lead-time-container');
+  if (!container) return;
+  const hierarchyVal = document.getElementById('hierarchy').value;
+  if (!hierarchyVal) return;
+  const roomTypes = hierarchyVal.split(',').map(r => r.trim().toUpperCase()).filter(Boolean);
+
+  let html = `<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;"><h3>Manual Lead Time Entry</h3><button id="save-lead-time-btn" onclick="handleSaveLeadTime()" style="background:#28a745; color:white; border:none; padding:8px 12px; border-radius:5px; cursor:pointer;">Save to Cloud</button></div><table style="width:100%; border-collapse:collapse; background:white;"><thead><tr style="background:#f8f9fa;"><th>Room Type</th><th>Avg. Lead Time (Days)</th></tr></thead><tbody>`;
+
+  roomTypes.forEach(roomType => {
+    const existingVal = savedLeadTimes[roomType]?.avgLeadTime || "";
+    html += `<tr><td style="padding:10px;"><strong>${roomType}</strong></td><td style="padding:10px; text-align:center;"><input type="number" class="manual-room-lt-input" data-room="${roomType}" value="${existingVal}" style="width: 80px; text-align: center;"></td></tr>`;
+  });
+  container.innerHTML = html + '</tbody></table>';
 }
 
 window.handleSaveLeadTime = async function() {
-  const profile = document.getElementById('profile-dropdown').value, data = {};
-  document.querySelectorAll('.manual-room-lt-input').forEach(i => { const v = parseInt(i.value, 10); if (!isNaN(v)) data[i.dataset.room] = { avgLeadTime: v }; });
-  try { await db.collection('property_analytics').doc(profile).set({ leadTimeStats: data, updatedAt: firebase.firestore.FieldValue.serverTimestamp() }, { merge: true }); alert("Saved!"); } catch (e) { alert(e.message); }
-};
-
-function parseCsv(content) {
-  const lines = content.trim().split('\n');
-  const header = lines.shift().split(',').map(h => h.trim().replace(/"/g, ''));
-  const data = lines.map(line => {
-    const row = []; let f = '', q = false;
-    for (let c of line) { if (c === '"') q = !q; else if (c === ',' && !q) { row.push(f); f = ''; } else f += c; }
-    row.push(f); return row;
+  const btn = document.getElementById('save-lead-time-btn');
+  const currentProfile = document.getElementById('profile-dropdown').value;
+  const inputs = document.querySelectorAll('.manual-room-lt-input');
+  if (!currentProfile) return;
+  btn.disabled = true; btn.textContent = "Saving...";
+  const roomData = {};
+  inputs.forEach(input => {
+    const room = input.dataset.room;
+    const val = parseInt(input.value, 10);
+    if (!isNaN(val)) roomData[room] = { avgLeadTime: val, count: "Manual Entry" };
   });
-  return { data, header };
-}
-
-function showLoader(show, text = 'Loading...') {
-  const l = document.getElementById('loader'), o = document.getElementById('output');
-  if (l) { l.style.display = show ? 'block' : 'none'; l.innerHTML = text; }
-  if (o) o.style.display = show ? 'none' : 'block';
-}
-
-function showError(e) { showLoader(false); alert(e.message); console.error(e); }
-
+  try {
+    await db.collection('property_analytics').doc(currentProfile).set({ leadTimeStats: roomData, updatedAt: firebase.firestore.FieldValue.serverTimestamp() }, { merge: true });
+    savedLeadTimes = roomData; alert("Lead Times saved!"); await handleRefresh(); 
+  } catch (error) { alert("Save failed: " + error.message); } 
+  finally { btn.disabled = false; btn.textContent = "Save to Cloud"; }
+};
