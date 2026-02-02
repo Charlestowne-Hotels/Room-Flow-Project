@@ -1979,12 +1979,13 @@ function generateScenariosFromData(allReservations, rules) {
 function runSimulation(strategy, allReservations, masterInv, rules, completedIds) {
   const startDate = parseDate(rules.selectedDate);
   const hierarchy = rules.hierarchy.toUpperCase().split(',').map(r => r.trim()).filter(Boolean);
-  
-  // Clean up ineligible list for strict matching
   const ineligible = rules.ineligibleUpgrades.toUpperCase().split(',').map(r => r.trim()).filter(Boolean);
-  
   const otaRates = rules.otaRates.toLowerCase().split(',').map(r => r.trim()).filter(Boolean);
-  const simulationLimit = 10; 
+  
+  const simulationLimit = 10;
+  const now = new Date();
+  // Calculate 48-hour threshold
+  const fortyEightHoursOut = new Date(now.getTime() + (48 * 60 * 60 * 1000));
 
   const simInventory = {};
   for (let i = 0; i < 14; i++) {
@@ -2004,34 +2005,67 @@ function runSimulation(strategy, allReservations, masterInv, rules, completedIds
   allReservations.forEach(r => guestState[r.resId] = r.roomType);
   const pendingUpgrades = {};
 
+  // --- CANDIDATE FILTERING (With 48hr Logic) ---
   let candidatesPool = allReservations.filter(res => {
       if (completedIds.has(res.resId) || res.isDoNotMove) return false;
       const arrTime = res.arrival.getTime();
       const diffDays = Math.floor((arrTime - startDate.getTime()) / (1000 * 3600 * 24));
+      
       if (diffDays < 0 || diffDays >= simulationLimit) return false;
-      if (otaRates.some(ota => res.rate && res.rate.toLowerCase().includes(ota))) return false;
       if (['CANCELED', 'CANCELLED', 'NO SHOW', 'CHECKED OUT'].includes(res.status)) return false;
+
+      const isArrivalWithin48h = res.arrival <= fortyEightHoursOut;
+      const rateName = (res.rate || "").toUpperCase();
+
+      if (isArrivalWithin48h) {
+          // Rule: Within 48 hours allow all except COMP
+          if (rateName.includes("COMP")) return false;
+      } else {
+          // Rule: Outside 48 hours exclude OTAs/Restricted rates
+          if (otaRates.some(ota => res.rate && res.rate.toLowerCase().includes(ota))) return false;
+      }
+      
       return true;
   });
 
-  if (strategy === 'VIP Focus') {
+  // --- SORTING LOGIC ---
+  if (strategy === 'Optimized') {
+    candidatesPool.sort((a, b) => {
+        // 1. VIP Status
+        const vipA = a.vipStatus ? 1 : 0;
+        const vipB = b.vipStatus ? 1 : 0;
+        if (vipB !== vipA) return vipB - vipA;
+
+        // 2. Room Lead Time (Clear rooms with lower lead times first)
+        const ltA = savedLeadTimes[a.roomType]?.avgLeadTime || 0;
+        const ltB = savedLeadTimes[b.roomType]?.avgLeadTime || 0;
+        if (ltB !== ltA) return ltA - ltB; 
+
+        // 3. Revenue
+        const revA = parseFloat(a.revenue.replace(/[$,]/g, '')) || 0;
+        const revB = parseFloat(b.revenue.replace(/[$,]/g, '')) || 0;
+        return revB - revA;
+    });
+  } else if (strategy === 'VIP Focus') {
     candidatesPool.sort((a, b) => (b.vipStatus ? 1 : 0) - (a.vipStatus ? 1 : 0) || b.nights - a.nights);
-  } else if (strategy === 'Guest Focus') {
-    candidatesPool.sort((a, b) => (parseFloat(b.revenue.replace(/[$,]/g, '')) || 0) - (parseFloat(a.revenue.replace(/[$,]/g, '')) || 0));
   } else {
     candidatesPool.sort((a, b) => b.nights - a.nights);
   }
 
-  // --- ENGINE WITH INELIGIBLE ROOM BYPASS ---
+  // --- EXHAUSTIVE ENGINE ---
   let iterationActivity = true;
   while (iterationActivity) {
     iterationActivity = false;
     
-    // Iterate from Top of Hierarchy Downwards
-    for (let u = hierarchy.length - 1; u > 0; u--) {
-      const targetRoom = hierarchy[u];
+    // Sort Target Rooms by Lead Time for Optimized fill
+    const sortedHierarchy = [...hierarchy].sort((a, b) => {
+        if (strategy !== 'Optimized') return 0;
+        const ltA = savedLeadTimes[a]?.avgLeadTime || 0;
+        const ltB = savedLeadTimes[b]?.avgLeadTime || 0;
+        return ltB - ltA; // Fill rooms with highest lead times first
+    });
 
-      // STOPS recommendation if the room type is in the ineligible list
+    for (let targetRoom of sortedHierarchy) {
       if (ineligible.includes(targetRoom)) continue;
 
       for (let g = 0; g < candidatesPool.length; g++) {
@@ -2040,8 +2074,10 @@ function runSimulation(strategy, allReservations, masterInv, rules, completedIds
 
         const currentRoom = guestState[res.resId];
         const currentIdx = hierarchy.indexOf(currentRoom);
+        const targetIdx = hierarchy.indexOf(targetRoom);
         
-        if (currentIdx !== -1 && currentIdx < u) {
+        // Logical check: Must be an upgrade in the primary hierarchy
+        if (currentIdx !== -1 && currentIdx < targetIdx) {
           let canMove = true;
           let checkDate = new Date(res.arrival);
           while (checkDate < res.departure) {
@@ -2113,6 +2149,9 @@ function renderManualUpgradeView() {
   
   const startStr = document.getElementById('selected-date').value;
   const startDate = parseDate(startStr);
+  const now = new Date();
+  const fortyEightHoursOut = new Date(now.getTime() + (48 * 60 * 60 * 1000));
+  
   const acceptedIds = new Set(acceptedUpgrades.map(u => u.resId));
   const completedIds = new Set(completedUpgrades.map(u => u.resId));
   const otaRates = currentRules.otaRates.toLowerCase().split(',').map(r => r.trim()).filter(Boolean);
@@ -2122,12 +2161,18 @@ function renderManualUpgradeView() {
     const arrTime = res.arrival.getTime();
     const startTime = startDate.getTime();
     const diffDays = Math.floor((arrTime - startTime) / (1000 * 3600 * 24));
-    const isRateIneligible = otaRates.some(ota => res.rate && res.rate.toLowerCase().includes(ota));
+    
+    // Applying same 48h Logic for Manual List Visibility
+    const isArrivalWithin48h = res.arrival <= fortyEightHoursOut;
+    if (isArrivalWithin48h) {
+        if ((res.rate || "").toUpperCase().includes("COMP")) return false;
+    } else {
+        if (otaRates.some(ota => res.rate && res.rate.toLowerCase().includes(ota))) return false;
+    }
 
     return diffDays >= 0 && diffDays < 10 && 
            !acceptedIds.has(res.resId) && 
            !completedIds.has(res.resId) && 
-           !isRateIneligible && 
            !['CANCELED', 'CANCELLED', 'NO SHOW', 'CHECKED OUT'].includes(res.status);
   });
 
@@ -2136,7 +2181,8 @@ function renderManualUpgradeView() {
     return;
   }
 
-  candidates.sort((a, b) => a.name.localeCompare(b.name));
+  candidates.sort((a, b) => (b.vipStatus ? 1 : 0) - (a.vipStatus ? 1 : 0) || a.name.localeCompare(b.name));
+  
   const hierarchy = currentRules.hierarchy.toUpperCase().split(',').map(r => r.trim()).filter(Boolean);
   const simResult = applyUpgradesAndRecalculate(acceptedUpgrades, currentCsvContent, currentRules, currentFileName);
   const projectedInvMap = {}; 
@@ -2157,31 +2203,36 @@ function renderManualUpgradeView() {
   candidates.forEach((guest, index) => {
     const guestBed = getBedType(guest.roomType);
     const currentIdx = hierarchy.indexOf(guest.roomType);
+    
+    // Sort dropdown options by lead time
+    let targetList = hierarchy.slice(currentIdx + 1).sort((a, b) => {
+        const ltA = savedLeadTimes[a]?.avgLeadTime || 0;
+        const ltB = savedLeadTimes[b]?.avgLeadTime || 0;
+        return ltB - ltA;
+    });
+
     let optionsHtml = '';
-
     if (currentIdx !== -1 && guestBed !== 'OTHER') {
-      for (let i = currentIdx + 1; i < hierarchy.length; i++) {
-        const target = hierarchy[i];
+      targetList.forEach(target => {
+        if (ineligible.includes(target)) return;
+        if (getBedType(target) !== guestBed) return;
         
-        // --- MANUAL BYPASS FOR INELIGIBLE ---
-        if (ineligible.includes(target)) continue;
-
-        if (getBedType(target) !== guestBed) continue;
         let isAvail = true;
         for (let d = 0; d < Math.min(guest.nights, 14); d++) {
           if ((projectedInvMap[target]?.[d] || 0) <= 0) { isAvail = false; break; }
         }
         if (isAvail) optionsHtml += `<option value="${target}">${target}</option>`;
-      }
+      });
     }
 
     if (optionsHtml) {
       eligibleFound++;
       const arrStr = guest.arrival.toLocaleDateString('en-US', { month: 'numeric', day: 'numeric', timeZone: 'UTC' });
       const rateDisplay = guest.rate ? `<br><small style="color:#d63384; font-weight:bold;">${guest.rate}</small>` : '';
+      const vipTag = guest.vipStatus ? `<span style="color:red; font-size:10px; border:1px solid red; padding:1px 3px; border-radius:3px; margin-left:5px;">VIP</span>` : '';
       
       rowsHtml += `<tr style="border-bottom:1px solid #eee;">
-        <td style="padding:10px;"><strong>${guest.name}</strong><br><small>${guest.resId}</small>${rateDisplay}</td>
+        <td style="padding:10px;"><strong>${guest.name}</strong>${vipTag}<br><small>${guest.resId}</small>${rateDisplay}</td>
         <td style="padding:10px;">${arrStr}<br><small>${guest.nights} nts</small></td>
         <td style="padding:10px;"><span style="background:#eee; padding:3px 6px; border-radius:4px; font-weight:bold;">${guest.roomType}</span></td>
         <td style="padding:10px;"><select id="manual-select-${index}" style="width:100%; padding:5px;">${optionsHtml}</select></td>
@@ -2257,4 +2308,3 @@ window.handleSaveLeadTime = async function() {
   } catch (error) { alert("Save failed: " + error.message); } 
   finally { btn.disabled = false; btn.textContent = "Save to Cloud"; }
 };
-
