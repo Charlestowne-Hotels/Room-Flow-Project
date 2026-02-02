@@ -1979,7 +1979,10 @@ function generateScenariosFromData(allReservations, rules) {
 function runSimulation(strategy, allReservations, masterInv, rules, completedIds) {
   const startDate = parseDate(rules.selectedDate);
   const hierarchy = rules.hierarchy.toUpperCase().split(',').map(r => r.trim()).filter(Boolean);
-  const ineligible = rules.ineligibleUpgrades.toUpperCase().split(',');
+  
+  // Clean up ineligible list for strict matching
+  const ineligible = rules.ineligibleUpgrades.toUpperCase().split(',').map(r => r.trim()).filter(Boolean);
+  
   const otaRates = rules.otaRates.toLowerCase().split(',').map(r => r.trim()).filter(Boolean);
   const simulationLimit = 10; 
 
@@ -2001,7 +2004,6 @@ function runSimulation(strategy, allReservations, masterInv, rules, completedIds
   allReservations.forEach(r => guestState[r.resId] = r.roomType);
   const pendingUpgrades = {};
 
-  // Sort eligible candidates globally once
   let candidatesPool = allReservations.filter(res => {
       if (completedIds.has(res.resId) || res.isDoNotMove) return false;
       const arrTime = res.arrival.getTime();
@@ -2012,7 +2014,6 @@ function runSimulation(strategy, allReservations, masterInv, rules, completedIds
       return true;
   });
 
-  // Apply primary sort based on chosen strategy
   if (strategy === 'VIP Focus') {
     candidatesPool.sort((a, b) => (b.vipStatus ? 1 : 0) - (a.vipStatus ? 1 : 0) || b.nights - a.nights);
   } else if (strategy === 'Guest Focus') {
@@ -2021,7 +2022,7 @@ function runSimulation(strategy, allReservations, masterInv, rules, completedIds
     candidatesPool.sort((a, b) => b.nights - a.nights);
   }
 
-  // EXHAUSTIVE ENGINE
+  // --- ENGINE WITH INELIGIBLE ROOM BYPASS ---
   let iterationActivity = true;
   while (iterationActivity) {
     iterationActivity = false;
@@ -2029,9 +2030,10 @@ function runSimulation(strategy, allReservations, masterInv, rules, completedIds
     // Iterate from Top of Hierarchy Downwards
     for (let u = hierarchy.length - 1; u > 0; u--) {
       const targetRoom = hierarchy[u];
+
+      // STOPS recommendation if the room type is in the ineligible list
       if (ineligible.includes(targetRoom)) continue;
 
-      // For every guest in a tier below the current target
       for (let g = 0; g < candidatesPool.length; g++) {
         const res = candidatesPool[g];
         if (pendingUpgrades[res.resId]) continue;
@@ -2039,10 +2041,7 @@ function runSimulation(strategy, allReservations, masterInv, rules, completedIds
         const currentRoom = guestState[res.resId];
         const currentIdx = hierarchy.indexOf(currentRoom);
         
-        // Only move them IF they are below the current target tier
         if (currentIdx !== -1 && currentIdx < u) {
-          
-          // Strict Length of Stay Check
           let canMove = true;
           let checkDate = new Date(res.arrival);
           while (checkDate < res.departure) {
@@ -2055,14 +2054,13 @@ function runSimulation(strategy, allReservations, masterInv, rules, completedIds
           }
 
           if (canMove) {
-            // EXECUTE UPGRADE
             iterationActivity = true;
             let updateDate = new Date(res.arrival);
             while (updateDate < res.departure) {
               const dStr = updateDate.toISOString().split('T')[0];
-              simInventory[dStr][targetRoom]--; // Remove from higher
+              simInventory[dStr][targetRoom]--; 
               if (simInventory[dStr][currentRoom] !== undefined) {
-                  simInventory[dStr][currentRoom]++; // Add back to lower (VACANCY TRIGGER)
+                  simInventory[dStr][currentRoom]++; 
               }
               updateDate.setUTCDate(updateDate.getUTCDate() + 1);
             }
@@ -2118,6 +2116,7 @@ function renderManualUpgradeView() {
   const acceptedIds = new Set(acceptedUpgrades.map(u => u.resId));
   const completedIds = new Set(completedUpgrades.map(u => u.resId));
   const otaRates = currentRules.otaRates.toLowerCase().split(',').map(r => r.trim()).filter(Boolean);
+  const ineligible = currentRules.ineligibleUpgrades.toUpperCase().split(',').map(r => r.trim()).filter(Boolean);
 
   const candidates = currentAllReservations.filter(res => {
     const arrTime = res.arrival.getTime();
@@ -2163,6 +2162,10 @@ function renderManualUpgradeView() {
     if (currentIdx !== -1 && guestBed !== 'OTHER') {
       for (let i = currentIdx + 1; i < hierarchy.length; i++) {
         const target = hierarchy[i];
+        
+        // --- MANUAL BYPASS FOR INELIGIBLE ---
+        if (ineligible.includes(target)) continue;
+
         if (getBedType(target) !== guestBed) continue;
         let isAvail = true;
         for (let d = 0; d < Math.min(guest.nights, 14); d++) {
@@ -2254,3 +2257,5 @@ window.handleSaveLeadTime = async function() {
   } catch (error) { alert("Save failed: " + error.message); } 
   finally { btn.disabled = false; btn.textContent = "Save to Cloud"; }
 };
+
+
