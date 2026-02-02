@@ -1984,7 +1984,6 @@ function runSimulation(strategy, allReservations, masterInv, rules, completedIds
   
   const simulationLimit = 10;
   const now = new Date();
-  // Calculate 48-hour threshold
   const fortyEightHoursOut = new Date(now.getTime() + (48 * 60 * 60 * 1000));
 
   const simInventory = {};
@@ -2018,30 +2017,24 @@ function runSimulation(strategy, allReservations, masterInv, rules, completedIds
       const rateName = (res.rate || "").toUpperCase();
 
       if (isArrivalWithin48h) {
-          // Rule: Within 48 hours allow all except COMP
           if (rateName.includes("COMP")) return false;
       } else {
-          // Rule: Outside 48 hours exclude OTAs/Restricted rates
           if (otaRates.some(ota => res.rate && res.rate.toLowerCase().includes(ota))) return false;
       }
-      
       return true;
   });
 
   // --- SORTING LOGIC ---
   if (strategy === 'Optimized') {
     candidatesPool.sort((a, b) => {
-        // 1. VIP Status
         const vipA = a.vipStatus ? 1 : 0;
         const vipB = b.vipStatus ? 1 : 0;
         if (vipB !== vipA) return vipB - vipA;
 
-        // 2. Room Lead Time (Clear rooms with lower lead times first)
         const ltA = savedLeadTimes[a.roomType]?.avgLeadTime || 0;
         const ltB = savedLeadTimes[b.roomType]?.avgLeadTime || 0;
         if (ltB !== ltA) return ltA - ltB; 
 
-        // 3. Revenue
         const revA = parseFloat(a.revenue.replace(/[$,]/g, '')) || 0;
         const revB = parseFloat(b.revenue.replace(/[$,]/g, '')) || 0;
         return revB - revA;
@@ -2057,12 +2050,11 @@ function runSimulation(strategy, allReservations, masterInv, rules, completedIds
   while (iterationActivity) {
     iterationActivity = false;
     
-    // Sort Target Rooms by Lead Time for Optimized fill
     const sortedHierarchy = [...hierarchy].sort((a, b) => {
         if (strategy !== 'Optimized') return 0;
         const ltA = savedLeadTimes[a]?.avgLeadTime || 0;
         const ltB = savedLeadTimes[b]?.avgLeadTime || 0;
-        return ltB - ltA; // Fill rooms with highest lead times first
+        return ltB - ltA; 
     });
 
     for (let targetRoom of sortedHierarchy) {
@@ -2076,7 +2068,6 @@ function runSimulation(strategy, allReservations, masterInv, rules, completedIds
         const currentIdx = hierarchy.indexOf(currentRoom);
         const targetIdx = hierarchy.indexOf(targetRoom);
         
-        // Logical check: Must be an upgrade in the primary hierarchy
         if (currentIdx !== -1 && currentIdx < targetIdx) {
           let canMove = true;
           let checkDate = new Date(res.arrival);
@@ -2162,7 +2153,6 @@ function renderManualUpgradeView() {
     const startTime = startDate.getTime();
     const diffDays = Math.floor((arrTime - startTime) / (1000 * 3600 * 24));
     
-    // Applying same 48h Logic for Manual List Visibility
     const isArrivalWithin48h = res.arrival <= fortyEightHoursOut;
     if (isArrivalWithin48h) {
         if ((res.rate || "").toUpperCase().includes("COMP")) return false;
@@ -2203,8 +2193,8 @@ function renderManualUpgradeView() {
   candidates.forEach((guest, index) => {
     const guestBed = getBedType(guest.roomType);
     const currentIdx = hierarchy.indexOf(guest.roomType);
+    const isLastMinute = guest.arrival <= fortyEightHoursOut;
     
-    // Sort dropdown options by lead time
     let targetList = hierarchy.slice(currentIdx + 1).sort((a, b) => {
         const ltA = savedLeadTimes[a]?.avgLeadTime || 0;
         const ltB = savedLeadTimes[b]?.avgLeadTime || 0;
@@ -2229,10 +2219,11 @@ function renderManualUpgradeView() {
       eligibleFound++;
       const arrStr = guest.arrival.toLocaleDateString('en-US', { month: 'numeric', day: 'numeric', timeZone: 'UTC' });
       const rateDisplay = guest.rate ? `<br><small style="color:#d63384; font-weight:bold;">${guest.rate}</small>` : '';
-      const vipTag = guest.vipStatus ? `<span style="color:red; font-size:10px; border:1px solid red; padding:1px 3px; border-radius:3px; margin-left:5px;">VIP</span>` : '';
+      const vipTag = guest.vipStatus ? `<span style="color:white; background:#dc3545; font-size:10px; padding:2px 5px; border-radius:3px; margin-left:5px; font-weight:bold;">VIP</span>` : '';
+      const lmTag = isLastMinute ? `<span style="color:white; background:#28a745; font-size:10px; padding:2px 5px; border-radius:3px; margin-left:5px; font-weight:bold;">48H</span>` : '';
       
-      rowsHtml += `<tr style="border-bottom:1px solid #eee;">
-        <td style="padding:10px;"><strong>${guest.name}</strong>${vipTag}<br><small>${guest.resId}</small>${rateDisplay}</td>
+      rowsHtml += `<tr style="border-bottom:1px solid #eee; ${isLastMinute ? 'background-color: #f0fff4;' : ''}">
+        <td style="padding:10px;"><strong>${guest.name}</strong>${vipTag}${lmTag}<br><small>${guest.resId}</small>${rateDisplay}</td>
         <td style="padding:10px;">${arrStr}<br><small>${guest.nights} nts</small></td>
         <td style="padding:10px;"><span style="background:#eee; padding:3px 6px; border-radius:4px; font-weight:bold;">${guest.roomType}</span></td>
         <td style="padding:10px;"><select id="manual-select-${index}" style="width:100%; padding:5px;">${optionsHtml}</select></td>
@@ -2308,3 +2299,4 @@ window.handleSaveLeadTime = async function() {
   } catch (error) { alert("Save failed: " + error.message); } 
   finally { btn.disabled = false; btn.textContent = "Save to Cloud"; }
 };
+
