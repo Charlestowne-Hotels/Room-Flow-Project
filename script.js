@@ -1973,13 +1973,13 @@ function generateScenariosFromData(allReservations, rules) {
   return { scenarios, inventory: todayInventory, matrixData, message: null };
 }
 
-// ==========================================
-// EXHAUSTIVE CASCADING UPGRADE SIMULATION
-// ==========================================
+// =========================================================
+// EXHAUSTIVE CASCADING ENGINE
+// =========================================================
 function runSimulation(strategy, allReservations, masterInv, rules, completedIds) {
   const startDate = parseDate(rules.selectedDate);
   const hierarchy = rules.hierarchy.toUpperCase().split(',').map(r => r.trim()).filter(Boolean);
-  const ineligible = rules.ineligibleUpgrades.toUpperCase().split(',');
+  const ineligible = rules.ineligibleUpgrades.toUpperCase().split(',').map(i => i.trim());
   const otaRates = rules.otaRates.toLowerCase().split(',').map(r => r.trim()).filter(Boolean);
   const simulationLimit = 10; 
 
@@ -2001,48 +2001,48 @@ function runSimulation(strategy, allReservations, masterInv, rules, completedIds
   allReservations.forEach(r => guestState[r.resId] = r.roomType);
   const pendingUpgrades = {};
 
-  // Sort eligible candidates globally once
-  let candidatesPool = allReservations.filter(res => {
+  let pool = allReservations.filter(res => {
       if (completedIds.has(res.resId) || res.isDoNotMove) return false;
-      const arrTime = res.arrival.getTime();
-      const diffDays = Math.floor((arrTime - startDate.getTime()) / (1000 * 3600 * 24));
+      const diffDays = Math.floor((res.arrival.getTime() - startDate.getTime()) / (1000 * 3600 * 24));
       if (diffDays < 0 || diffDays >= simulationLimit) return false;
       if (otaRates.some(ota => res.rate && res.rate.toLowerCase().includes(ota))) return false;
       if (['CANCELED', 'CANCELLED', 'NO SHOW', 'CHECKED OUT'].includes(res.status)) return false;
       return true;
   });
 
-  // Apply primary sort based on chosen strategy
   if (strategy === 'VIP Focus') {
-    candidatesPool.sort((a, b) => (b.vipStatus ? 1 : 0) - (a.vipStatus ? 1 : 0) || b.nights - a.nights);
+    pool.sort((a, b) => (b.vipStatus ? 1 : 0) - (a.vipStatus ? 1 : 0) || b.nights - a.nights);
   } else if (strategy === 'Guest Focus') {
-    candidatesPool.sort((a, b) => (parseFloat(b.revenue.replace(/[$,]/g, '')) || 0) - (parseFloat(a.revenue.replace(/[$,]/g, '')) || 0));
+    pool.sort((a, b) => (parseFloat(b.revenue.replace(/[$,]/g, '')) || 0) - (parseFloat(a.revenue.replace(/[$,]/g, '')) || 0));
   } else {
-    candidatesPool.sort((a, b) => b.nights - a.nights);
+    pool.sort((a, b) => b.nights - a.nights);
   }
 
-  // EXHAUSTIVE ENGINE
-  let iterationActivity = true;
-  while (iterationActivity) {
-    iterationActivity = false;
-    
-    // Iterate from Top of Hierarchy Downwards
-    for (let u = hierarchy.length - 1; u > 0; u--) {
+  let activity = true;
+  while (activity) {
+    activity = false;
+    for (let u = hierarchy.length - 1; u > 0; u--) { 
       const targetRoom = hierarchy[u];
       if (ineligible.includes(targetRoom)) continue;
 
-      // For every guest in a tier below the current target
-      for (let g = 0; g < candidatesPool.length; g++) {
-        const res = candidatesPool[g];
+      for (let g = 0; g < pool.length; g++) { 
+        const res = pool[g];
         if (pendingUpgrades[res.resId]) continue;
 
         const currentRoom = guestState[res.resId];
         const currentIdx = hierarchy.indexOf(currentRoom);
-        
-        // Only move them IF they are below the current target tier
-        if (currentIdx !== -1 && currentIdx < u) {
-          
-          // Strict Length of Stay Check
+
+        const targetBed = getBedType(targetRoom);
+        const sourceBed = getBedType(res.roomType);
+        let bedMatch = false;
+
+        if (sourceBed === 'Q') {
+          if (targetBed === 'K' || targetBed === 'QQ' || targetBed === 'Q') bedMatch = true;
+        } else {
+          if (targetBed === sourceBed) bedMatch = true;
+        }
+
+        if (currentIdx !== -1 && currentIdx < u && bedMatch) {
           let canMove = true;
           let checkDate = new Date(res.arrival);
           while (checkDate < res.departure) {
@@ -2055,31 +2055,20 @@ function runSimulation(strategy, allReservations, masterInv, rules, completedIds
           }
 
           if (canMove) {
-            // EXECUTE UPGRADE
-            iterationActivity = true;
+            activity = true;
             let updateDate = new Date(res.arrival);
             while (updateDate < res.departure) {
               const dStr = updateDate.toISOString().split('T')[0];
-              simInventory[dStr][targetRoom]--; // Remove from higher
-              if (simInventory[dStr][currentRoom] !== undefined) {
-                  simInventory[dStr][currentRoom]++; // Add back to lower (VACANCY TRIGGER)
-              }
+              simInventory[dStr][targetRoom]--;
+              if (simInventory[dStr][currentRoom] !== undefined) simInventory[dStr][currentRoom]++;
               updateDate.setUTCDate(updateDate.getUTCDate() + 1);
             }
 
             guestState[res.resId] = targetRoom;
             pendingUpgrades[res.resId] = {
-              name: res.name,
-              resId: res.resId,
-              revenue: res.revenue,
-              room: res.roomType,
-              upgradeTo: targetRoom,
-              score: parseFloat(res.revenue.replace(/[$,]/g, '')) || 0,
-              arrivalDate: res.arrival.toLocaleDateString('en-US', { timeZone: 'UTC' }),
-              departureDate: res.departure.toLocaleDateString('en-US', { timeZone: 'UTC' }),
-              isoArrival: res.arrival.toISOString().split('T')[0],
-              isoDeparture: res.departure.toISOString().split('T')[0],
-              vipStatus: res.vipStatus
+              name: res.name, resId: res.resId, revenue: res.revenue, room: res.roomType, upgradeTo: targetRoom, score: parseFloat(res.revenue.replace(/[$,]/g, '')) || 0,
+              arrivalDate: res.arrival.toLocaleDateString('en-US', { timeZone: 'UTC' }), departureDate: res.departure.toLocaleDateString('en-US', { timeZone: 'UTC' }),
+              isoArrival: res.arrival.toISOString().split('T')[0], isoDeparture: res.departure.toISOString().split('T')[0], vipStatus: res.vipStatus
             };
           }
         }
@@ -2089,7 +2078,21 @@ function runSimulation(strategy, allReservations, masterInv, rules, completedIds
   return Object.values(pendingUpgrades);
 }
 
-function buildReservationsByDate(allReservations) { const reservationsByDate = {}; allReservations.forEach(res => { if (!res.arrival || !res.departure) return; let currentDate = new Date(res.arrival); while (currentDate < res.departure) { const dateString = currentDate.toISOString().split('T')[0]; if (!reservationsByDate[dateString]) reservationsByDate[dateString] = {}; reservationsByDate[dateString][res.roomType] = (reservationsByDate[dateString][res.roomType] || 0) + 1; currentDate.setUTCDate(currentDate.getUTCDate() + 1); } }); return reservationsByDate; }
+function buildReservationsByDate(allReservations) {
+  const reservationsByDate = {};
+  allReservations.forEach(res => {
+    if (!res.arrival || !res.departure) return;
+    let currentDate = new Date(res.arrival);
+    while (currentDate < res.departure) {
+      const dateString = currentDate.toISOString().split('T')[0];
+      if (!reservationsByDate[dateString]) reservationsByDate[dateString] = {};
+      reservationsByDate[dateString][res.roomType] = (reservationsByDate[dateString][res.roomType] || 0) + 1;
+      currentDate.setUTCDate(currentDate.getUTCDate() + 1); // Fixed 'i is not defined'
+    }
+  });
+  return reservationsByDate;
+}
+
 function getInventoryForDate(masterInventory, reservationsByDate, date) { const inventory = {}; const dateString = date.toISOString().split('T')[0]; for (const roomCode in masterInventory) { const totalPhysical = masterInventory[roomCode]; const reservedCount = reservationsByDate[dateString]?.[roomCode] || 0; const oooDeduction = oooRecords.reduce((total, rec) => { if (rec.roomType === roomCode && (date.getTime() >= rec.startDate.getTime() && date.getTime() <= rec.endDate.getTime())) return total + (rec.count || 1); return total; }, 0); inventory[roomCode] = totalPhysical - reservedCount - oooDeduction; } return inventory; }
 function getMasterInventory(profileName) { const masterRoomList = MASTER_INVENTORIES[profileName]; if (!masterRoomList) return {}; const totalInventory = {}; masterRoomList.forEach(room => { totalInventory[room.code.toUpperCase()] = (totalInventory[room.code.toUpperCase()] || 0) + 1; }); return totalInventory; }
 function parseDate(dateStr) { if (!dateStr) return null; const parts = dateStr.split(/[-\/ ]/); if (parts.length >= 3) { if (parts[0].length === 4) return new Date(Date.UTC(parts[0], parts[1] - 1, parts[2])); return new Date(Date.UTC(parts[2], parts[0] - 1, parts[1])); } return new Date(dateStr); }
@@ -2112,7 +2115,6 @@ function downloadAcceptedUpgradesCsv() { if (!acceptedUpgrades.length) return; c
 function renderManualUpgradeView() {
   const container = document.getElementById('manual-upgrade-list-container');
   if (!container || !currentCsvContent || !currentAllReservations.length) return;
-  
   const startStr = document.getElementById('selected-date').value;
   const startDate = parseDate(startStr);
   const acceptedIds = new Set(acceptedUpgrades.map(u => u.resId));
@@ -2120,74 +2122,38 @@ function renderManualUpgradeView() {
   const otaRates = currentRules.otaRates.toLowerCase().split(',').map(r => r.trim()).filter(Boolean);
 
   const candidates = currentAllReservations.filter(res => {
-    const arrTime = res.arrival.getTime();
-    const startTime = startDate.getTime();
-    const diffDays = Math.floor((arrTime - startTime) / (1000 * 3600 * 24));
+    const diffDays = Math.floor((res.arrival.getTime() - startDate.getTime()) / (1000 * 3600 * 24));
     const isRateIneligible = otaRates.some(ota => res.rate && res.rate.toLowerCase().includes(ota));
-
-    return diffDays >= 0 && diffDays < 10 && 
-           !acceptedIds.has(res.resId) && 
-           !completedIds.has(res.resId) && 
-           !isRateIneligible && 
-           !['CANCELED', 'CANCELLED', 'NO SHOW', 'CHECKED OUT'].includes(res.status);
+    return diffDays >= 0 && diffDays < 10 && !acceptedIds.has(res.resId) && !completedIds.has(res.resId) && !isRateIneligible && !['CANCELED', 'CANCELLED', 'NO SHOW', 'CHECKED OUT'].includes(res.status);
   });
 
-  if (!candidates.length) {
-    container.innerHTML = '<p style="text-align:center; padding:20px; color:#666;">No eligible guests found for manual upgrade.</p>';
-    return;
-  }
-
+  if (!candidates.length) { container.innerHTML = '<p style="text-align:center; padding:20px; color:#666;">No eligible guests found.</p>'; return; }
   candidates.sort((a, b) => a.name.localeCompare(b.name));
   const hierarchy = currentRules.hierarchy.toUpperCase().split(',').map(r => r.trim()).filter(Boolean);
   const simResult = applyUpgradesAndRecalculate(acceptedUpgrades, currentCsvContent, currentRules, currentFileName);
-  const projectedInvMap = {}; 
-  simResult.matrixData.rows.forEach(row => { projectedInvMap[row.roomCode] = row.availability; });
+  const projectedInvMap = {}; simResult.matrixData.rows.forEach(row => { projectedInvMap[row.roomCode] = row.availability; });
 
-  let rowsHtml = `<table style="width:100%; border-collapse:collapse; background:white; font-size:14px; border-radius:8px; overflow:hidden; box-shadow:0 2px 5px rgba(0,0,0,0.05);">
-    <thead style="background:#f8f9fa; border-bottom:2px solid #eee;">
-      <tr>
-        <th style="padding:12px; text-align:left;">Guest & Rate / Group</th>
-        <th style="padding:12px; text-align:left;">Arrival</th>
-        <th style="padding:12px; text-align:left;">Current</th>
-        <th style="padding:12px; text-align:left;">Upgrade Option</th>
-        <th style="padding:12px; text-align:right;">Action</th>
-      </tr>
-    </thead><tbody>`;
-
+  let rowsHtml = `<table style="width:100%; border-collapse:collapse; background:white; font-size:14px;"><thead><tr style="background:#f8f9fa;"><th>Guest</th><th>Arrival</th><th>Current</th><th>Upgrade Option</th><th>Action</th></tr></thead><tbody>`;
   let eligibleFound = 0;
   candidates.forEach((guest, index) => {
-    const guestBed = getBedType(guest.roomType);
     const currentIdx = hierarchy.indexOf(guest.roomType);
     let optionsHtml = '';
-
-    if (currentIdx !== -1 && guestBed !== 'OTHER') {
+    if (currentIdx !== -1) {
       for (let i = currentIdx + 1; i < hierarchy.length; i++) {
         const target = hierarchy[i];
-        if (getBedType(target) !== guestBed) continue;
-        let isAvail = true;
-        for (let d = 0; d < Math.min(guest.nights, 14); d++) {
-          if ((projectedInvMap[target]?.[d] || 0) <= 0) { isAvail = false; break; }
-        }
+        const sBed = getBedType(guest.roomType); const tBed = getBedType(target);
+        let bedMatch = (sBed === 'Q' && (tBed === 'K' || tBed === 'QQ' || tBed === 'Q')) || (sBed !== 'Q' && sBed === tBed);
+        if (!bedMatch) continue;
+        let isAvail = true; for (let d = 0; d < Math.min(guest.nights, 14); d++) { if ((projectedInvMap[target]?.[d] || 0) <= 0) { isAvail = false; break; } }
         if (isAvail) optionsHtml += `<option value="${target}">${target}</option>`;
       }
     }
-
     if (optionsHtml) {
       eligibleFound++;
-      const arrStr = guest.arrival.toLocaleDateString('en-US', { month: 'numeric', day: 'numeric', timeZone: 'UTC' });
-      const rateDisplay = guest.rate ? `<br><small style="color:#d63384; font-weight:bold;">${guest.rate}</small>` : '';
-      
-      rowsHtml += `<tr style="border-bottom:1px solid #eee;">
-        <td style="padding:10px;"><strong>${guest.name}</strong><br><small>${guest.resId}</small>${rateDisplay}</td>
-        <td style="padding:10px;">${arrStr}<br><small>${guest.nights} nts</small></td>
-        <td style="padding:10px;"><span style="background:#eee; padding:3px 6px; border-radius:4px; font-weight:bold;">${guest.roomType}</span></td>
-        <td style="padding:10px;"><select id="manual-select-${index}" style="width:100%; padding:5px;">${optionsHtml}</select></td>
-        <td style="padding:10px; text-align:right;"><button onclick="executeManualUpgrade('${guest.resId}', ${index})" class="pms-btn" style="background:#4343FF; color:white; border:none; padding:6px 12px; border-radius:4px; cursor:pointer;">Upgrade</button></td>
-      </tr>`;
+      rowsHtml += `<tr style="border-bottom:1px solid #eee;"><td><strong>${guest.name}</strong></td><td>${guest.arrival.toLocaleDateString('en-US', { month: 'numeric', day: 'numeric', timeZone: 'UTC' })}</td><td>${guest.roomType}</td><td><select id="manual-select-${index}">${optionsHtml}</select></td><td><button onclick="executeManualUpgrade('${guest.resId}', ${index})" class="pms-btn">Upgrade</button></td></tr>`;
     }
   });
-
-  container.innerHTML = eligibleFound > 0 ? rowsHtml + '</tbody></table>' : '<p style="text-align:center; padding:20px; color:#666;">No valid inventory matches for full length of stay.</p>';
+  container.innerHTML = eligibleFound > 0 ? rowsHtml + '</tbody></table>' : '<p style="text-align:center; padding:20px;">No manual upgrades left.</p>';
 }
 
 function executeManualUpgrade(resId, index) {
@@ -2196,63 +2162,22 @@ function executeManualUpgrade(resId, index) {
     const targetRoom = dropdown.value;
     const res = currentAllReservations.find(r => r.resId === resId);
     if (!res) return;
-    
-    const upgrade = {
-        name: res.name, resId: res.resId, revenue: res.revenue, room: res.roomType, rate: res.rate, nights: res.nights,
-        upgradeTo: targetRoom, score: parseFloat(res.revenue.replace(/[$,]/g, '')) || 0,
-        arrivalDate: res.arrival.toLocaleDateString('en-US', { timeZone: 'UTC' }),
-        departureDate: res.departure.toLocaleDateString('en-US', { timeZone: 'UTC' }),
-        isoArrival: res.arrival.toISOString().split('T')[0],
-        isoDeparture: res.departure.toISOString().split('T')[0],
-        vipStatus: res.vipStatus
-    };
-    acceptedUpgrades.push(upgrade);
+    acceptedUpgrades.push({ name: res.name, resId: res.resId, revenue: res.revenue, room: res.roomType, upgradeTo: targetRoom, score: parseFloat(res.revenue.replace(/[$,]/g, '')) || 0, arrivalDate: res.arrival.toLocaleDateString('en-US', { timeZone: 'UTC' }), departureDate: res.departure.toLocaleDateString('en-US', { timeZone: 'UTC' }), isoArrival: res.arrival.toISOString().split('T')[0], isoDeparture: res.departure.toISOString().split('T')[0], vipStatus: res.vipStatus });
     handleRefresh();
 }
 
-// --- LEAD TIME ANALYTICS ---
-async function fetchSavedLeadTimes(profile) {
-  try {
-    const docRef = db.collection('property_analytics').doc(profile);
-    const doc = await docRef.get();
-    if (doc.exists && doc.data().leadTimeStats) savedLeadTimes = doc.data().leadTimeStats;
-    else savedLeadTimes = {}; 
-  } catch (error) { console.error("Error fetching lead times:", error); }
-}
-
+async function fetchSavedLeadTimes(profile) { try { const doc = await db.collection('property_analytics').doc(profile).get(); savedLeadTimes = doc.exists ? doc.data().leadTimeStats : {}; } catch (e) { console.error(e); } }
 function displayLeadTimeAnalytics() {
-  const container = document.getElementById('lead-time-container');
-  if (!container) return;
-  const hierarchyVal = document.getElementById('hierarchy').value;
-  if (!hierarchyVal) return;
-  const roomTypes = hierarchyVal.split(',').map(r => r.trim().toUpperCase()).filter(Boolean);
-
-  let html = `<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;"><h3>Manual Lead Time Entry</h3><button id="save-lead-time-btn" onclick="handleSaveLeadTime()" style="background:#28a745; color:white; border:none; padding:8px 12px; border-radius:5px; cursor:pointer;">Save to Cloud</button></div><table style="width:100%; border-collapse:collapse; background:white;"><thead><tr style="background:#f8f9fa;"><th>Room Type</th><th>Avg. Lead Time (Days)</th></tr></thead><tbody>`;
-
-  roomTypes.forEach(roomType => {
-    const existingVal = savedLeadTimes[roomType]?.avgLeadTime || "";
-    html += `<tr><td style="padding:10px;"><strong>${roomType}</strong></td><td style="padding:10px; text-align:center;"><input type="number" class="manual-room-lt-input" data-room="${roomType}" value="${existingVal}" style="width: 80px; text-align: center;"></td></tr>`;
-  });
+  const container = document.getElementById('lead-time-container'); if (!container) return;
+  const roomTypes = document.getElementById('hierarchy').value.split(',').map(r => r.trim().toUpperCase()).filter(Boolean);
+  let html = `<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;"><h3>Lead Time Entry</h3><button id="save-lead-time-btn" onclick="handleSaveLeadTime()">Save to Cloud</button></div><table><thead><tr><th>Room Type</th><th>Avg. Lead Time</th></tr></thead><tbody>`;
+  roomTypes.forEach(roomType => { const existingVal = savedLeadTimes[roomType]?.avgLeadTime || ""; html += `<tr><td><strong>${roomType}</strong></td><td><input type="number" class="manual-room-lt-input" data-room="${roomType}" value="${existingVal}"></td></tr>`; });
   container.innerHTML = html + '</tbody></table>';
 }
 
 window.handleSaveLeadTime = async function() {
-  const btn = document.getElementById('save-lead-time-btn');
-  const currentProfile = document.getElementById('profile-dropdown').value;
-  const inputs = document.querySelectorAll('.manual-room-lt-input');
-  if (!currentProfile) return;
-  btn.disabled = true; btn.textContent = "Saving...";
-  const roomData = {};
-  inputs.forEach(input => {
-    const room = input.dataset.room;
-    const val = parseInt(input.value, 10);
-    if (!isNaN(val)) roomData[room] = { avgLeadTime: val, count: "Manual Entry" };
-  });
-  try {
-    await db.collection('property_analytics').doc(currentProfile).set({ leadTimeStats: roomData, updatedAt: firebase.firestore.FieldValue.serverTimestamp() }, { merge: true });
-    savedLeadTimes = roomData; alert("Lead Times saved!"); await handleRefresh(); 
-  } catch (error) { alert("Save failed: " + error.message); } 
-  finally { btn.disabled = false; btn.textContent = "Save to Cloud"; }
+  const btn = document.getElementById('save-lead-time-btn'); const profile = document.getElementById('profile-dropdown').value;
+  btn.disabled = true; btn.textContent = "Saving..."; const roomData = {};
+  document.querySelectorAll('.manual-room-lt-input').forEach(input => { const val = parseInt(input.value, 10); if (!isNaN(val)) roomData[input.dataset.room] = { avgLeadTime: val, count: "Manual Entry" }; });
+  try { await db.collection('property_analytics').doc(profile).set({ leadTimeStats: roomData, updatedAt: firebase.firestore.FieldValue.serverTimestamp() }, { merge: true }); savedLeadTimes = roomData; alert("Saved!"); await handleRefresh(); } catch (e) { alert(e.message); } finally { btn.disabled = false; btn.textContent = "Save to Cloud"; }
 };
-
-
