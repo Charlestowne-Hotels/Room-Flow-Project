@@ -1140,300 +1140,6 @@ async function handleClearAnalytics() {
   }
 }
 
-document.addEventListener('DOMContentLoaded', function() {
-  loginContainer = document.getElementById('login-container');
-  appContainer = document.getElementById('app-container');
-  signinBtn = document.getElementById('signin-btn');
-  signoutBtn = document.getElementById('signout-btn');
-  emailInput = document.getElementById('email-input');
-  passwordInput = document.getElementById('password-input');
-  errorMessage = document.getElementById('error-message');
-  clearAnalyticsBtn = document.getElementById('clear-analytics-btn');
-  saveRulesBtn = document.getElementById('save-rules-btn');
-  saveStatus = document.getElementById('save-status');
-
-  const settingsModal = document.getElementById('settings-modal');
-  const settingsTriggerBtn = document.getElementById('settings-trigger-btn');
-  const closeSettingsBtn = document.getElementById('close-settings-btn');
-  const generateBtn = document.getElementById('generate-btn');
-  const addPropBtn = document.getElementById('add-property-btn');
-  const addPropModal = document.getElementById('add-property-modal');
-  const closeAddPropBtn = document.getElementById('close-add-prop-btn');
-  const saveNewPropBtn = document.getElementById('save-new-prop-btn');
-
-  const dateInput = document.getElementById('selected-date');
-  if (dateInput) {
-    // ANALYSIS ALWAYS STARTS TODAY
-    const today = new Date();
-    dateInput.value = today.toISOString().slice(0, 10);
-    
-    dateInput.addEventListener('change', () => {
-      if (currentCsvContent) {
-        handleRefresh();
-      }
-    });
-  }
-
-  const manualToggle = document.getElementById('manual-upgrade-toggle');
-  const manualTabBtn = document.querySelector('[data-tab-target="#Mupgrade"]');
-
-  const updateManualTabVisibility = (isEnabled) => {
-    if (manualTabBtn) {
-      manualTabBtn.style.display = isEnabled ? 'inline-block' : 'none';
-      if (!isEnabled && manualTabBtn.classList.contains('active')) {
-        const firstTab = document.querySelector('[data-tab-target]');
-        if (firstTab) firstTab.click();
-      }
-    }
-  };
-
-  const savedManualState = localStorage.getItem('enableManualUpgrades') === 'true';
-
-  if (manualToggle) {
-    manualToggle.checked = savedManualState;
-    updateManualTabVisibility(savedManualState);
-    manualToggle.addEventListener('change', (e) => {
-      const isChecked = e.target.checked;
-      localStorage.setItem('enableManualUpgrades', isChecked);
-      updateManualTabVisibility(isChecked);
-    });
-  }
-
-  if (addPropBtn) addPropBtn.addEventListener('click', () => addPropModal.classList.remove('hidden'));
-  if (closeAddPropBtn) closeAddPropBtn.addEventListener('click', () => addPropModal.classList.add('hidden'));
-  if (saveNewPropBtn) saveNewPropBtn.addEventListener('click', handleSaveNewProperty);
-  window.addEventListener('click', (e) => { if (e.target === addPropModal) addPropModal.classList.add('hidden'); });
-
-  const fileInput = document.getElementById('csv-file');
-  const genBtnRef = document.getElementById('generate-btn');
-  const manualUploadWrapper = document.createElement('div');
-  manualUploadWrapper.id = 'manual-upload-wrapper';
-
-  const uploadTitle = document.createElement('h3');
-  uploadTitle.id = 'manual-upload-title';
-  uploadTitle.textContent = "Manual PMS Upload";
-  uploadTitle.style.marginBottom = "15px";
-  uploadTitle.style.color = '#333';
-  manualUploadWrapper.appendChild(uploadTitle);
-
-  if (fileInput && fileInput.parentNode) {
-    fileInput.parentNode.insertBefore(manualUploadWrapper, fileInput);
-    manualUploadWrapper.appendChild(fileInput);
-    if (genBtnRef) manualUploadWrapper.appendChild(genBtnRef);
-  }
-
-  const mainPagePlaceholder = document.createElement('div');
-  mainPagePlaceholder.id = 'manual-upload-placeholder';
-  if (manualUploadWrapper.parentNode) {
-    manualUploadWrapper.parentNode.insertBefore(mainPagePlaceholder, manualUploadWrapper);
-  }
-
-  const updateUIForProfile = () => {
-    const currentProfile = document.getElementById('profile-dropdown').value;
-    const isSnt = !!SNT_PROPERTY_MAP[currentProfile];
-    const autoLoadBtn = document.getElementById('auto-load-btn');
-
-    if (autoLoadBtn) autoLoadBtn.style.display = isSnt ? 'inline-block' : 'none';
-
-    if (isSnt) {
-      const settingsContent = settingsModal.firstElementChild;
-      if (settingsContent && manualUploadWrapper.parentNode !== settingsContent) {
-        settingsContent.appendChild(manualUploadWrapper);
-      }
-      manualUploadWrapper.style.marginTop = '20px';
-      manualUploadWrapper.style.padding = '15px';
-      manualUploadWrapper.style.border = '1px solid #eee';
-      manualUploadWrapper.style.borderRadius = '5px';
-      manualUploadWrapper.style.backgroundColor = '#fafafa';
-      manualUploadWrapper.style.textAlign = 'left';
-      manualUploadWrapper.style.display = 'block';
-      manualUploadWrapper.style.minHeight = 'auto';
-      manualUploadWrapper.style.background = '#fafafa';
-      manualUploadWrapper.style.boxShadow = 'none';
-      manualUploadWrapper.style.gap = '0';
-      uploadTitle.style.fontSize = '16px';
-      uploadTitle.style.textAlign = 'left';
-      uploadTitle.style.margin = '0 0 10px 0';
-
-      if (fileInput) {
-        fileInput.style.flexGrow = '0';
-        fileInput.style.width = 'auto';
-        fileInput.style.border = '1px solid #ccc';
-      }
-      if (genBtnRef) {
-        genBtnRef.style.width = 'auto';
-        genBtnRef.style.display = 'inline-block';
-        genBtnRef.style.marginTop = '10px';
-        genBtnRef.style.fontSize = '14px';
-        genBtnRef.style.padding = '8px 15px';
-      }
-    } else {
-      if (mainPagePlaceholder && mainPagePlaceholder.parentNode) {
-        mainPagePlaceholder.parentNode.insertBefore(manualUploadWrapper, mainPagePlaceholder.nextSibling);
-      }
-      manualUploadWrapper.style.marginTop = '20px';
-      manualUploadWrapper.style.marginBottom = '20px';
-      manualUploadWrapper.style.padding = '25px 30px';
-      manualUploadWrapper.style.border = '2px dashed #ccc';
-      manualUploadWrapper.style.borderRadius = '12px';
-      manualUploadWrapper.style.backgroundColor = '#f8f9fa';
-      manualUploadWrapper.style.background = 'linear-gradient(to right, #ffffff, #f4f6f8)';
-      manualUploadWrapper.style.boxShadow = '0 4px 6px rgba(0,0,0,0.05)';
-      manualUploadWrapper.style.display = 'flex';
-      manualUploadWrapper.style.flexDirection = 'row';
-      manualUploadWrapper.style.alignItems = 'center';
-      manualUploadWrapper.style.justifyContent = 'space-between';
-      manualUploadWrapper.style.gap = '20px';
-      manualUploadWrapper.style.minHeight = 'auto';
-      uploadTitle.style.fontSize = '18px';
-      uploadTitle.style.fontWeight = '600';
-      uploadTitle.style.color = '#333';
-      uploadTitle.style.margin = '0';
-      uploadTitle.style.whiteSpace = 'nowrap';
-
-      if (fileInput) {
-        fileInput.style.flexGrow = '1';
-        fileInput.style.maxWidth = 'none';
-        fileInput.style.padding = '10px';
-        fileInput.style.border = '1px solid #ddd';
-        fileInput.style.borderRadius = '6px';
-        fileInput.style.backgroundColor = '#fff';
-      }
-      if (genBtnRef) {
-        genBtnRef.style.width = 'auto';
-        genBtnRef.style.maxWidth = 'none';
-        genBtnRef.style.fontSize = '15px';
-        genBtnRef.style.padding = '10px 25px';
-        genBtnRef.style.marginTop = '0';
-      }
-      const manualTab = document.querySelector('[data-tab-target="#Mupgrade"]');
-      if (manualTab) {
-        manualTab.addEventListener('click', () => {
-          renderManualUpgradeView();
-        });
-      }
-    }
-  };
-
-  auth.onAuthStateChanged(async user => {
-    const adminButton = document.getElementById('clear-analytics-btn');
-    const saveBtn = document.getElementById('save-rules-btn');
-    if (user) {
-      loginContainer.classList.add('hidden'); appContainer.classList.remove('hidden');
-      await loadCustomProperties(); await loadRemoteProfiles(); await loadOooRecords();
-      const isUserAdmin = ADMIN_UIDS.includes(user.uid);
-      if (isUserAdmin) {
-        if (adminButton) adminButton.classList.remove('hidden');
-        if (saveBtn) saveBtn.classList.remove('hidden');
-        if (settingsTriggerBtn) settingsTriggerBtn.classList.remove('hidden');
-        if (addPropBtn) addPropBtn.classList.remove('hidden');
-      } else {
-        if (saveBtn) saveBtn.classList.add('hidden');
-        if (adminButton) adminButton.classList.add('hidden');
-        if (settingsTriggerBtn) settingsTriggerBtn.classList.add('hidden');
-        if (addPropBtn) addPropBtn.classList.add('hidden');
-      }
-      setAdminControls(isUserAdmin);
-      loadCompletedUpgrades(user.uid);
-      resetAppState();
-      updateUIForProfile();
-    } else {
-      loginContainer.classList.remove('hidden'); appContainer.classList.add('hidden');
-      setAdminControls(false);
-    }
-  });
-
-  if (settingsTriggerBtn) {
-    settingsTriggerBtn.addEventListener('click', () => { settingsModal.classList.remove('hidden'); populateOooDropdown(); });
-  }
-
-  if (closeSettingsBtn) {
-    closeSettingsBtn.addEventListener('click', () => {
-      settingsModal.classList.add('hidden');
-      handleRefresh();
-    });
-  }
-
-  window.addEventListener('click', (e) => {
-    if (e.target === settingsModal) {
-      settingsModal.classList.add('hidden');
-      handleRefresh();
-    }
-  });
-
-  if (generateBtn) generateBtn.addEventListener('click', handleGenerateClick);
-  const autoLoadBtn = document.getElementById('auto-load-btn');
-  if (autoLoadBtn) autoLoadBtn.addEventListener('click', handleAutoLoad);
-
-  const profileDropdown = document.getElementById('profile-dropdown');
-  profileDropdown.addEventListener('change', async (event) => {
-    await updateRulesForm(event.target.value);
-    resetAppState();
-    displayCompletedUpgrades();
-    displayDemandInsights();
-    loadOooRecords();
-    updateUIForProfile();
-  });
-
-  updateRulesForm('fqi');
-  updateUIForProfile();
-
-  if (saveRulesBtn) saveRulesBtn.addEventListener('click', handleSaveRules);
-  const addOooBtn = document.getElementById('add-ooo-btn');
-  if (addOooBtn) addOooBtn.addEventListener('click', handleAddOoo);
-
-  if (emailInput) emailInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') handleSignIn(); });
-  if (passwordInput) passwordInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') handleSignIn(); });
-
-  signinBtn.addEventListener('click', handleSignIn);
-  signoutBtn.addEventListener('click', handleSignOut);
-  clearAnalyticsBtn.addEventListener('click', handleClearAnalytics);
-
-  document.getElementById('sort-date-dropdown').addEventListener('change', () => {
-    displayCompletedUpgrades(); displayDemandInsights();
-  });
-
-  const tabs = document.querySelectorAll('[data-tab-target]');
-  const tabContents = document.querySelectorAll('.tab-content');
-  tabs.forEach(tab => {
-    tab.addEventListener('click', () => {
-      const target = document.querySelector(tab.dataset.tabTarget);
-      tabContents.forEach(tc => tc.classList.remove('active'));
-      tabs.forEach(t => t.classList.remove('active'));
-      tab.classList.add('active');
-      target.classList.add('active');
-    });
-  });
-
-  const subTabs = document.querySelectorAll('[data-sub-tab-target]');
-  subTabs.forEach(tab => {
-    tab.addEventListener('click', () => {
-      const targetSelector = tab.dataset.subTabTarget;
-      const target = document.querySelector(targetSelector);
-      subTabs.forEach(t => t.classList.remove('active'));
-      tab.classList.add('active');
-
-      const containers = [
-        '#completed-container',
-        '#demand-insights-container',
-        '#historical-demand-insights-container',
-        '#lead-time-container'
-      ];
-      containers.forEach(id => {
-        const el = document.querySelector(id);
-        if (el) el.style.display = 'none';
-      });
-
-      if (target) {
-        target.style.display = 'block';
-        if (target.id === 'demand-insights-container') displayDemandInsights();
-        else if (target.id === 'completed-container') displayCompletedUpgrades();
-        else if (target.id === 'lead-time-container') displayLeadTimeAnalytics();
-      }
-    });
-  });
-});
-
 async function handleAutoLoad() {
   const btn = document.getElementById('auto-load-btn');
   const originalText = btn.textContent;
@@ -1979,7 +1685,8 @@ function generateScenariosFromData(allReservations, rules) {
 function runSimulation(strategy, allReservations, masterInv, rules, completedIds) {
   const startDate = parseDate(rules.selectedDate);
   const hierarchy = rules.hierarchy.toUpperCase().split(',').map(r => r.trim()).filter(Boolean);
-  const ineligible = rules.ineligibleUpgrades.toUpperCase().split(',');
+  // CLEANED INELIGIBLE PARSING
+  const ineligible = rules.ineligibleUpgrades.toUpperCase().split(',').map(r => r.trim()).filter(Boolean);
   const otaRates = rules.otaRates.toLowerCase().split(',').map(r => r.trim()).filter(Boolean);
   const simulationLimit = 10; 
 
@@ -2001,7 +1708,6 @@ function runSimulation(strategy, allReservations, masterInv, rules, completedIds
   allReservations.forEach(r => guestState[r.resId] = r.roomType);
   const pendingUpgrades = {};
 
-  // Sort eligible candidates globally once
   let candidatesPool = allReservations.filter(res => {
       if (completedIds.has(res.resId) || res.isDoNotMove) return false;
       const arrTime = res.arrival.getTime();
@@ -2012,7 +1718,6 @@ function runSimulation(strategy, allReservations, masterInv, rules, completedIds
       return true;
   });
 
-  // Apply primary sort based on chosen strategy
   if (strategy === 'VIP Focus') {
     candidatesPool.sort((a, b) => (b.vipStatus ? 1 : 0) - (a.vipStatus ? 1 : 0) || b.nights - a.nights);
   } else if (strategy === 'Guest Focus') {
@@ -2021,17 +1726,15 @@ function runSimulation(strategy, allReservations, masterInv, rules, completedIds
     candidatesPool.sort((a, b) => b.nights - a.nights);
   }
 
-  // EXHAUSTIVE ENGINE
   let iterationActivity = true;
   while (iterationActivity) {
     iterationActivity = false;
     
-    // Iterate from Top of Hierarchy Downwards
     for (let u = hierarchy.length - 1; u > 0; u--) {
       const targetRoom = hierarchy[u];
+      // SKIPS INELIGIBLE ROOMS IN PATH GENERATION
       if (ineligible.includes(targetRoom)) continue;
 
-      // For every guest in a tier below the current target
       for (let g = 0; g < candidatesPool.length; g++) {
         const res = candidatesPool[g];
         if (pendingUpgrades[res.resId]) continue;
@@ -2039,10 +1742,7 @@ function runSimulation(strategy, allReservations, masterInv, rules, completedIds
         const currentRoom = guestState[res.resId];
         const currentIdx = hierarchy.indexOf(currentRoom);
         
-        // Only move them IF they are below the current target tier
         if (currentIdx !== -1 && currentIdx < u) {
-          
-          // Strict Length of Stay Check
           let canMove = true;
           let checkDate = new Date(res.arrival);
           while (checkDate < res.departure) {
@@ -2055,14 +1755,13 @@ function runSimulation(strategy, allReservations, masterInv, rules, completedIds
           }
 
           if (canMove) {
-            // EXECUTE UPGRADE
             iterationActivity = true;
             let updateDate = new Date(res.arrival);
             while (updateDate < res.departure) {
               const dStr = updateDate.toISOString().split('T')[0];
-              simInventory[dStr][targetRoom]--; // Remove from higher
+              simInventory[dStr][targetRoom]--;
               if (simInventory[dStr][currentRoom] !== undefined) {
-                  simInventory[dStr][currentRoom]++; // Add back to lower (VACANCY TRIGGER)
+                  simInventory[dStr][currentRoom]++;
               }
               updateDate.setUTCDate(updateDate.getUTCDate() + 1);
             }
@@ -2118,6 +1817,8 @@ function renderManualUpgradeView() {
   const acceptedIds = new Set(acceptedUpgrades.map(u => u.resId));
   const completedIds = new Set(completedUpgrades.map(u => u.resId));
   const otaRates = currentRules.otaRates.toLowerCase().split(',').map(r => r.trim()).filter(Boolean);
+  // CLEANED INELIGIBLE LIST FOR MANUAL VIEW
+  const ineligible = currentRules.ineligibleUpgrades.toUpperCase().split(',').map(r => r.trim()).filter(Boolean);
 
   const candidates = currentAllReservations.filter(res => {
     const arrTime = res.arrival.getTime();
@@ -2163,6 +1864,10 @@ function renderManualUpgradeView() {
     if (currentIdx !== -1 && guestBed !== 'OTHER') {
       for (let i = currentIdx + 1; i < hierarchy.length; i++) {
         const target = hierarchy[i];
+        
+        // PREVENTS INELIGIBLE ROOMS FROM APPEARING IN MANUAL DROPDOWN
+        if (ineligible.includes(target)) continue;
+
         if (getBedType(target) !== guestBed) continue;
         let isAvail = true;
         for (let d = 0; d < Math.min(guest.nights, 14); d++) {
