@@ -1163,6 +1163,10 @@ document.addEventListener('DOMContentLoaded', function() {
 
   const dateInput = document.getElementById('selected-date');
   if (dateInput) {
+    // UPDATED: Start analysis date today
+    const today = new Date();
+    dateInput.value = today.toISOString().slice(0, 10);
+    
     dateInput.addEventListener('change', () => {
       if (currentCsvContent) {
         handleRefresh();
@@ -1384,9 +1388,6 @@ document.addEventListener('DOMContentLoaded', function() {
   signinBtn.addEventListener('click', handleSignIn);
   signoutBtn.addEventListener('click', handleSignOut);
   clearAnalyticsBtn.addEventListener('click', handleClearAnalytics);
-
-  const futureDate = new Date(); futureDate.setDate(futureDate.getDate() + 3);
-  document.getElementById('selected-date').value = futureDate.toISOString().slice(0, 10);
 
   document.getElementById('sort-date-dropdown').addEventListener('change', () => {
     displayCompletedUpgrades(); displayDemandInsights();
@@ -1972,12 +1973,17 @@ function generateScenariosFromData(allReservations, rules) {
   return { scenarios, inventory: todayInventory, matrixData, message: null };
 }
 
+// =============================================================================
+// UPDATED: runSimulation Logic with 10-day lookahead and top-down cascading
+// =============================================================================
 function runSimulation(strategy, allReservations, masterInv, rules, completedIds) {
   const startDate = parseDate(rules.selectedDate);
   const hierarchy = rules.hierarchy.toUpperCase().split(',').map(r => r.trim()).filter(Boolean);
   const ineligible = rules.ineligibleUpgrades.toUpperCase().split(',');
   const otaRates = rules.otaRates.toLowerCase().split(',').map(r => r.trim()).filter(Boolean);
-  const simulationLimit = 7; 
+  
+  // Lookahead expanded to 10 days
+  const simulationLimit = 10; 
 
   const simInventory = {};
   for (let i = 0; i < 14; i++) {
@@ -1992,61 +1998,105 @@ function runSimulation(strategy, allReservations, masterInv, rules, completedIds
       else simInventory[dStr][room] = (masterInv[room] || 0) - existingCount - oooCount;
     }
   }
+
   const guestState = {};
   allReservations.forEach(r => guestState[r.resId] = r.roomType);
   const pendingUpgrades = {};
+
+  // Multiple passes allow for chain reactions (Room A opens -> Guest B moves in -> Room B opens...)
   for (let pass = 0; pass < 20; pass++) {
-    let activity = false; let candidates = [];
-    for (let i = 0; i < simulationLimit; i++) {
-      const d = new Date(startDate); d.setUTCDate(d.getUTCDate() + i);
-      const dTime = d.getTime();
-      const dailyArrivals = allReservations.filter(r => r.arrival && r.arrival.getTime() === dTime && r.status === 'RESERVATION');
-      dailyArrivals.forEach(res => {
-        if (completedIds.has(res.resId) || res.isDoNotMove) return;
+    let activity = false; 
+    let candidates = [];
+
+    allReservations.forEach(res => {
+        // Skip already processed/completed
+        if (completedIds.has(res.resId) || res.isDoNotMove || pendingUpgrades[res.resId]) return;
         
-        // RATE/GROUP NAME FILTERING
+        const arrTime = res.arrival.getTime();
+        const startTime = startDate.getTime();
+        const diffDays = Math.floor((arrTime - startTime) / (1000 * 3600 * 24));
+
+        // Limit to 10-day arrival window
+        if (diffDays < 0 || diffDays >= simulationLimit) return;
         if (otaRates.some(ota => res.rate && res.rate.toLowerCase().includes(ota))) return;
-        
-        const currentRoom = guestState[res.resId]; const currentIdx = hierarchy.indexOf(currentRoom);
-        if (currentIdx === -1) return; const originalBed = getBedType(res.roomType);
-        if (originalBed === 'OTHER') return;
-        for (let u = currentIdx + 1; u < hierarchy.length; u++) {
-          const targetRoom = hierarchy[u];
-          if (ineligible.includes(targetRoom)) continue;
-          if (getBedType(targetRoom) !== originalBed) continue;
-          candidates.push({ resObj: res, currentRoom, targetRoom, score: parseFloat(res.revenue.replace(/[$,]/g, '')) || 0, vip: res.vipStatus ? 1 : 0, nights: res.nights, rank: u });
+
+        const currentRoom = guestState[res.resId];
+        const currentIdx = hierarchy.indexOf(currentRoom);
+        if (currentIdx === -1) return;
+
+        const originalBed = getBedType(res.roomType);
+
+        // Scan from top of hierarchy down to current rank to find the absolute best room
+        for (let u = hierarchy.length - 1; u > currentIdx; u--) {
+            const targetRoom = hierarchy[u];
+            if (ineligible.includes(targetRoom)) continue;
+            if (getBedType(targetRoom) !== originalBed) continue;
+
+            candidates.push({ 
+                resObj: res, 
+                currentRoom, 
+                targetRoom, 
+                score: parseFloat(res.revenue.replace(/[$,]/g, '')) || 0, 
+                vip: res.vipStatus ? 1 : 0, 
+                rank: u 
+            });
+            break; // Found best possible candidate move for this specific guest in this pass
         }
-      });
+    });
+
+    // ORDERING LOGIC: We process the highest Target Rank (rank) first.
+    // This fills the best rooms first, creating vacancies in the "mid-tier" for lower-tier guests.
+    if (strategy === 'VIP Focus') {
+        candidates.sort((a, b) => (b.vip - a.vip) || (b.rank - a.rank) || (b.score - a.score));
+    } else if (strategy === 'Guest Focus') {
+        candidates.sort((a, b) => (b.score - a.score) || (b.rank - a.rank));
+    } else { // Optimized (Default)
+        candidates.sort((a, b) => (b.rank - a.rank) || (a.resObj.nights - b.resObj.nights));
     }
 
-    if (strategy === 'Guest Focus') candidates.sort((a, b) => (b.score - a.score) || (b.rank - a.rank));
-    else if (strategy === 'VIP Focus') candidates.sort((a, b) => (b.vip - a.vip) || (b.score - a.score) || (b.rank - a.rank));
-    else if (strategy === 'Optimized') candidates.sort((a, b) => a.nights - b.nights);
-    
-    const processedPass = new Set();
     candidates.forEach(cand => {
-      if (processedPass.has(cand.resObj.resId)) return;
-      let canMove = true; let checkDate = new Date(cand.resObj.arrival);
-      while (checkDate < cand.resObj.departure) { 
-        const dStr = checkDate.toISOString().split('T')[0]; 
-        if (!simInventory[dStr] || (simInventory[dStr][cand.targetRoom] || 0) <= 0) { canMove = false; break; } 
-        checkDate.setUTCDate(checkDate.getUTCDate() + 1); 
-      }
-      if (canMove) {
-        activity = true; processedPass.add(cand.resObj.resId); checkDate = new Date(cand.resObj.arrival);
-        while (checkDate < cand.resObj.departure) { 
-          const dStr = checkDate.toISOString().split('T')[0]; 
-          if (simInventory[dStr]) { 
-            simInventory[dStr][cand.targetRoom]--; 
-            if (simInventory[dStr][cand.currentRoom] !== undefined) simInventory[dStr][cand.currentRoom]++; 
-          } 
-          checkDate.setUTCDate(checkDate.getUTCDate() + 1); 
+        if (pendingUpgrades[cand.resObj.resId]) return;
+
+        let canMove = true;
+        let checkDate = new Date(cand.resObj.arrival);
+        while (checkDate < cand.resObj.departure) {
+            const dStr = checkDate.toISOString().split('T')[0];
+            if (!simInventory[dStr] || (simInventory[dStr][cand.targetRoom] || 0) <= 0) {
+                canMove = false;
+                break;
+            }
+            checkDate.setUTCDate(checkDate.getUTCDate() + 1);
         }
-        guestState[cand.resObj.resId] = cand.targetRoom;
-        pendingUpgrades[cand.resObj.resId] = { name: cand.resObj.name, resId: cand.resObj.resId, revenue: cand.resObj.revenue, room: cand.resObj.roomType, rate: cand.resObj.rate, nights: cand.resObj.nights, upgradeTo: cand.targetRoom, score: cand.score, arrivalDate: cand.resObj.arrival.toLocaleDateString('en-US', { timeZone: 'UTC' }), departureDate: cand.resObj.departure.toLocaleDateString('en-US', { timeZone: 'UTC' }), isoArrival: cand.resObj.arrival.toISOString().split('T')[0], isoDeparture: cand.resObj.departure.toISOString().split('T')[0], vipStatus: cand.resObj.vipStatus };
-      }
+
+        if (canMove) {
+            activity = true;
+            let updateDate = new Date(cand.resObj.arrival);
+            while (updateDate < cand.resObj.departure) {
+                const dStr = updateDate.toISOString().split('T')[0];
+                simInventory[dStr][cand.targetRoom]--; // Take higher room
+                if (simInventory[dStr][cand.currentRoom] !== undefined) {
+                    simInventory[dStr][cand.currentRoom]++; // Release old room for the next pass
+                }
+                updateDate.setUTCDate(updateDate.getUTCDate() + 1);
+            }
+            guestState[cand.resObj.resId] = cand.targetRoom;
+            pendingUpgrades[cand.resObj.resId] = {
+                name: cand.resObj.name,
+                resId: cand.resObj.resId,
+                revenue: cand.resObj.revenue,
+                room: cand.resObj.roomType,
+                upgradeTo: cand.targetRoom,
+                score: cand.score,
+                arrivalDate: cand.resObj.arrival.toLocaleDateString('en-US', { timeZone: 'UTC' }),
+                departureDate: cand.resObj.departure.toLocaleDateString('en-US', { timeZone: 'UTC' }),
+                isoArrival: cand.resObj.arrival.toISOString().split('T')[0],
+                isoDeparture: cand.resObj.departure.toISOString().split('T')[0],
+                vipStatus: cand.resObj.vipStatus
+            };
+        }
     });
-    if (!activity) break;
+
+    if (!activity) break; 
   }
   return Object.values(pendingUpgrades);
 }
@@ -2069,7 +2119,7 @@ function getBedType(roomCode) {
 function downloadAcceptedUpgradesCsv() { if (!acceptedUpgrades.length) return; const headers = ['Guest Name', 'Res ID', 'Current Room', 'Upgrade To', 'Arrival', 'Departure']; const rows = acceptedUpgrades.map(rec => [`"${rec.name}"`, `"${rec.resId}"`, `"${rec.room}"`, `"${rec.upgradeTo}"`, `"${rec.arrivalDate}"`, `"${rec.departureDate}"`].join(',')); const blob = new Blob([[headers.join(','), ...rows].join('\n')], { type: 'text/csv' }); const link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.download = `upgrades_${new Date().toISOString().slice(0, 10)}.csv`; link.click(); }
 
 // ==========================================
-// --- MANUAL UPGRADE SECTION (WITH RATE FILTERING) ---
+// --- MANUAL UPGRADE SECTION ---
 // ==========================================
 function renderManualUpgradeView() {
   const container = document.getElementById('manual-upgrade-list-container');
@@ -2079,26 +2129,23 @@ function renderManualUpgradeView() {
   const startDate = parseDate(startStr);
   const acceptedIds = new Set(acceptedUpgrades.map(u => u.resId));
   const completedIds = new Set(completedUpgrades.map(u => u.resId));
-  
-  // APPLY RATE FILTERING TO MANUAL LIST
   const otaRates = currentRules.otaRates.toLowerCase().split(',').map(r => r.trim()).filter(Boolean);
 
   const candidates = currentAllReservations.filter(res => {
     const arrTime = res.arrival.getTime();
     const startTime = startDate.getTime();
     const diffDays = Math.floor((arrTime - startTime) / (1000 * 3600 * 24));
-    
     const isRateIneligible = otaRates.some(ota => res.rate && res.rate.toLowerCase().includes(ota));
 
-    return diffDays >= 0 && diffDays < 7 && 
+    return diffDays >= 0 && diffDays < 10 && 
            !acceptedIds.has(res.resId) && 
            !completedIds.has(res.resId) && 
-           !isRateIneligible && // Filter out ineligible rates
+           !isRateIneligible && 
            !['CANCELED', 'CANCELLED', 'NO SHOW', 'CHECKED OUT'].includes(res.status);
   });
 
   if (!candidates.length) {
-    container.innerHTML = '<p style="text-align:center; padding:20px; color:#666;">No eligible guests found after rate filtering.</p>';
+    container.innerHTML = '<p style="text-align:center; padding:20px; color:#666;">No eligible guests found for manual upgrade.</p>';
     return;
   }
 
@@ -2178,7 +2225,6 @@ function executeManualUpgrade(resId, index) {
 // ==========================================
 // --- LEAD TIME ANALYTICS ---
 // ==========================================
-
 async function fetchSavedLeadTimes(profile) {
   try {
     const docRef = db.collection('property_analytics').doc(profile);
@@ -2254,6 +2300,5 @@ window.handleSaveLeadTime = async function() {
     btn.textContent = "Save to Cloud";
   }
 };
-
 
 
