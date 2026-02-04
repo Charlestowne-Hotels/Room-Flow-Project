@@ -1982,7 +1982,7 @@ function runSimulation(strategy, allReservations, masterInv, rules, completedIds
   const ineligible = rules.ineligibleUpgrades.toUpperCase().split(',').map(r => r.trim()).filter(Boolean);
   const otaRates = rules.otaRates.toLowerCase().split(',').map(r => r.trim()).filter(Boolean);
   
-  const simulationLimit = 10;
+  const simulationLimit = 10; // Logic for the next 10 days
   const now = new Date();
   const fortyEightHoursOut = new Date(now.getTime() + (48 * 60 * 60 * 1000));
 
@@ -2004,6 +2004,7 @@ function runSimulation(strategy, allReservations, masterInv, rules, completedIds
   allReservations.forEach(r => guestState[r.resId] = r.roomType);
   const pendingUpgrades = {};
 
+  // Filter candidates for the 10-day window
   let candidatesPool = allReservations.filter(res => {
       if (completedIds.has(res.resId) || res.isDoNotMove) return false;
       const arrTime = res.arrival.getTime();
@@ -2016,13 +2017,14 @@ function runSimulation(strategy, allReservations, masterInv, rules, completedIds
       const rateName = (res.rate || "").toUpperCase();
 
       if (isArrivalWithin48h) {
-          if (rateName.includes("COMP")) return false;
+          if (rateName.includes("COMP")) return false; // Within 48h: All rates except COMP
       } else {
           if (otaRates.some(ota => res.rate && res.rate.toLowerCase().includes(ota))) return false;
       }
       return true;
   });
 
+  // Optimize Strategy: VIP -> Lead Time -> Revenue
   if (strategy === 'Optimized') {
     candidatesPool.sort((a, b) => {
         const vipA = a.vipStatus ? 1 : 0;
@@ -2069,6 +2071,7 @@ function runSimulation(strategy, allReservations, masterInv, rules, completedIds
         const targetBed = getBedType(targetRoom);
         let bedMatch = false;
 
+        // Enforce bed type rules
         if (currentBed === 'K' && targetBed === 'K') bedMatch = true;
         else if (currentBed === 'QQ' && targetBed === 'QQ') bedMatch = true;
         else if (currentBed === 'Q') bedMatch = true; 
@@ -2167,12 +2170,13 @@ function renderManualUpgradeView() {
   const otaRates = currentRules.otaRates.toLowerCase().split(',').map(r => r.trim()).filter(Boolean);
   const ineligible = currentRules.ineligibleUpgrades.toUpperCase().split(',').map(r => r.trim()).filter(Boolean);
 
+  // Candidates for next 10 days
   const candidates = currentAllReservations.filter(res => {
     const arrTime = res.arrival.getTime();
     const startTime = startDate.getTime();
     const diffDays = Math.floor((arrTime - startTime) / (1000 * 3600 * 24));
     
-    const isArrivalWithin48h = res.arrival <= fortyEightHoursOut;
+    const isArrivalWithin 48h = res.arrival <= fortyEightHoursOut;
     if (isArrivalWithin48h) {
         if ((res.rate || "").toUpperCase().includes("COMP")) return false;
     } else {
@@ -2194,7 +2198,7 @@ function renderManualUpgradeView() {
   
   const hierarchy = currentRules.hierarchy.toUpperCase().split(',').map(r => r.trim()).filter(Boolean);
   
-  // CRITICAL: Manual View calculates based on what is already accepted
+  // Reshuffle logic based on current accepted paths
   const simResult = applyUpgradesAndRecalculate(acceptedUpgrades, currentCsvContent, currentRules, currentFileName);
   const projectedInvMap = {}; 
   simResult.matrixData.rows.forEach(row => { projectedInvMap[row.roomCode] = row.availability; });
