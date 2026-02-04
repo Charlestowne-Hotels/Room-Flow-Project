@@ -2028,11 +2028,9 @@ function runSimulation(strategy, allReservations, masterInv, rules, completedIds
         const vipA = a.vipStatus ? 1 : 0;
         const vipB = b.vipStatus ? 1 : 0;
         if (vipB !== vipA) return vipB - vipA;
-
         const ltA = savedLeadTimes[a.roomType]?.avgLeadTime || 0;
         const ltB = savedLeadTimes[b.roomType]?.avgLeadTime || 0;
         if (ltB !== ltA) return ltA - ltB;
-
         const revA = parseFloat(a.revenue.replace(/[$,]/g, '')) || 0;
         const revB = parseFloat(b.revenue.replace(/[$,]/g, '')) || 0;
         return revB - revA;
@@ -2040,13 +2038,12 @@ function runSimulation(strategy, allReservations, masterInv, rules, completedIds
   } else if (strategy === 'VIP Focus') {
     candidatesPool.sort((a, b) => (b.vipStatus ? 1 : 0) - (a.vipStatus ? 1 : 0) || b.nights - a.nights);
   } else {
-    candidatesPool.sort((a, b) => b.nights - a.nights);
+    candidatesPool.sort((a, b) => (parseFloat(b.revenue.replace(/[$,]/g, '')) || 0) - (parseFloat(a.revenue.replace(/[$,]/g, '')) || 0));
   }
 
   let iterationActivity = true;
   while (iterationActivity) {
     iterationActivity = false;
-    
     const sortedHierarchy = [...hierarchy].sort((a, b) => {
         if (strategy !== 'Optimized') return 0;
         const ltA = savedLeadTimes[a]?.avgLeadTime || 0;
@@ -2056,19 +2053,15 @@ function runSimulation(strategy, allReservations, masterInv, rules, completedIds
 
     for (let targetRoom of sortedHierarchy) {
       if (ineligible.includes(targetRoom)) continue;
-
       for (let g = 0; g < candidatesPool.length; g++) {
         const res = candidatesPool[g];
         if (pendingUpgrades[res.resId]) continue;
-
         const currentRoom = guestState[res.resId];
         const currentIdx = hierarchy.indexOf(currentRoom);
         const targetIdx = hierarchy.indexOf(targetRoom);
-        
         const currentBed = getBedType(currentRoom);
         const targetBed = getBedType(targetRoom);
         let bedMatch = false;
-
         if (currentBed === 'K' && targetBed === 'K') bedMatch = true;
         else if (currentBed === 'QQ' && targetBed === 'QQ') bedMatch = true;
         else if (currentBed === 'Q') bedMatch = true;
@@ -2084,26 +2077,18 @@ function runSimulation(strategy, allReservations, masterInv, rules, completedIds
             }
             checkDate.setUTCDate(checkDate.getUTCDate() + 1);
           }
-
           if (canMove) {
             iterationActivity = true;
             let updateDate = new Date(res.arrival);
             while (updateDate < res.departure) {
               const dStr = updateDate.toISOString().split('T')[0];
               simInventory[dStr][targetRoom]--; 
-              if (simInventory[dStr][currentRoom] !== undefined) {
-                  simInventory[dStr][currentRoom]++; 
-              }
+              if (simInventory[dStr][currentRoom] !== undefined) simInventory[dStr][currentRoom]++; 
               updateDate.setUTCDate(updateDate.getUTCDate() + 1);
             }
-
             guestState[res.resId] = targetRoom;
             pendingUpgrades[res.resId] = {
-              name: res.name,
-              resId: res.resId,
-              revenue: res.revenue,
-              room: res.roomType,
-              upgradeTo: targetRoom,
+              name: res.name, resId: res.resId, revenue: res.revenue, room: res.roomType, upgradeTo: targetRoom,
               score: parseFloat(res.revenue.replace(/[$,]/g, '')) || 0,
               arrivalDate: res.arrival.toLocaleDateString('en-US', { timeZone: 'UTC' }),
               departureDate: res.departure.toLocaleDateString('en-US', { timeZone: 'UTC' }),
@@ -2142,7 +2127,6 @@ function generateMatrixData(totalInventory, reservationsByDate, startDate, roomH
 function getBedType(roomCode) { 
   if (!roomCode) return 'OTHER'; 
   const code = roomCode.toUpperCase();
-  // Expanded logic to catch more room types correctly
   if (code.includes('QQ') || code.includes('2Q') || code.includes('DOUBLE') || code === 'DD' || ['QQR', 'AQQ', 'STQQ', 'PQNN', 'DQUEEN', 'ADADQ'].some(c => code.includes(c))) return 'QQ'; 
   if (code.includes('KING') || code.includes('KNG') || code.includes('-K') || code.startsWith('DK') || code.startsWith('GK') || code.startsWith('PK') || code.startsWith('TK') || ['PKR', 'TKR', 'LKR', 'CKR', 'AKR', 'HERT', 'AMER', 'LEST', 'LEAC', 'GPST'].some(c => code.includes(c))) return 'K'; 
   if (code.includes('QUEEN') || code.includes('QNN') || code.includes('-Q') || code === 'Q' || code === 'SQ') return 'Q'; 
@@ -2152,17 +2136,46 @@ function getBedType(roomCode) {
 function downloadAcceptedUpgradesCsv() { if (!acceptedUpgrades.length) return; const headers = ['Guest Name', 'Res ID', 'Current Room', 'Upgrade To', 'Arrival', 'Departure']; const rows = acceptedUpgrades.map(rec => [`"${rec.name}"`, `"${rec.resId}"`, `"${rec.room}"`, `"${rec.upgradeTo}"`, `"${rec.arrivalDate}"`, `"${rec.departureDate}"`].join(',')); const blob = new Blob([[headers.join(','), ...rows].join('\n')], { type: 'text/csv' }); const link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.download = `upgrades_${new Date().toISOString().slice(0, 10)}.csv`; link.click(); }
 
 // ==========================================
+// --- SCENARIO DEDUPLICATION LOGIC ---
+// ==========================================
+function generateScenariosFromData(allReservations, rules) {
+  const masterInventory = getMasterInventory(rules.profile);
+  const activeReservations = allReservations.filter(res => res.status !== 'CANCELED' && res.status !== 'CANCELLED' && res.status !== 'NO SHOW');
+  const completedResIds = new Set(completedUpgrades.filter(up => up.profile === rules.profile).map(up => up.resId));
+  const startDate = parseDate(rules.selectedDate);
+  const reservationsByDate = buildReservationsByDate(activeReservations);
+  const todayInventory = getInventoryForDate(masterInventory, reservationsByDate, startDate);
+  const matrixData = generateMatrixData(masterInventory, reservationsByDate, startDate, rules.hierarchy.toUpperCase().split(',').map(r => r.trim()).filter(Boolean));
+  
+  const rawScenarios = {
+    'Optimized': runSimulation('Optimized', activeReservations, masterInventory, rules, completedResIds),
+    'Guest Focus': runSimulation('Guest Focus', activeReservations, masterInventory, rules, completedResIds),
+    'VIP Focus': runSimulation('VIP Focus', activeReservations, masterInventory, rules, completedResIds)
+  };
+
+  const scenarios = {};
+  const optStr = JSON.stringify(rawScenarios['Optimized'].map(u => u.resId + u.upgradeTo).sort());
+  const guestStr = JSON.stringify(rawScenarios['Guest Focus'].map(u => u.resId + u.upgradeTo).sort());
+  const vipStr = JSON.stringify(rawScenarios['VIP Focus'].map(u => u.resId + u.upgradeTo).sort());
+
+  // Logic: Only show unique paths. Priority: Optimized > VIP Focus > Guest Focus
+  scenarios['Optimized'] = rawScenarios['Optimized'];
+  if (guestStr !== optStr && guestStr !== vipStr) scenarios['Guest Focus'] = rawScenarios['Guest Focus'];
+  if (vipStr !== optStr) scenarios['VIP Focus'] = rawScenarios['VIP Focus'];
+
+  return { scenarios, inventory: todayInventory, matrixData, message: null };
+}
+
+// ==========================================
 // --- MANUAL UPGRADE SECTION ---
 // ==========================================
 function renderManualUpgradeView() {
   const container = document.getElementById('manual-upgrade-list-container');
   if (!container || !currentCsvContent || !currentAllReservations.length) return;
-  
   const startStr = document.getElementById('selected-date').value;
   const startDate = parseDate(startStr);
   const now = new Date();
   const fortyEightHoursOut = new Date(now.getTime() + (48 * 60 * 60 * 1000));
-  
   const acceptedIds = new Set(acceptedUpgrades.map(u => u.resId));
   const completedIds = new Set(completedUpgrades.map(u => u.resId));
   const otaRates = currentRules.otaRates.toLowerCase().split(',').map(r => r.trim()).filter(Boolean);
@@ -2170,43 +2183,21 @@ function renderManualUpgradeView() {
 
   const candidates = currentAllReservations.filter(res => {
     const arrTime = res.arrival.getTime();
-    const startTime = startDate.getTime();
-    const diffDays = Math.floor((arrTime - startTime) / (1000 * 3600 * 24));
-    
+    const diffDays = Math.floor((arrTime - startDate.getTime()) / (1000 * 3600 * 24));
     const isArrivalWithin48h = res.arrival <= fortyEightHoursOut;
-    if (isArrivalWithin48h) {
-        if ((res.rate || "").toUpperCase().includes("COMP")) return false; 
-    } else {
-        if (otaRates.some(ota => res.rate && res.rate.toLowerCase().includes(ota))) return false;
-    }
-
-    return diffDays >= 0 && diffDays < 10 && 
-           !acceptedIds.has(res.resId) && 
-           !completedIds.has(res.resId) && 
-           !['CANCELED', 'CANCELLED', 'NO SHOW', 'CHECKED OUT'].includes(res.status);
+    if (isArrivalWithin48h) { if ((res.rate || "").toUpperCase().includes("COMP")) return false; }
+    else { if (otaRates.some(ota => res.rate && res.rate.toLowerCase().includes(ota))) return false; }
+    return diffDays >= 0 && diffDays < 10 && !acceptedIds.has(res.resId) && !completedIds.has(res.resId) && !['CANCELED', 'CANCELLED', 'NO SHOW', 'CHECKED OUT'].includes(res.status);
   });
 
-  if (!candidates.length) {
-    container.innerHTML = '<p style="text-align:center; padding:20px; color:#666;">No eligible guests found for manual upgrade within the next 10 days.</p>';
-    return;
-  }
-
+  if (!candidates.length) { container.innerHTML = '<p style="text-align:center; padding:20px; color:#666;">No eligible guests found.</p>'; return; }
   candidates.sort((a, b) => (b.vipStatus ? 1 : 0) - (a.vipStatus ? 1 : 0) || a.name.localeCompare(b.name));
-  
   const hierarchy = currentRules.hierarchy.toUpperCase().split(',').map(r => r.trim()).filter(Boolean);
   const simResult = applyUpgradesAndRecalculate(acceptedUpgrades, currentCsvContent, currentRules, currentFileName);
-  const projectedInvMap = {}; 
-  simResult.matrixData.rows.forEach(row => { projectedInvMap[row.roomCode] = row.availability; });
 
   let rowsHtml = `<table style="width:100%; border-collapse:collapse; background:white; font-size:14px; border-radius:8px; overflow:hidden; box-shadow:0 2px 5px rgba(0,0,0,0.05);">
     <thead style="background:#f8f9fa; border-bottom:2px solid #eee;">
-      <tr>
-        <th style="padding:12px; text-align:left;">Guest & Rate / Group</th>
-        <th style="padding:12px; text-align:left;">Arrival</th>
-        <th style="padding:12px; text-align:left;">Current</th>
-        <th style="padding:12px; text-align:left;">Upgrade Option</th>
-        <th style="padding:12px; text-align:right;">Action</th>
-      </tr>
+      <tr><th style="padding:12px; text-align:left;">Guest & Rate / Group</th><th style="padding:12px; text-align:left;">Arrival</th><th style="padding:12px; text-align:left;">Current</th><th style="padding:12px; text-align:left;">Upgrade Option</th><th style="padding:12px; text-align:right;">Action</th></tr>
     </thead><tbody>`;
 
   let eligibleFound = 0;
@@ -2215,63 +2206,35 @@ function renderManualUpgradeView() {
     const currentBed = getBedType(currentRoom);
     const currentIdx = hierarchy.indexOf(currentRoom);
     const isLastMinute = guest.arrival <= fortyEightHoursOut;
-    
-    let targetList = hierarchy.slice(currentIdx + 1).sort((a, b) => {
-        const ltA = savedLeadTimes[a]?.avgLeadTime || 0;
-        const ltB = savedLeadTimes[b]?.avgLeadTime || 0;
-        return ltB - ltA;
-    });
-
+    let targetList = hierarchy.slice(currentIdx + 1).sort((a, b) => (savedLeadTimes[b]?.avgLeadTime || 0) - (savedLeadTimes[a]?.avgLeadTime || 0));
     let optionsHtml = '';
     if (currentIdx !== -1 && currentBed !== 'OTHER') {
       targetList.forEach(targetRoom => {
         if (ineligible.includes(targetRoom)) return;
-        
         const targetBed = getBedType(targetRoom);
-        let bedMatch = false;
-        if (currentBed === 'K' && targetBed === 'K') bedMatch = true;
-        else if (currentBed === 'QQ' && targetBed === 'QQ') bedMatch = true;
-        else if (currentBed === 'Q') bedMatch = true;
-
+        let bedMatch = (currentBed === 'K' && targetBed === 'K') || (currentBed === 'QQ' && targetBed === 'QQ') || (currentBed === 'Q');
         if (!bedMatch) return;
-        
         let isAvail = true;
         for (let d = 0; d < Math.min(guest.nights, 14); d++) {
-          const date = new Date(guest.arrival);
-          date.setUTCDate(date.getUTCDate() + d);
-          const dStr = date.toISOString().split('T')[0];
-          
-          // Cross-reference with projected matrix data
+          const date = new Date(guest.arrival); date.setUTCDate(date.getUTCDate() + d);
           const matrixRow = simResult.matrixData.rows.find(r => r.roomCode === targetRoom);
           const dateIdx = simResult.matrixData.headers.findIndex(h => h.includes(`${date.getUTCMonth() + 1}/${date.getUTCDate()}`));
-          
-          if (!matrixRow || matrixRow.availability[dateIdx - 1] <= 0) {
-            isAvail = false;
-            break;
-          }
+          if (!matrixRow || matrixRow.availability[dateIdx - 1] <= 0) { isAvail = false; break; }
         }
         if (isAvail) optionsHtml += `<option value="${targetRoom}">${targetRoom}</option>`;
       });
     }
-
     if (optionsHtml) {
       eligibleFound++;
-      const arrStr = guest.arrival.toLocaleDateString('en-US', { month: 'numeric', day: 'numeric', timeZone: 'UTC' });
-      const rateDisplay = guest.rate ? `<br><small style="color:#d63384; font-weight:bold;">${guest.rate}</small>` : '';
-      const vipTag = guest.vipStatus ? `<span style="color:white; background:#dc3545; font-size:10px; padding:2px 5px; border-radius:3px; margin-left:5px; font-weight:bold;">VIP</span>` : '';
-      const lmTag = isLastMinute ? `<span style="color:white; background:#28a745; font-size:10px; padding:2px 5px; border-radius:3px; margin-left:5px; font-weight:bold;">48H</span>` : '';
-      
       rowsHtml += `<tr style="border-bottom:1px solid #eee; ${isLastMinute ? 'background-color: #f0fff4;' : ''}">
-        <td style="padding:10px;"><strong>${guest.name}</strong>${vipTag}${lmTag}<br><small>${guest.resId}</small>${rateDisplay}</td>
-        <td style="padding:10px;">${arrStr}<br><small>${guest.nights} nts</small></td>
-        <td style="padding:10px;"><span style="background:#eee; padding:3px 6px; border-radius:4px; font-weight:bold;">${guest.roomType}</span></td>
+        <td style="padding:10px;"><strong>${guest.name}</strong>${guest.vipStatus ? '<span style="color:white; background:#dc3545; font-size:10px; padding:2px 5px; border-radius:3px; margin-left:5px;">VIP</span>' : ''}${isLastMinute ? '<span style="color:white; background:#28a745; font-size:10px; padding:2px 5px; border-radius:3px; margin-left:5px;">48H</span>' : ''}<br><small>${guest.resId}</small></td>
+        <td style="padding:10px;">${guest.arrival.toLocaleDateString('en-US', { month: 'numeric', day: 'numeric', timeZone: 'UTC' })}<br><small>${guest.nights} nts</small></td>
+        <td style="padding:10px;">${guest.roomType}</td>
         <td style="padding:10px;"><select id="manual-select-${index}" style="width:100%; padding:5px;">${optionsHtml}</select></td>
-        <td style="padding:10px; text-align:right;"><button onclick="executeManualUpgrade('${guest.resId}', ${index})" class="pms-btn" style="background:#4343FF; color:white; border:none; padding:6px 12px; border-radius:4px; cursor:pointer;">Upgrade</button></td>
-      </tr>`;
+        <td style="padding:10px; text-align:right;"><button onclick="executeManualUpgrade('${guest.resId}', ${index})" class="pms-btn" style="background:#4343FF; color:white; border:none; padding:6px 12px; border-radius:4px; cursor:pointer;">Upgrade</button></td></tr>`;
     }
   });
-
-  container.innerHTML = eligibleFound > 0 ? rowsHtml + '</tbody></table>' : '<p style="text-align:center; padding:20px; color:#666;">No valid inventory matches for full length of stay.</p>';
+  container.innerHTML = eligibleFound > 0 ? rowsHtml + '</tbody></table>' : '<p style="text-align:center; padding:20px; color:#666;">No valid inventory matches found.</p>';
 }
 
 function executeManualUpgrade(resId, index) {
@@ -2280,17 +2243,11 @@ function executeManualUpgrade(resId, index) {
     const targetRoom = dropdown.value;
     const res = currentAllReservations.find(r => r.resId === resId);
     if (!res) return;
-    
-    const upgrade = {
-        name: res.name, resId: res.resId, revenue: res.revenue, room: res.roomType, rate: res.rate, nights: res.nights,
-        upgradeTo: targetRoom, score: parseFloat(res.revenue.replace(/[$,]/g, '')) || 0,
-        arrivalDate: res.arrival.toLocaleDateString('en-US', { timeZone: 'UTC' }),
-        departureDate: res.departure.toLocaleDateString('en-US', { timeZone: 'UTC' }),
-        isoArrival: res.arrival.toISOString().split('T')[0],
-        isoDeparture: res.departure.toISOString().split('T')[0],
-        vipStatus: res.vipStatus
-    };
-    acceptedUpgrades.push(upgrade);
+    acceptedUpgrades.push({
+        name: res.name, resId: res.resId, revenue: res.revenue, room: res.roomType, upgradeTo: targetRoom, 
+        arrivalDate: res.arrival.toLocaleDateString('en-US', { timeZone: 'UTC' }), departureDate: res.departure.toLocaleDateString('en-US', { timeZone: 'UTC' }),
+        isoArrival: res.arrival.toISOString().split('T')[0], isoDeparture: res.departure.toISOString().split('T')[0], vipStatus: res.vipStatus
+    });
     handleRefresh();
 }
 
@@ -2298,8 +2255,7 @@ async function fetchSavedLeadTimes(profile) {
   try {
     const docRef = db.collection('property_analytics').doc(profile);
     const doc = await docRef.get();
-    if (doc.exists && doc.data().leadTimeStats) savedLeadTimes = doc.data().leadTimeStats;
-    else savedLeadTimes = {}; 
+    savedLeadTimes = doc.exists && doc.data().leadTimeStats ? doc.data().leadTimeStats : {};
   } catch (error) { console.error("Error fetching lead times:", error); }
 }
 
@@ -2309,13 +2265,8 @@ function displayLeadTimeAnalytics() {
   const hierarchyVal = document.getElementById('hierarchy').value;
   if (!hierarchyVal) return;
   const roomTypes = hierarchyVal.split(',').map(r => r.trim().toUpperCase()).filter(Boolean);
-
   let html = `<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;"><h3>Manual Lead Time Entry</h3><button id="save-lead-time-btn" onclick="handleSaveLeadTime()" style="background:#28a745; color:white; border:none; padding:8px 12px; border-radius:5px; cursor:pointer;">Save to Cloud</button></div><table style="width:100%; border-collapse:collapse; background:white;"><thead><tr style="background:#f8f9fa;"><th>Room Type</th><th>Avg. Lead Time (Days)</th></tr></thead><tbody>`;
-
-  roomTypes.forEach(roomType => {
-    const existingVal = savedLeadTimes[roomType]?.avgLeadTime || "";
-    html += `<tr><td style="padding:10px;"><strong>${roomType}</strong></td><td style="padding:10px; text-align:center;"><input type="number" class="manual-room-lt-input" data-room="${roomType}" value="${existingVal}" style="width: 80px; text-align: center;"></td></tr>`;
-  });
+  roomTypes.forEach(roomType => { html += `<tr><td style="padding:10px;"><strong>${roomType}</strong></td><td style="padding:10px; text-align:center;"><input type="number" class="manual-room-lt-input" data-room="${roomType}" value="${savedLeadTimes[roomType]?.avgLeadTime || ""}" style="width: 80px; text-align: center;"></td></tr>`; });
   container.innerHTML = html + '</tbody></table>';
 }
 
