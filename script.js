@@ -2065,15 +2065,13 @@ function runSimulation(strategy, allReservations, masterInv, rules, completedIds
         const currentIdx = hierarchy.indexOf(currentRoom);
         const targetIdx = hierarchy.indexOf(targetRoom);
         
-        // --- Bed Type Matching Logic ---
         const currentBed = getBedType(currentRoom);
         const targetBed = getBedType(targetRoom);
         let bedMatch = false;
 
         if (currentBed === 'K' && targetBed === 'K') bedMatch = true;
         else if (currentBed === 'QQ' && targetBed === 'QQ') bedMatch = true;
-        else if (currentBed === 'Q') bedMatch = true; // Single Queen can move to anything higher in hierarchy
-        // -------------------------------
+        else if (currentBed === 'Q') bedMatch = true; 
 
         if (currentIdx !== -1 && currentIdx < targetIdx && bedMatch) {
           let canMove = true;
@@ -2121,7 +2119,21 @@ function runSimulation(strategy, allReservations, masterInv, rules, completedIds
   return Object.values(pendingUpgrades);
 }
 
-function buildReservationsByDate(allReservations) { const reservationsByDate = {}; allReservations.forEach(res => { if (!res.arrival || !res.departure) return; let currentDate = new Date(res.arrival); while (currentDate < res.departure) { const dateString = currentDate.toISOString().split('T')[0]; if (!reservationsByDate[dateString]) reservationsByDate[dateString] = {}; reservationsByDate[dateString][res.roomType] = (reservationsByDate[dateString][res.roomType] || 0) + 1; currentDate.setUTCDate(currentDate.getUTCDate() + i); currentDate.setUTCDate(currentDate.getUTCDate() + 1); } }); return reservationsByDate; }
+function buildReservationsByDate(allReservations) { 
+  const reservationsByDate = {}; 
+  allReservations.forEach(res => { 
+    if (!res.arrival || !res.departure) return; 
+    let currentDate = new Date(res.arrival); 
+    while (currentDate < res.departure) { 
+      const dateString = currentDate.toISOString().split('T')[0]; 
+      if (!reservationsByDate[dateString]) reservationsByDate[dateString] = {}; 
+      reservationsByDate[dateString][res.roomType] = (reservationsByDate[dateString][res.roomType] || 0) + 1; 
+      currentDate.setUTCDate(currentDate.getUTCDate() + 1); 
+    } 
+  }); 
+  return reservationsByDate; 
+}
+
 function getInventoryForDate(masterInventory, reservationsByDate, date) { const inventory = {}; const dateString = date.toISOString().split('T')[0]; for (const roomCode in masterInventory) { const totalPhysical = masterInventory[roomCode]; const reservedCount = reservationsByDate[dateString]?.[roomCode] || 0; const oooDeduction = oooRecords.reduce((total, rec) => { if (rec.roomType === roomCode && (date.getTime() >= rec.startDate.getTime() && date.getTime() <= rec.endDate.getTime())) return total + (rec.count || 1); return total; }, 0); inventory[roomCode] = totalPhysical - reservedCount - oooDeduction; } return inventory; }
 function getMasterInventory(profileName) { const masterRoomList = MASTER_INVENTORIES[profileName]; if (!masterRoomList) return {}; const totalInventory = {}; masterRoomList.forEach(room => { totalInventory[room.code.toUpperCase()] = (totalInventory[room.code.toUpperCase()] || 0) + 1; }); return totalInventory; }
 function parseDate(dateStr) { if (!dateStr) return null; const parts = dateStr.split(/[-\/ ]/); if (parts.length >= 3) { if (parts[0].length === 4) return new Date(Date.UTC(parts[0], parts[1] - 1, parts[2])); return new Date(Date.UTC(parts[2], parts[0] - 1, parts[1])); } return new Date(dateStr); }
@@ -2130,11 +2142,8 @@ function generateMatrixData(totalInventory, reservationsByDate, startDate, roomH
 function getBedType(roomCode) { 
   if (!roomCode) return 'OTHER'; 
   const code = roomCode.toUpperCase();
-  // QQ Enforcement
   if (code.includes('QQ') || code === 'DD' || ['QQR', 'AQQ', 'STQQ', 'PQNN', 'DQUEEN', 'ADADQ', '2QCRK', '2QMRSH'].some(c => code.includes(c))) return 'QQ'; 
-  // King Enforcement
   if (code.includes('KING') || code.includes('-K') || code.startsWith('DK') || code.startsWith('GK') || code.startsWith('PK') || code.startsWith('TK') || ['PKR', 'TKR', 'LKR', 'CKR', 'AKR', 'HERT', 'AMER', 'LEST', 'LEAC', 'GPST'].some(c => code.includes(c))) return 'K'; 
-  // Single Queen (Q)
   if (code.includes('QUEEN') || code.includes('-Q') || code === 'Q' || code === 'SQ') return 'Q'; 
   return 'OTHER'; 
 }
