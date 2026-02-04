@@ -2193,6 +2193,8 @@ function renderManualUpgradeView() {
   candidates.sort((a, b) => (b.vipStatus ? 1 : 0) - (a.vipStatus ? 1 : 0) || a.name.localeCompare(b.name));
   
   const hierarchy = currentRules.hierarchy.toUpperCase().split(',').map(r => r.trim()).filter(Boolean);
+  
+  // CRITICAL: Manual View calculates based on what is already accepted
   const simResult = applyUpgradesAndRecalculate(acceptedUpgrades, currentCsvContent, currentRules, currentFileName);
   const projectedInvMap = {}; 
   simResult.matrixData.rows.forEach(row => { projectedInvMap[row.roomCode] = row.availability; });
@@ -2325,3 +2327,4 @@ window.handleSaveLeadTime = async function() {
   } catch (error) { alert("Save failed: " + error.message); } 
   finally { btn.disabled = false; btn.textContent = "Save to Cloud"; }
 };
+
