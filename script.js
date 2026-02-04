@@ -1982,7 +1982,7 @@ function runSimulation(strategy, allReservations, masterInv, rules, completedIds
   const ineligible = rules.ineligibleUpgrades.toUpperCase().split(',').map(r => r.trim()).filter(Boolean);
   const otaRates = rules.otaRates.toLowerCase().split(',').map(r => r.trim()).filter(Boolean);
   
-  const simulationLimit = 10; // Logic for the next 10 days
+  const simulationLimit = 10; 
   const now = new Date();
   const fortyEightHoursOut = new Date(now.getTime() + (48 * 60 * 60 * 1000));
 
@@ -2004,7 +2004,6 @@ function runSimulation(strategy, allReservations, masterInv, rules, completedIds
   allReservations.forEach(r => guestState[r.resId] = r.roomType);
   const pendingUpgrades = {};
 
-  // Filter candidates for the 10-day window
   let candidatesPool = allReservations.filter(res => {
       if (completedIds.has(res.resId) || res.isDoNotMove) return false;
       const arrTime = res.arrival.getTime();
@@ -2017,14 +2016,13 @@ function runSimulation(strategy, allReservations, masterInv, rules, completedIds
       const rateName = (res.rate || "").toUpperCase();
 
       if (isArrivalWithin48h) {
-          if (rateName.includes("COMP")) return false; // Within 48h: All rates except COMP
+          if (rateName.includes("COMP")) return false; 
       } else {
           if (otaRates.some(ota => res.rate && res.rate.toLowerCase().includes(ota))) return false;
       }
       return true;
   });
 
-  // Optimize Strategy: VIP -> Lead Time -> Revenue
   if (strategy === 'Optimized') {
     candidatesPool.sort((a, b) => {
         const vipA = a.vipStatus ? 1 : 0;
@@ -2033,7 +2031,7 @@ function runSimulation(strategy, allReservations, masterInv, rules, completedIds
 
         const ltA = savedLeadTimes[a.roomType]?.avgLeadTime || 0;
         const ltB = savedLeadTimes[b.roomType]?.avgLeadTime || 0;
-        if (ltB !== ltA) return ltA - ltB; 
+        if (ltB !== ltA) return ltA - ltB;
 
         const revA = parseFloat(a.revenue.replace(/[$,]/g, '')) || 0;
         const revB = parseFloat(b.revenue.replace(/[$,]/g, '')) || 0;
@@ -2071,10 +2069,9 @@ function runSimulation(strategy, allReservations, masterInv, rules, completedIds
         const targetBed = getBedType(targetRoom);
         let bedMatch = false;
 
-        // Enforce bed type rules
         if (currentBed === 'K' && targetBed === 'K') bedMatch = true;
         else if (currentBed === 'QQ' && targetBed === 'QQ') bedMatch = true;
-        else if (currentBed === 'Q') bedMatch = true; 
+        else if (currentBed === 'Q') bedMatch = true;
 
         if (currentIdx !== -1 && currentIdx < targetIdx && bedMatch) {
           let canMove = true;
@@ -2145,9 +2142,10 @@ function generateMatrixData(totalInventory, reservationsByDate, startDate, roomH
 function getBedType(roomCode) { 
   if (!roomCode) return 'OTHER'; 
   const code = roomCode.toUpperCase();
-  if (code.includes('QQ') || code === 'DD' || ['QQR', 'AQQ', 'STQQ', 'PQNN', 'DQUEEN', 'ADADQ', '2QCRK', '2QMRSH'].some(c => code.includes(c))) return 'QQ'; 
-  if (code.includes('KING') || code.includes('-K') || code.startsWith('DK') || code.startsWith('GK') || code.startsWith('PK') || code.startsWith('TK') || ['PKR', 'TKR', 'LKR', 'CKR', 'AKR', 'HERT', 'AMER', 'LEST', 'LEAC', 'GPST'].some(c => code.includes(c))) return 'K'; 
-  if (code.includes('QUEEN') || code.includes('-Q') || code === 'Q' || code === 'SQ') return 'Q'; 
+  // Expanded logic to catch more room types correctly
+  if (code.includes('QQ') || code.includes('2Q') || code.includes('DOUBLE') || code === 'DD' || ['QQR', 'AQQ', 'STQQ', 'PQNN', 'DQUEEN', 'ADADQ'].some(c => code.includes(c))) return 'QQ'; 
+  if (code.includes('KING') || code.includes('KNG') || code.includes('-K') || code.startsWith('DK') || code.startsWith('GK') || code.startsWith('PK') || code.startsWith('TK') || ['PKR', 'TKR', 'LKR', 'CKR', 'AKR', 'HERT', 'AMER', 'LEST', 'LEAC', 'GPST'].some(c => code.includes(c))) return 'K'; 
+  if (code.includes('QUEEN') || code.includes('QNN') || code.includes('-Q') || code === 'Q' || code === 'SQ') return 'Q'; 
   return 'OTHER'; 
 }
 
@@ -2170,15 +2168,14 @@ function renderManualUpgradeView() {
   const otaRates = currentRules.otaRates.toLowerCase().split(',').map(r => r.trim()).filter(Boolean);
   const ineligible = currentRules.ineligibleUpgrades.toUpperCase().split(',').map(r => r.trim()).filter(Boolean);
 
-  // Candidates for next 10 days
   const candidates = currentAllReservations.filter(res => {
     const arrTime = res.arrival.getTime();
     const startTime = startDate.getTime();
     const diffDays = Math.floor((arrTime - startTime) / (1000 * 3600 * 24));
     
-    const isArrivalWithin48h = res.arrival <= fortyEightHoursOut; // Fixed variable name space
+    const isArrivalWithin48h = res.arrival <= fortyEightHoursOut;
     if (isArrivalWithin48h) {
-        if ((res.rate || "").toUpperCase().includes("COMP")) return false;
+        if ((res.rate || "").toUpperCase().includes("COMP")) return false; 
     } else {
         if (otaRates.some(ota => res.rate && res.rate.toLowerCase().includes(ota))) return false;
     }
@@ -2190,15 +2187,13 @@ function renderManualUpgradeView() {
   });
 
   if (!candidates.length) {
-    container.innerHTML = '<p style="text-align:center; padding:20px; color:#666;">No eligible guests found for manual upgrade.</p>';
+    container.innerHTML = '<p style="text-align:center; padding:20px; color:#666;">No eligible guests found for manual upgrade within the next 10 days.</p>';
     return;
   }
 
   candidates.sort((a, b) => (b.vipStatus ? 1 : 0) - (a.vipStatus ? 1 : 0) || a.name.localeCompare(b.name));
   
   const hierarchy = currentRules.hierarchy.toUpperCase().split(',').map(r => r.trim()).filter(Boolean);
-  
-  // Reshuffle logic based on current accepted paths
   const simResult = applyUpgradesAndRecalculate(acceptedUpgrades, currentCsvContent, currentRules, currentFileName);
   const projectedInvMap = {}; 
   simResult.matrixData.rows.forEach(row => { projectedInvMap[row.roomCode] = row.availability; });
@@ -2242,7 +2237,18 @@ function renderManualUpgradeView() {
         
         let isAvail = true;
         for (let d = 0; d < Math.min(guest.nights, 14); d++) {
-          if ((projectedInvMap[targetRoom]?.[d] || 0) <= 0) { isAvail = false; break; }
+          const date = new Date(guest.arrival);
+          date.setUTCDate(date.getUTCDate() + d);
+          const dStr = date.toISOString().split('T')[0];
+          
+          // Cross-reference with projected matrix data
+          const matrixRow = simResult.matrixData.rows.find(r => r.roomCode === targetRoom);
+          const dateIdx = simResult.matrixData.headers.findIndex(h => h.includes(`${date.getUTCMonth() + 1}/${date.getUTCDate()}`));
+          
+          if (!matrixRow || matrixRow.availability[dateIdx - 1] <= 0) {
+            isAvail = false;
+            break;
+          }
         }
         if (isAvail) optionsHtml += `<option value="${targetRoom}">${targetRoom}</option>`;
       });
