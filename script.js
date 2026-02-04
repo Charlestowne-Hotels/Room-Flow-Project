@@ -2176,7 +2176,7 @@ function renderManualUpgradeView() {
     const startTime = startDate.getTime();
     const diffDays = Math.floor((arrTime - startTime) / (1000 * 3600 * 24));
     
-    const isArrivalWithin 48h = res.arrival <= fortyEightHoursOut;
+    const isArrivalWithin48h = res.arrival <= fortyEightHoursOut; // Fixed variable name space
     if (isArrivalWithin48h) {
         if ((res.rate || "").toUpperCase().includes("COMP")) return false;
     } else {
