@@ -2020,12 +2020,17 @@ function runSimulation(strategy, allReservations, masterInv, rules, completedIds
     }
   }
 
-  const guestState = {};
+const guestState = {};
   allReservations.forEach(r => guestState[r.resId] = r.roomType);
   const pendingUpgrades = {};
 
+  // Track guests that have already been accepted for an upgrade
+  const acceptedIds = new Set(typeof acceptedUpgrades !== 'undefined' ? acceptedUpgrades.map(u => u.resId) : []);
+
   let candidatesPool = allReservations.filter(res => {
-      if (completedIds.has(res.resId) || res.isDoNotMove) return false;
+      // Exclude them here so they aren't recommended for a secondary upgrade
+      if (completedIds.has(res.resId) || res.isDoNotMove || acceptedIds.has(res.resId)) return false;
+      
       const arrTime = res.arrival.getTime();
       const diffDays = Math.floor((arrTime - startDate.getTime()) / (1000 * 3600 * 24));
       
