@@ -1986,6 +1986,22 @@ function runSimulation(strategy, allReservations, masterInv, rules, completedIds
   const now = new Date();
   const fortyEightHoursOut = new Date(now.getTime() + (48 * 60 * 60 * 1000));
 
+  // Pre-calculate net changes from accepted upgrades for static Synxis data
+  const netInventoryChange = {};
+  if (currentInventoryMap && typeof acceptedUpgrades !== 'undefined') {
+      acceptedUpgrades.forEach(upg => {
+          let curr = new Date(upg.isoArrival);
+          const dep = new Date(upg.isoDeparture);
+          while (curr < dep) {
+              const dStr = curr.toISOString().split('T')[0];
+              if (!netInventoryChange[dStr]) netInventoryChange[dStr] = {};
+              netInventoryChange[dStr][upg.upgradeTo] = (netInventoryChange[dStr][upg.upgradeTo] || 0) - 1;
+              netInventoryChange[dStr][upg.room] = (netInventoryChange[dStr][upg.room] || 0) + 1;
+              curr.setUTCDate(curr.getUTCDate() + 1);
+          }
+      });
+  }
+
   const simInventory = {};
   for (let i = 0; i < 14; i++) {
     const d = new Date(startDate); d.setUTCDate(d.getUTCDate() + i);
@@ -1995,8 +2011,12 @@ function runSimulation(strategy, allReservations, masterInv, rules, completedIds
       const dTime = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate())).getTime();
       const existingCount = allReservations.reduce((acc, res) => { if (res.roomType === room && res.arrival <= d && res.departure > d) return acc + 1; return acc; }, 0);
       const oooCount = oooRecords.reduce((acc, rec) => { if (rec.roomType === room && dTime >= rec.startDate.getTime() && dTime <= rec.endDate.getTime()) return acc + (rec.count || 1); return acc; }, 0);
-      if (currentInventoryMap && currentInventoryMap[dStr] && currentInventoryMap[dStr][room] !== undefined) simInventory[dStr][room] = currentInventoryMap[dStr][room];
-      else simInventory[dStr][room] = (masterInv[room] || 0) - existingCount - oooCount;
+      
+      if (currentInventoryMap && currentInventoryMap[dStr] && currentInventoryMap[dStr][room] !== undefined) {
+          simInventory[dStr][room] = currentInventoryMap[dStr][room] + (netInventoryChange[dStr]?.[room] || 0);
+      } else {
+          simInventory[dStr][room] = (masterInv[room] || 0) - existingCount - oooCount;
+      }
     }
   }
 
@@ -2055,13 +2075,16 @@ function runSimulation(strategy, allReservations, masterInv, rules, completedIds
       if (ineligible.includes(targetRoom)) continue;
       for (let g = 0; g < candidatesPool.length; g++) {
         const res = candidatesPool[g];
-        if (pendingUpgrades[res.resId]) continue;
+        
+        // Removed the pendingUpgrades lockout to allow multi-tier cascading!
+        
         const currentRoom = guestState[res.resId];
         const currentIdx = hierarchy.indexOf(currentRoom);
         const targetIdx = hierarchy.indexOf(targetRoom);
         const currentBed = getBedType(currentRoom);
         const targetBed = getBedType(targetRoom);
         let bedMatch = false;
+        
         if (currentBed === 'K' && targetBed === 'K') bedMatch = true;
         else if (currentBed === 'QQ' && targetBed === 'QQ') bedMatch = true;
         else if (currentBed === 'Q') bedMatch = true;
@@ -2088,7 +2111,10 @@ function runSimulation(strategy, allReservations, masterInv, rules, completedIds
             }
             guestState[res.resId] = targetRoom;
             pendingUpgrades[res.resId] = {
-              name: res.name, resId: res.resId, revenue: res.revenue, room: res.roomType, upgradeTo: targetRoom,
+              name: res.name, resId: res.resId, revenue: res.revenue, 
+              // Always preserve the very first original room!
+              room: pendingUpgrades[res.resId] ? pendingUpgrades[res.resId].room : res.roomType, 
+              upgradeTo: targetRoom,
               score: parseFloat(res.revenue.replace(/[$,]/g, '')) || 0,
               arrivalDate: res.arrival.toLocaleDateString('en-US', { timeZone: 'UTC' }),
               departureDate: res.departure.toLocaleDateString('en-US', { timeZone: 'UTC' }),
@@ -2102,6 +2128,45 @@ function runSimulation(strategy, allReservations, masterInv, rules, completedIds
     }
   }
   return Object.values(pendingUpgrades);
+}
+
+function generateMatrixData(totalInventory, reservationsByDate, startDate, roomHierarchy) {
+  const matrix = { headers: ['Room Type'], rows: [] };
+  const dates = Array.from({ length: 14 }, (_, i) => { const date = new Date(startDate); date.setUTCDate(date.getUTCDate() + i); return date; });
+  matrix.headers.push(...dates.map(date => `${date.toLocaleDateString('en-US', { weekday: 'short', timeZone: 'UTC' })}<br>${date.getUTCMonth() + 1}/${date.getUTCDate()}`));
+  
+  // Pre-calculate net changes from accepted upgrades
+  const netInventoryChange = {};
+  if (currentInventoryMap && typeof acceptedUpgrades !== 'undefined') {
+      acceptedUpgrades.forEach(upg => {
+          let curr = new Date(upg.isoArrival);
+          const dep = new Date(upg.isoDeparture);
+          while (curr < dep) {
+              const dStr = curr.toISOString().split('T')[0];
+              if (!netInventoryChange[dStr]) netInventoryChange[dStr] = {};
+              netInventoryChange[dStr][upg.upgradeTo] = (netInventoryChange[dStr][upg.upgradeTo] || 0) - 1;
+              netInventoryChange[dStr][upg.room] = (netInventoryChange[dStr][upg.room] || 0) + 1;
+              curr.setUTCDate(curr.getUTCDate() + 1);
+          }
+      });
+  }
+
+  roomHierarchy.forEach(roomCode => {
+    const row = { roomCode, availability: [] };
+    dates.forEach(date => {
+      const dateString = date.toISOString().split('T')[0];
+      let finalAvail = 0;
+      if (currentInventoryMap && currentInventoryMap[dateString] && currentInventoryMap[dateString][roomCode] !== undefined) {
+          finalAvail = currentInventoryMap[dateString][roomCode] + (netInventoryChange[dateString]?.[roomCode] || 0);
+      } else {
+          const oooCount = oooRecords.reduce((total, rec) => { if (rec.roomType === roomCode && (date.getTime() >= rec.startDate.getTime() && date.getTime() <= rec.endDate.getTime())) return total + (rec.count || 1); return total; }, 0);
+          finalAvail = (totalInventory[roomCode] || 0) - (reservationsByDate[dateString]?.[roomCode] || 0) - oooCount;
+      }
+      row.availability.push(finalAvail);
+    });
+    matrix.rows.push(row);
+  });
+  return matrix;
 }
 
 function buildReservationsByDate(allReservations) { 
