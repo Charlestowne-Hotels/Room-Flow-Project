@@ -2151,48 +2151,95 @@ const guestState = {};
     }
   };
 
-  // --- Main cascade: keep running full passes until a pass makes zero moves. ---
+  // Records/updates a pending upgrade after a successful move. Preserves the
+  // ORIGINAL room from the very first hop so the final recommendation card
+  // reads "Original: X | Upgraded To: <final tier>" regardless of how many
+  // intermediate tiers were traversed.
+  const recordMove = (res, target) => {
+    pendingUpgrades[res.resId] = {
+      name: res.name,
+      resId: res.resId,
+      revenue: res.revenue,
+      room: pendingUpgrades[res.resId] ? pendingUpgrades[res.resId].room : res.roomType,
+      upgradeTo: target,
+      score: parseFloat(res.revenue.replace(/[$,]/g, '')) || 0,
+      arrivalDate: res.arrival.toLocaleDateString('en-US', { timeZone: 'UTC' }),
+      departureDate: res.departure.toLocaleDateString('en-US', { timeZone: 'UTC' }),
+      isoArrival: res.arrival.toISOString().split('T')[0],
+      isoDeparture: res.departure.toISOString().split('T')[0],
+      vipStatus: res.vipStatus
+    };
+  };
+
+  // --- Main cascade ---
+  //
+  // Two nested loops:
+  //
+  // OUTER ("pass loop"): keeps running until a full pass produces zero moves.
   // Each pass advances each guest by AT MOST one hierarchy tier. A guest who
   // goes Standard -> Deluxe on pass 1 may go Deluxe -> Suite on pass 2, etc.
-  // Bound: a guest can't be upgraded more times than there are hierarchy tiers,
-  // so at most hierarchy.length passes would ever be productive. We add a small
-  // safety buffer.
-  const maxPasses = hierarchy.length + 2;
+  // This is what gives us "one tier at a time, re-iterate" behavior.
+  //
+  // INNER ("greedy loop"): within a pass, walk candidates in priority order,
+  // moving the first guest who has a valid target. If any move succeeds,
+  // RESTART the walk — because that move either freed a room (current-room
+  // credit) or consumed a room (target-room debit) that may change what's
+  // reachable for guests earlier in the priority order. Without this restart,
+  // a guest who was "not reachable" because their target was full at the time
+  // they were checked would never get a second look inside the same pass,
+  // even if another guest's move freed up exactly the room they needed.
+  //
+  // Termination:
+  //   - inner loop terminates when a full scan finds no movable guest
+  //   - outer loop terminates when a pass completes with no moves
+  //   - a guest can't be upgraded more times than there are hierarchy tiers,
+  //     so the outer loop is bounded by hierarchy.length + small buffer.
+  //   - the inner loop is bounded by candidatesPool.length per pass (each
+  //     successful move advances exactly one guest exactly one tier, so at
+  //     most one move per (guest, tier) pair per pass).
+
+  const maxOuterPasses = hierarchy.length + 2;
+  const maxInnerScans = candidatesPool.length + 1;
   let passCount = 0;
   let movedThisPass = true;
 
-  while (movedThisPass && passCount < maxPasses) {
+  while (movedThisPass && passCount < maxOuterPasses) {
     movedThisPass = false;
     passCount++;
 
+    // Re-sort at the start of each pass so priority reflects each guest's
+    // *current* room rather than their original one.
     sortCandidates(candidatesPool);
 
-    for (const res of candidatesPool) {
-      const currentRoom = guestState[res.resId];
-      const target = findNextTierTarget(currentRoom, res.arrival, res.departure);
-      if (!target) continue;
+    // Track which guests have already advanced on THIS pass so each guest
+    // can only move one tier per outer pass. The inner loop restarts to
+    // re-check eligibility, but already-moved guests are skipped.
+    const movedOnThisPass = new Set();
 
-      commitMove(currentRoom, target, res.arrival, res.departure);
-      guestState[res.resId] = target;
-      movedThisPass = true;
+    let innerScans = 0;
+    let innerMoved = true;
+    while (innerMoved && innerScans < maxInnerScans) {
+      innerMoved = false;
+      innerScans++;
 
-      // Record/update the pending upgrade. Preserve the ORIGINAL room from the
-      // very first hop so the final recommendation card still reads
-      // "Original: X | Upgraded To: <final tier>" regardless of how many
-      // intermediate tiers were traversed.
-      pendingUpgrades[res.resId] = {
-        name: res.name,
-        resId: res.resId,
-        revenue: res.revenue,
-        room: pendingUpgrades[res.resId] ? pendingUpgrades[res.resId].room : res.roomType,
-        upgradeTo: target,
-        score: parseFloat(res.revenue.replace(/[$,]/g, '')) || 0,
-        arrivalDate: res.arrival.toLocaleDateString('en-US', { timeZone: 'UTC' }),
-        departureDate: res.departure.toLocaleDateString('en-US', { timeZone: 'UTC' }),
-        isoArrival: res.arrival.toISOString().split('T')[0],
-        isoDeparture: res.departure.toISOString().split('T')[0],
-        vipStatus: res.vipStatus
-      };
+      for (const res of candidatesPool) {
+        if (movedOnThisPass.has(res.resId)) continue;
+
+        const currentRoom = guestState[res.resId];
+        const target = findNextTierTarget(currentRoom, res.arrival, res.departure);
+        if (!target) continue;
+
+        commitMove(currentRoom, target, res.arrival, res.departure);
+        guestState[res.resId] = target;
+        recordMove(res, target);
+
+        movedOnThisPass.add(res.resId);
+        innerMoved = true;
+        movedThisPass = true;
+        // Break so we restart the scan — a freshly freed room may now be
+        // reachable for a higher-priority guest we already walked past.
+        break;
+      }
     }
   }
 
