@@ -2048,30 +2048,32 @@ const guestState = {};
       return true;
   });
 
-  if (strategy === 'Optimized') {
-    candidatesPool.sort((a, b) => {
-        const vipA = a.vipStatus ? 1 : 0;
-        const vipB = b.vipStatus ? 1 : 0;
-        if (vipB !== vipA) return vipB - vipA;
-        const ltA = savedLeadTimes[a.roomType]?.avgLeadTime || 0;
-        const ltB = savedLeadTimes[b.roomType]?.avgLeadTime || 0;
-        if (ltB !== ltA) return ltA - ltB;
-        const revA = parseFloat(a.revenue.replace(/[$,]/g, '')) || 0;
-        const revB = parseFloat(b.revenue.replace(/[$,]/g, '')) || 0;
-        return revB - revA;
-    });
-  } else if (strategy === 'VIP Focus') {
-    candidatesPool.sort((a, b) => (b.vipStatus ? 1 : 0) - (a.vipStatus ? 1 : 0) || b.nights - a.nights);
-  } else {
-    candidatesPool.sort((a, b) => (parseFloat(b.revenue.replace(/[$,]/g, '')) || 0) - (parseFloat(a.revenue.replace(/[$,]/g, '')) || 0));
-  }
+  // ------------------------------------------------------------------
+  //  SIMULATION LOGIC
+  //
+  //  Three strategies, each with its own priority ordering. All three use the
+  //  same cascade mechanic: step through one tier per pass when possible, fall
+  //  back to a direct jump to the highest reachable tier when the stepped path
+  //  is blocked (e.g. an intermediate tier has 0 inventory on one of the
+  //  guest's nights, which would otherwise strand the guest below their
+  //  reachable top tier).
+  //
+  //  Display: each guest appears once in the final output, regardless of how
+  //  many internal hops they took. `room` is preserved from the very first
+  //  hop; `upgradeTo` is updated on every hop. A guest who internally goes
+  //  LKR -> CKR -> PKS ends up recorded as "Original: LKR, Upgraded To: PKS".
+  //
+  //  Priority orderings (who gets first pick of inventory each pass):
+  //    - Guest Focus: highest revenue first
+  //    - VIP Focus:   VIP first, then longest stay
+  //    - Optimized:   shortest lead time, then highest revenue, then VIP as
+  //                   final tiebreaker
+  // ------------------------------------------------------------------
 
-  // --- Helpers scoped to this simulation ---
-
-  // Bed-type compatibility: matches the original rules.
+  // --- Bed compatibility (preserved from original logic) ---
   //  - K guest can only go to K room
   //  - QQ guest can only go to QQ room
-  //  - Q guest can go to anything (per original logic: "if (currentBed === 'Q') bedMatch = true;")
+  //  - Q guest can go to anything
   const isBedCompatible = (fromBed, toBed) => {
     if (fromBed === 'K') return toBed === 'K';
     if (fromBed === 'QQ') return toBed === 'QQ';
@@ -2079,7 +2081,9 @@ const guestState = {};
     return false;
   };
 
-  // Checks whether `targetRoom` has at least 1 unit available for every night of the stay.
+  const revenueOf = (res) => parseFloat(res.revenue.replace(/[$,]/g, '')) || 0;
+
+  // --- Inventory check across the full stay ---
   const hasInventoryForStay = (targetRoom, arrival, departure) => {
     let d = new Date(arrival);
     while (d < departure) {
@@ -2090,7 +2094,7 @@ const guestState = {};
     return true;
   };
 
-  // Commits a single-tier move in simInventory: target room -1, current room +1, each night.
+  // --- Commit an inventory move across the stay ---
   const commitMove = (currentRoom, targetRoom, arrival, departure) => {
     let d = new Date(arrival);
     while (d < departure) {
@@ -2101,14 +2105,19 @@ const guestState = {};
     }
   };
 
-  // Finds the next-tier upgrade target for a guest:
-  //  - strictly higher than currentIdx in the hierarchy
-  //  - not in the ineligible list
-  //  - bed-compatible
-  //  - has inventory every night
-  // Returns the room code or null. "Next-tier" means the LOWEST such target — this
-  // enforces "one tier at a time" so multi-hop chains show each intermediate step.
-  const findNextTierTarget = (currentRoom, arrival, departure) => {
+  // --- Candidacy check for a single target tier ---
+  const isCandidateTarget = (currentRoom, currentBed, targetRoom) => {
+    if (ineligible.includes(targetRoom)) return false;
+    if (!isBedCompatible(currentBed, getBedType(targetRoom))) return false;
+    return true;
+  };
+
+  // --- Find the NEXT step-through target ---
+  // Returns the lowest-indexed tier above currentRoom that passes all checks
+  // (ineligible / bed-match / inventory for every night). Null if no such
+  // tier exists. This implements the "step through one tier at a time"
+  // preference: when the next tier up is reachable, we take it.
+  const findStepThroughTarget = (currentRoom, arrival, departure) => {
     const currentIdx = hierarchy.indexOf(currentRoom);
     if (currentIdx === -1) return null;
     const currentBed = getBedType(currentRoom);
@@ -2116,45 +2125,63 @@ const guestState = {};
 
     for (let i = currentIdx + 1; i < hierarchy.length; i++) {
       const target = hierarchy[i];
-      if (ineligible.includes(target)) continue;
-      if (!isBedCompatible(currentBed, getBedType(target))) continue;
+      if (!isCandidateTarget(currentRoom, currentBed, target)) continue;
       if (!hasInventoryForStay(target, arrival, departure)) continue;
       return target;
     }
     return null;
   };
 
-  // Re-sorts the candidate pool based on current strategy + current guest state.
-  // Called every pass so that priority reflects each guest's *current* room,
-  // not their original one.
+  // --- Find the HIGHEST reachable target (fallback) ---
+  // When step-through fails (the immediate next tier is blocked, but some
+  // higher tier is still available), this picks the highest-indexed tier
+  // in the hierarchy that passes all checks. Used as a rescue for guests
+  // who would otherwise be stranded by an intermediate-tier outage.
+  const findHighestReachableTarget = (currentRoom, arrival, departure) => {
+    const currentIdx = hierarchy.indexOf(currentRoom);
+    if (currentIdx === -1) return null;
+    const currentBed = getBedType(currentRoom);
+    if (currentBed === 'OTHER') return null;
+
+    for (let i = hierarchy.length - 1; i > currentIdx; i--) {
+      const target = hierarchy[i];
+      if (!isCandidateTarget(currentRoom, currentBed, target)) continue;
+      if (!hasInventoryForStay(target, arrival, departure)) continue;
+      return target;
+    }
+    return null;
+  };
+
+  // --- Priority sort for a given strategy ---
+  // Called once per pass so priority reflects each guest's CURRENT room
+  // (e.g. lead-time lookup changes as guests move up tiers).
   const sortCandidates = (pool) => {
     if (strategy === 'Optimized') {
+      // lead time (shortest first) > revenue (highest first) > VIP (tiebreaker)
       pool.sort((a, b) => {
-        const vipA = a.vipStatus ? 1 : 0;
-        const vipB = b.vipStatus ? 1 : 0;
-        if (vipB !== vipA) return vipB - vipA;
         const ltA = savedLeadTimes[guestState[a.resId]]?.avgLeadTime || 0;
         const ltB = savedLeadTimes[guestState[b.resId]]?.avgLeadTime || 0;
-        if (ltB !== ltA) return ltA - ltB; // shorter lead = move first
-        const revA = parseFloat(a.revenue.replace(/[$,]/g, '')) || 0;
-        const revB = parseFloat(b.revenue.replace(/[$,]/g, '')) || 0;
-        return revB - revA;
+        if (ltA !== ltB) return ltA - ltB;
+        const revA = revenueOf(a);
+        const revB = revenueOf(b);
+        if (revA !== revB) return revB - revA;
+        return (b.vipStatus ? 1 : 0) - (a.vipStatus ? 1 : 0);
       });
     } else if (strategy === 'VIP Focus') {
-      pool.sort((a, b) => (b.vipStatus ? 1 : 0) - (a.vipStatus ? 1 : 0) || b.nights - a.nights);
+      // VIP first, then longest stay
+      pool.sort((a, b) =>
+        (b.vipStatus ? 1 : 0) - (a.vipStatus ? 1 : 0) ||
+        b.nights - a.nights
+      );
     } else {
       // Guest Focus: highest revenue first
-      pool.sort((a, b) =>
-        (parseFloat(b.revenue.replace(/[$,]/g, '')) || 0) -
-        (parseFloat(a.revenue.replace(/[$,]/g, '')) || 0)
-      );
+      pool.sort((a, b) => revenueOf(b) - revenueOf(a));
     }
   };
 
-  // Records/updates a pending upgrade after a successful move. Preserves the
-  // ORIGINAL room from the very first hop so the final recommendation card
-  // reads "Original: X | Upgraded To: <final tier>" regardless of how many
-  // intermediate tiers were traversed.
+  // --- Record/update a pending upgrade entry ---
+  // Preserves the ORIGINAL room across multi-hop chains so each guest shows
+  // as a single "Original: X -> Upgraded To: <final>" line in the UI.
   const recordMove = (res, target) => {
     pendingUpgrades[res.resId] = {
       name: res.name,
@@ -2162,7 +2189,7 @@ const guestState = {};
       revenue: res.revenue,
       room: pendingUpgrades[res.resId] ? pendingUpgrades[res.resId].room : res.roomType,
       upgradeTo: target,
-      score: parseFloat(res.revenue.replace(/[$,]/g, '')) || 0,
+      score: revenueOf(res),
       arrivalDate: res.arrival.toLocaleDateString('en-US', { timeZone: 'UTC' }),
       departureDate: res.departure.toLocaleDateString('en-US', { timeZone: 'UTC' }),
       isoArrival: res.arrival.toISOString().split('T')[0],
@@ -2171,75 +2198,87 @@ const guestState = {};
     };
   };
 
-  // --- Main cascade ---
+  // ------------------------------------------------------------------
+  //  MAIN CASCADE
   //
-  // Two nested loops:
+  //  Phase 1 — step-through passes:
+  //    Run passes of single-tier moves until no pass produces a move. Within
+  //    a pass, after ANY successful move, restart the scan of candidates
+  //    from the top so freshly freed inventory is immediately visible to
+  //    higher-priority guests we may have already walked past.
   //
-  // OUTER ("pass loop"): keeps running until a full pass produces zero moves.
-  // Each pass advances each guest by AT MOST one hierarchy tier. A guest who
-  // goes Standard -> Deluxe on pass 1 may go Deluxe -> Suite on pass 2, etc.
-  // This is what gives us "one tier at a time, re-iterate" behavior.
+  //  Phase 2 — direct-jump fallback:
+  //    Once step-through is exhausted, walk the final candidate pool once
+  //    more. For any guest who hasn't moved at all, attempt a direct jump
+  //    to their highest reachable tier. For any guest who moved at least
+  //    once but is stuck at an intermediate tier with higher tiers still
+  //    available, attempt a jump to the highest reachable tier from where
+  //    they are now.
   //
-  // INNER ("greedy loop"): within a pass, walk candidates in priority order,
-  // moving the first guest who has a valid target. If any move succeeds,
-  // RESTART the walk — because that move either freed a room (current-room
-  // credit) or consumed a room (target-room debit) that may change what's
-  // reachable for guests earlier in the priority order. Without this restart,
-  // a guest who was "not reachable" because their target was full at the time
-  // they were checked would never get a second look inside the same pass,
-  // even if another guest's move freed up exactly the room they needed.
-  //
-  // Termination:
-  //   - inner loop terminates when a full scan finds no movable guest
-  //   - outer loop terminates when a pass completes with no moves
-  //   - a guest can't be upgraded more times than there are hierarchy tiers,
-  //     so the outer loop is bounded by hierarchy.length + small buffer.
-  //   - the inner loop is bounded by candidatesPool.length per pass (each
-  //     successful move advances exactly one guest exactly one tier, so at
-  //     most one move per (guest, tier) pair per pass).
+  //  Both phases use the same inventory accounting (commitMove) so
+  //  simInventory stays consistent, and both record exactly one
+  //  pendingUpgrades entry per guest with the original room preserved.
+  // ------------------------------------------------------------------
 
   const maxOuterPasses = hierarchy.length + 2;
   const maxInnerScans = candidatesPool.length + 1;
-  let passCount = 0;
-  let movedThisPass = true;
 
+  // Phase 1: step-through passes
+  let movedThisPass = true;
+  let passCount = 0;
   while (movedThisPass && passCount < maxOuterPasses) {
     movedThisPass = false;
     passCount++;
-
-    // Re-sort at the start of each pass so priority reflects each guest's
-    // *current* room rather than their original one.
     sortCandidates(candidatesPool);
 
-    // Track which guests have already advanced on THIS pass so each guest
-    // can only move one tier per outer pass. The inner loop restarts to
-    // re-check eligibility, but already-moved guests are skipped.
     const movedOnThisPass = new Set();
-
     let innerScans = 0;
     let innerMoved = true;
+
     while (innerMoved && innerScans < maxInnerScans) {
       innerMoved = false;
       innerScans++;
 
       for (const res of candidatesPool) {
         if (movedOnThisPass.has(res.resId)) continue;
-
         const currentRoom = guestState[res.resId];
-        const target = findNextTierTarget(currentRoom, res.arrival, res.departure);
+        const target = findStepThroughTarget(currentRoom, res.arrival, res.departure);
         if (!target) continue;
 
         commitMove(currentRoom, target, res.arrival, res.departure);
         guestState[res.resId] = target;
         recordMove(res, target);
-
         movedOnThisPass.add(res.resId);
         innerMoved = true;
         movedThisPass = true;
-        // Break so we restart the scan — a freshly freed room may now be
-        // reachable for a higher-priority guest we already walked past.
-        break;
+        break; // restart inner scan so freed rooms are seen immediately
       }
+    }
+  }
+
+  // Phase 2: direct-jump fallback for guests stranded below their reachable top
+  sortCandidates(candidatesPool);
+  let fallbackMoved = true;
+  let fallbackScans = 0;
+  while (fallbackMoved && fallbackScans < maxInnerScans) {
+    fallbackMoved = false;
+    fallbackScans++;
+    for (const res of candidatesPool) {
+      const currentRoom = guestState[res.resId];
+      // Skip guests already at the top or with no room in the hierarchy
+      const currentIdx = hierarchy.indexOf(currentRoom);
+      if (currentIdx === -1 || currentIdx === hierarchy.length - 1) continue;
+
+      const jumpTarget = findHighestReachableTarget(currentRoom, res.arrival, res.departure);
+      if (!jumpTarget) continue;
+
+      commitMove(currentRoom, jumpTarget, res.arrival, res.departure);
+      guestState[res.resId] = jumpTarget;
+      recordMove(res, jumpTarget);
+      fallbackMoved = true;
+      // No restart-break here: fallback is a single pass per candidate
+      // freshness cycle. We loop the whole pool again in case a jump frees
+      // inventory that enables another guest's jump.
     }
   }
 
