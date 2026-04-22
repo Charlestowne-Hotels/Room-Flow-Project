@@ -1977,6 +1977,13 @@ function generateScenariosFromData(allReservations, rules) {
 // EXHAUSTIVE CASCADING UPGRADE SIMULATION
 // ==========================================
 function runSimulation(strategy, allReservations, masterInv, rules, completedIds) {
+  // --- DEBUG: emit a full diagnostic dump on the first strategy call per run.
+  //     Log only for Guest Focus to avoid tripling the output.
+  const DEBUG = (strategy === 'Guest Focus');
+  const dlog = (...args) => { if (DEBUG) console.log('[SIM]', ...args); };
+  const dgroup = (label) => { if (DEBUG) console.group('[SIM]', label); };
+  const dgroupEnd = () => { if (DEBUG) console.groupEnd(); };
+
   const startDate = parseDate(rules.selectedDate);
   const hierarchy = rules.hierarchy.toUpperCase().split(',').map(r => r.trim()).filter(Boolean);
   const ineligible = rules.ineligibleUpgrades.toUpperCase().split(',').map(r => r.trim()).filter(Boolean);
@@ -2047,6 +2054,35 @@ const guestState = {};
       }
       return true;
   });
+
+  // --- DEBUG: dump initial state once, before the simulation runs ---
+  if (DEBUG) {
+    dgroup(`runSimulation: strategy=${strategy}`);
+    dlog(`hierarchy: ${hierarchy.join(' > ')}`);
+    dlog(`ineligible: ${ineligible.length ? ineligible.join(',') : '(none)'}`);
+    dlog(`masterInv totals:`, JSON.parse(JSON.stringify(masterInv)));
+
+    dgroup(`simInventory (initial, next ${Math.min(10, Object.keys(simInventory).length)} days)`);
+    const sortedDates = Object.keys(simInventory).sort();
+    sortedDates.slice(0, 10).forEach(d => {
+      const compact = {};
+      hierarchy.forEach(h => { compact[h] = simInventory[d][h] ?? '—'; });
+      console.log('[SIM]', d, compact);
+    });
+    dgroupEnd();
+
+    dgroup(`candidatesPool (${candidatesPool.length} guests after filtering)`);
+    candidatesPool.forEach(res => {
+      const isoA = res.arrival.toISOString().split('T')[0];
+      const isoD = res.departure.toISOString().split('T')[0];
+      const tags = [];
+      if (res.vipStatus) tags.push('VIP:' + res.vipStatus);
+      if (res.isDoNotMove) tags.push('DNM');
+      if (res.arrival <= fortyEightHoursOut) tags.push('48H');
+      console.log('[SIM]', `${res.resId} ${res.name.padEnd(25).slice(0,25)} ${res.roomType.padEnd(10).slice(0,10)} ${isoA}..${isoD} ${res.nights}nt rate="${res.rate || ''}" rev=${res.revenue} ${tags.join(',')}`);
+    });
+    dgroupEnd();
+  }
 
   // ------------------------------------------------------------------
   //  SIMULATION LOGIC
@@ -2245,6 +2281,8 @@ const guestState = {};
         const target = findStepThroughTarget(currentRoom, res.arrival, res.departure);
         if (!target) continue;
 
+        if (DEBUG) dlog(`P1 pass ${passCount} scan ${innerScans}: MOVE ${res.resId} ${res.name} ${currentRoom} -> ${target}`);
+
         commitMove(currentRoom, target, res.arrival, res.departure);
         guestState[res.resId] = target;
         recordMove(res, target);
@@ -2257,6 +2295,7 @@ const guestState = {};
   }
 
   // Phase 2: direct-jump fallback for guests stranded below their reachable top
+  if (DEBUG) dlog(`--- Phase 1 complete after ${passCount} passes. Starting Phase 2 (direct-jump fallback) ---`);
   sortCandidates(candidatesPool);
   let fallbackMoved = true;
   let fallbackScans = 0;
@@ -2270,16 +2309,58 @@ const guestState = {};
       if (currentIdx === -1 || currentIdx === hierarchy.length - 1) continue;
 
       const jumpTarget = findHighestReachableTarget(currentRoom, res.arrival, res.departure);
+
+      if (DEBUG && !jumpTarget) {
+        // Diagnose WHY no jump target for this leftover guest
+        const currentBed = getBedType(currentRoom);
+        const reasons = [];
+        for (let i = hierarchy.length - 1; i > currentIdx; i--) {
+          const t = hierarchy[i];
+          if (ineligible.includes(t)) { reasons.push(`${t}:INELIG`); continue; }
+          if (!isBedCompatible(currentBed, getBedType(t))) { reasons.push(`${t}:BED`); continue; }
+          // Find which night fails inventory
+          let d = new Date(res.arrival);
+          let failDate = null;
+          while (d < res.departure) {
+            const dStr = d.toISOString().split('T')[0];
+            if (!simInventory[dStr] || (simInventory[dStr][t] || 0) <= 0) { failDate = `${dStr}(${simInventory[dStr]?.[t] ?? 'NA'})`; break; }
+            d.setUTCDate(d.getUTCDate() + 1);
+          }
+          reasons.push(`${t}:${failDate || 'SHOULDWORK'}`);
+        }
+        dlog(`P2 NO-JUMP for ${res.resId} ${res.name} (currently ${currentRoom}, bed=${currentBed}): ${reasons.join(' ')}`);
+      }
+
       if (!jumpTarget) continue;
+
+      if (DEBUG) dlog(`P2 scan ${fallbackScans}: JUMP ${res.resId} ${res.name} ${currentRoom} -> ${jumpTarget}`);
 
       commitMove(currentRoom, jumpTarget, res.arrival, res.departure);
       guestState[res.resId] = jumpTarget;
       recordMove(res, jumpTarget);
       fallbackMoved = true;
-      // No restart-break here: fallback is a single pass per candidate
-      // freshness cycle. We loop the whole pool again in case a jump frees
-      // inventory that enables another guest's jump.
     }
+  }
+
+  if (DEBUG) {
+    dgroup(`Final pendingUpgrades (${Object.keys(pendingUpgrades).length} total)`);
+    Object.values(pendingUpgrades).forEach(u => {
+      console.log('[SIM]', `${u.resId} ${u.name}: ${u.room} -> ${u.upgradeTo}  (${u.isoArrival}..${u.isoDeparture})`);
+    });
+    dgroupEnd();
+
+    // Log which candidates did NOT end up in pendingUpgrades
+    const movedIds = new Set(Object.keys(pendingUpgrades));
+    const leftovers = candidatesPool.filter(r => !movedIds.has(r.resId));
+    if (leftovers.length) {
+      dgroup(`Leftovers (${leftovers.length}): candidates with NO upgrade`);
+      leftovers.forEach(r => {
+        console.log('[SIM]', `${r.resId} ${r.name} still in ${guestState[r.resId]}`);
+      });
+      dgroupEnd();
+    }
+
+    dgroupEnd(); // close runSimulation group
   }
 
   return Object.values(pendingUpgrades);
