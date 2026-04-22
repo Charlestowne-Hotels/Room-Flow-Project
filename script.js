@@ -2066,72 +2066,136 @@ const guestState = {};
     candidatesPool.sort((a, b) => (parseFloat(b.revenue.replace(/[$,]/g, '')) || 0) - (parseFloat(a.revenue.replace(/[$,]/g, '')) || 0));
   }
 
-  let iterationActivity = true;
-  while (iterationActivity) {
-    iterationActivity = false;
-    const sortedHierarchy = [...hierarchy].sort((a, b) => {
-        if (strategy !== 'Optimized') return 0;
-        const ltA = savedLeadTimes[a]?.avgLeadTime || 0;
-        const ltB = savedLeadTimes[b]?.avgLeadTime || 0;
-        return ltB - ltA; 
-    });
+  // --- Helpers scoped to this simulation ---
 
-    for (let targetRoom of sortedHierarchy) {
-      if (ineligible.includes(targetRoom)) continue;
-      for (let g = 0; g < candidatesPool.length; g++) {
-        const res = candidatesPool[g];
-        
-        // Removed the pendingUpgrades lockout to allow multi-tier cascading!
-        
-        const currentRoom = guestState[res.resId];
-        const currentIdx = hierarchy.indexOf(currentRoom);
-        const targetIdx = hierarchy.indexOf(targetRoom);
-        const currentBed = getBedType(currentRoom);
-        const targetBed = getBedType(targetRoom);
-        let bedMatch = false;
-        
-        if (currentBed === 'K' && targetBed === 'K') bedMatch = true;
-        else if (currentBed === 'QQ' && targetBed === 'QQ') bedMatch = true;
-        else if (currentBed === 'Q') bedMatch = true;
+  // Bed-type compatibility: matches the original rules.
+  //  - K guest can only go to K room
+  //  - QQ guest can only go to QQ room
+  //  - Q guest can go to anything (per original logic: "if (currentBed === 'Q') bedMatch = true;")
+  const isBedCompatible = (fromBed, toBed) => {
+    if (fromBed === 'K') return toBed === 'K';
+    if (fromBed === 'QQ') return toBed === 'QQ';
+    if (fromBed === 'Q') return true;
+    return false;
+  };
 
-        if (currentIdx !== -1 && currentIdx < targetIdx && bedMatch) {
-          let canMove = true;
-          let checkDate = new Date(res.arrival);
-          while (checkDate < res.departure) {
-            const dStr = checkDate.toISOString().split('T')[0];
-            if (!simInventory[dStr] || (simInventory[dStr][targetRoom] || 0) <= 0) {
-              canMove = false;
-              break;
-            }
-            checkDate.setUTCDate(checkDate.getUTCDate() + 1);
-          }
-          if (canMove) {
-            iterationActivity = true;
-            let updateDate = new Date(res.arrival);
-            while (updateDate < res.departure) {
-              const dStr = updateDate.toISOString().split('T')[0];
-              simInventory[dStr][targetRoom]--; 
-              if (simInventory[dStr][currentRoom] !== undefined) simInventory[dStr][currentRoom]++; 
-              updateDate.setUTCDate(updateDate.getUTCDate() + 1);
-            }
-            guestState[res.resId] = targetRoom;
-            pendingUpgrades[res.resId] = {
-              name: res.name, resId: res.resId, revenue: res.revenue, 
-              // Always preserve the very first original room!
-              room: pendingUpgrades[res.resId] ? pendingUpgrades[res.resId].room : res.roomType, 
-              upgradeTo: targetRoom,
-              score: parseFloat(res.revenue.replace(/[$,]/g, '')) || 0,
-              arrivalDate: res.arrival.toLocaleDateString('en-US', { timeZone: 'UTC' }),
-              departureDate: res.departure.toLocaleDateString('en-US', { timeZone: 'UTC' }),
-              isoArrival: res.arrival.toISOString().split('T')[0],
-              isoDeparture: res.departure.toISOString().split('T')[0],
-              vipStatus: res.vipStatus
-            };
-          }
-        }
-      }
+  // Checks whether `targetRoom` has at least 1 unit available for every night of the stay.
+  const hasInventoryForStay = (targetRoom, arrival, departure) => {
+    let d = new Date(arrival);
+    while (d < departure) {
+      const dStr = d.toISOString().split('T')[0];
+      if (!simInventory[dStr] || (simInventory[dStr][targetRoom] || 0) <= 0) return false;
+      d.setUTCDate(d.getUTCDate() + 1);
+    }
+    return true;
+  };
+
+  // Commits a single-tier move in simInventory: target room -1, current room +1, each night.
+  const commitMove = (currentRoom, targetRoom, arrival, departure) => {
+    let d = new Date(arrival);
+    while (d < departure) {
+      const dStr = d.toISOString().split('T')[0];
+      simInventory[dStr][targetRoom]--;
+      if (simInventory[dStr][currentRoom] !== undefined) simInventory[dStr][currentRoom]++;
+      d.setUTCDate(d.getUTCDate() + 1);
+    }
+  };
+
+  // Finds the next-tier upgrade target for a guest:
+  //  - strictly higher than currentIdx in the hierarchy
+  //  - not in the ineligible list
+  //  - bed-compatible
+  //  - has inventory every night
+  // Returns the room code or null. "Next-tier" means the LOWEST such target — this
+  // enforces "one tier at a time" so multi-hop chains show each intermediate step.
+  const findNextTierTarget = (currentRoom, arrival, departure) => {
+    const currentIdx = hierarchy.indexOf(currentRoom);
+    if (currentIdx === -1) return null;
+    const currentBed = getBedType(currentRoom);
+    if (currentBed === 'OTHER') return null;
+
+    for (let i = currentIdx + 1; i < hierarchy.length; i++) {
+      const target = hierarchy[i];
+      if (ineligible.includes(target)) continue;
+      if (!isBedCompatible(currentBed, getBedType(target))) continue;
+      if (!hasInventoryForStay(target, arrival, departure)) continue;
+      return target;
+    }
+    return null;
+  };
+
+  // Re-sorts the candidate pool based on current strategy + current guest state.
+  // Called every pass so that priority reflects each guest's *current* room,
+  // not their original one.
+  const sortCandidates = (pool) => {
+    if (strategy === 'Optimized') {
+      pool.sort((a, b) => {
+        const vipA = a.vipStatus ? 1 : 0;
+        const vipB = b.vipStatus ? 1 : 0;
+        if (vipB !== vipA) return vipB - vipA;
+        const ltA = savedLeadTimes[guestState[a.resId]]?.avgLeadTime || 0;
+        const ltB = savedLeadTimes[guestState[b.resId]]?.avgLeadTime || 0;
+        if (ltB !== ltA) return ltA - ltB; // shorter lead = move first
+        const revA = parseFloat(a.revenue.replace(/[$,]/g, '')) || 0;
+        const revB = parseFloat(b.revenue.replace(/[$,]/g, '')) || 0;
+        return revB - revA;
+      });
+    } else if (strategy === 'VIP Focus') {
+      pool.sort((a, b) => (b.vipStatus ? 1 : 0) - (a.vipStatus ? 1 : 0) || b.nights - a.nights);
+    } else {
+      // Guest Focus: highest revenue first
+      pool.sort((a, b) =>
+        (parseFloat(b.revenue.replace(/[$,]/g, '')) || 0) -
+        (parseFloat(a.revenue.replace(/[$,]/g, '')) || 0)
+      );
+    }
+  };
+
+  // --- Main cascade: keep running full passes until a pass makes zero moves. ---
+  // Each pass advances each guest by AT MOST one hierarchy tier. A guest who
+  // goes Standard -> Deluxe on pass 1 may go Deluxe -> Suite on pass 2, etc.
+  // Bound: a guest can't be upgraded more times than there are hierarchy tiers,
+  // so at most hierarchy.length passes would ever be productive. We add a small
+  // safety buffer.
+  const maxPasses = hierarchy.length + 2;
+  let passCount = 0;
+  let movedThisPass = true;
+
+  while (movedThisPass && passCount < maxPasses) {
+    movedThisPass = false;
+    passCount++;
+
+    sortCandidates(candidatesPool);
+
+    for (const res of candidatesPool) {
+      const currentRoom = guestState[res.resId];
+      const target = findNextTierTarget(currentRoom, res.arrival, res.departure);
+      if (!target) continue;
+
+      commitMove(currentRoom, target, res.arrival, res.departure);
+      guestState[res.resId] = target;
+      movedThisPass = true;
+
+      // Record/update the pending upgrade. Preserve the ORIGINAL room from the
+      // very first hop so the final recommendation card still reads
+      // "Original: X | Upgraded To: <final tier>" regardless of how many
+      // intermediate tiers were traversed.
+      pendingUpgrades[res.resId] = {
+        name: res.name,
+        resId: res.resId,
+        revenue: res.revenue,
+        room: pendingUpgrades[res.resId] ? pendingUpgrades[res.resId].room : res.roomType,
+        upgradeTo: target,
+        score: parseFloat(res.revenue.replace(/[$,]/g, '')) || 0,
+        arrivalDate: res.arrival.toLocaleDateString('en-US', { timeZone: 'UTC' }),
+        departureDate: res.departure.toLocaleDateString('en-US', { timeZone: 'UTC' }),
+        isoArrival: res.arrival.toISOString().split('T')[0],
+        isoDeparture: res.departure.toISOString().split('T')[0],
+        vipStatus: res.vipStatus
+      };
     }
   }
+
   return Object.values(pendingUpgrades);
 }
 
