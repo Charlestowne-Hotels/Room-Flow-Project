@@ -2423,7 +2423,6 @@ function buildReservationsByDate(allReservations) {
 function getInventoryForDate(masterInventory, reservationsByDate, date) { const inventory = {}; const dateString = date.toISOString().split('T')[0]; for (const roomCode in masterInventory) { const totalPhysical = masterInventory[roomCode]; const reservedCount = reservationsByDate[dateString]?.[roomCode] || 0; const oooDeduction = oooRecords.reduce((total, rec) => { if (rec.roomType === roomCode && (date.getTime() >= rec.startDate.getTime() && date.getTime() <= rec.endDate.getTime())) return total + (rec.count || 1); return total; }, 0); inventory[roomCode] = totalPhysical - reservedCount - oooDeduction; } return inventory; }
 function getMasterInventory(profileName) { const masterRoomList = MASTER_INVENTORIES[profileName]; if (!masterRoomList) return {}; const totalInventory = {}; masterRoomList.forEach(room => { totalInventory[room.code.toUpperCase()] = (totalInventory[room.code.toUpperCase()] || 0) + 1; }); return totalInventory; }
 function parseDate(dateStr) { if (!dateStr) return null; const parts = dateStr.split(/[-\/ ]/); if (parts.length >= 3) { if (parts[0].length === 4) return new Date(Date.UTC(parts[0], parts[1] - 1, parts[2])); return new Date(Date.UTC(parts[2], parts[0] - 1, parts[1])); } return new Date(dateStr); }
-function generateMatrixData(totalInventory, reservationsByDate, startDate, roomHierarchy) { const matrix = { headers: ['Room Type'], rows: [] }; const dates = Array.from({ length: 14 }, (_, i) => { const date = new Date(startDate); date.setUTCDate(date.getUTCDate() + i); return date; }); matrix.headers.push(...dates.map(date => `${date.toLocaleDateString('en-US', { weekday: 'short', timeZone: 'UTC' })}<br>${date.getUTCMonth() + 1}/${date.getUTCDate()}`)); roomHierarchy.forEach(roomCode => { const row = { roomCode, availability: [] }; dates.forEach(date => { const dateString = date.toISOString().split('T')[0]; let finalAvail = 0; if (currentInventoryMap && currentInventoryMap[dateString] && currentInventoryMap[dateString][roomCode] !== undefined) finalAvail = currentInventoryMap[dateString][roomCode]; else { const oooCount = oooRecords.reduce((total, rec) => { if (rec.roomType === roomCode && (date.getTime() >= rec.startDate.getTime() && date.getTime() <= rec.endDate.getTime())) return total + (rec.count || 1); return total; }, 0); finalAvail = (totalInventory[roomCode] || 0) - (reservationsByDate[dateString]?.[roomCode] || 0) - oooCount; } row.availability.push(finalAvail); }); matrix.rows.push(row); }); return matrix; }
 
 function getBedType(roomCode) { 
   if (!roomCode) return 'OTHER'; 
@@ -2488,7 +2487,9 @@ function renderManualUpgradeView() {
     const isArrivalWithin48h = res.arrival <= fortyEightHoursOut;
     if (isArrivalWithin48h) { if ((res.rate || "").toUpperCase().includes("COMP")) return false; }
     else { if (otaRates.some(ota => res.rate && res.rate.toLowerCase().includes(ota))) return false; }
-    return diffDays >= 0 && diffDays < 10 && !acceptedIds.has(res.resId) && !completedIds.has(res.resId) && !['CANCELED', 'CANCELLED', 'NO SHOW', 'CHECKED OUT'].includes(res.status);
+    
+    // BUG FIX 1: Added !res.isDoNotMove check to exclude 'Do Not Move' guests from manual list
+    return diffDays >= 0 && diffDays < 10 && !acceptedIds.has(res.resId) && !completedIds.has(res.resId) && !['CANCELED', 'CANCELLED', 'NO SHOW', 'CHECKED OUT'].includes(res.status) && !res.isDoNotMove;
   });
 
   if (!candidates.length) { container.innerHTML = '<p style="text-align:center; padding:20px; color:#666;">No eligible guests found.</p>'; return; }
@@ -2509,6 +2510,7 @@ function renderManualUpgradeView() {
     const isLastMinute = guest.arrival <= fortyEightHoursOut;
     let targetList = hierarchy.slice(currentIdx + 1).sort((a, b) => (savedLeadTimes[b]?.avgLeadTime || 0) - (savedLeadTimes[a]?.avgLeadTime || 0));
     let optionsHtml = '';
+    
     if (currentIdx !== -1 && currentBed !== 'OTHER') {
       targetList.forEach(targetRoom => {
         if (ineligible.includes(targetRoom)) return;
@@ -2516,15 +2518,23 @@ function renderManualUpgradeView() {
         let bedMatch = (currentBed === 'K' && targetBed === 'K') || (currentBed === 'QQ' && targetBed === 'QQ') || (currentBed === 'Q');
         if (!bedMatch) return;
         let isAvail = true;
-        for (let d = 0; d < Math.min(guest.nights, 14); d++) {
+        
+        // BUG FIX 2: Check full guest length of stay properly. If they stay beyond the generated 14-day 
+        // matrix data, they correctly flag as unavailable (isAvail = false) to match the simulation algorithm.
+        for (let d = 0; d < guest.nights; d++) {
           const date = new Date(guest.arrival); date.setUTCDate(date.getUTCDate() + d);
           const matrixRow = simResult.matrixData.rows.find(r => r.roomCode === targetRoom);
           const dateIdx = simResult.matrixData.headers.findIndex(h => h.includes(`${date.getUTCMonth() + 1}/${date.getUTCDate()}`));
-          if (!matrixRow || matrixRow.availability[dateIdx - 1] <= 0) { isAvail = false; break; }
+          
+          if (!matrixRow || dateIdx < 1 || matrixRow.availability[dateIdx - 1] === undefined || matrixRow.availability[dateIdx - 1] <= 0) { 
+              isAvail = false; 
+              break; 
+          }
         }
         if (isAvail) optionsHtml += `<option value="${targetRoom}">${targetRoom}</option>`;
       });
     }
+    
     if (optionsHtml) {
       eligibleFound++;
       rowsHtml += `<tr style="border-bottom:1px solid #eee; ${isLastMinute ? 'background-color: #f0fff4;' : ''}">
